@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "segment=0,team=neutral": { "model": "squadtpconquest:block/conquest_flag_base" },
+    "segment=0,team=a": { "model": "squadtpconquest:block/conquest_flag_base" },
+    "segment=0,team=b": { "model": "squadtpconquest:block/conquest_flag_base" },
+    "segment=0,team=admin": { "model": "squadtpconquest:block/conquest_flag_base" },
+    "segment=1,team=neutral": { "model": "squadtpconquest:block/conquest_flag_mid" },
+    "segment=1,team=a": { "model": "squadtpconquest:block/conquest_flag_mid" },
+    "segment=1,team=b": { "model": "squadtpconquest:block/conquest_flag_mid" },
+    "segment=1,team=admin": { "model": "squadtpconquest:block/conquest_flag_mid" },
+    "segment=2,team=neutral": { "model": "squadtpconquest:block/conquest_flag_top_neutral" },
+    "segment=2,team=a": { "model": "squadtpconquest:block/conquest_flag_top_a" },
+    "segment=2,team=b": { "model": "squadtpconquest:block/conquest_flag_top_b" },
+    "segment=2,team=admin": { "model": "squadtpconquest:block/conquest_flag_top_neutral" }
+  }
+}

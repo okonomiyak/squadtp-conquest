@@ -1,0 +1,74 @@
+plugins {
+    id 'java-library'
+    id 'idea'
+    id 'net.neoforged.moddev.legacyforge' version '2.0.141'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+legacyForge {
+    version = project.forge_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        client {
+            client()
+            programArguments.addAll '--username', 'Dev1'
+        }
+
+        // Second client for two-player testing (separate game dir + username).
+        client2 {
+            client()
+            gameDirectory = file('run2')
+            programArguments.addAll '--username', 'Dev2'
+        }
+
+        server {
+            server()
+            programArgument '--nogui'
+            gameDirectory = file('run-server')
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+repositories {
+    // squadtp jar built by the sibling project; never modified from here.
+    // Ivy artifact-only layout gives the jar real module metadata so MDG's
+    // SRG->named remapping transform applies (flatDir/files() do not work).
+    ivy {
+        name = 'squadtpLocal'
+        url = uri(file('../squadtp/build/libs'))
+        patternLayout { artifact '[module]-[revision].[ext]' }
+        metadataSources { artifact() }
+        content { includeModule('uk.iwaservice', 'squadtp') }
+    }
+}
+
+dependencies {
+    // Reobfuscated (SRG) squadtp jar, remapped to named mappings for the dev
+    // runtime by ModDevGradle. Loads as a real mod in runClient/runServer.
+    modImplementation "uk.iwaservice:squadtp:${squadtp_version}"
+}
+
+// Debug aid: print the resolved runtime classpath entries for squadtp.
+tasks.register('printSquadtpCp') {
+    def cp = configurations.runtimeClasspath
+    doLast { cp.files.findAll { it.name.contains('squadtp') }.each { println it } }
+}

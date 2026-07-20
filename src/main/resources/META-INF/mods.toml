@@ -1,0 +1,30 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="squadtpconquest"
+version="0.1.0"
+displayName="SquadTP Conquest"
+description='''Battlefield-style conquest game mode built on top of the squadtp squad API.'''
+
+[[dependencies.squadtpconquest]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.squadtpconquest]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1,1.21)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.squadtpconquest]]
+    modId="squadtp"
+    mandatory=true
+    versionRange="[0.1.0,)"
+    ordering="AFTER"
+    side="BOTH"

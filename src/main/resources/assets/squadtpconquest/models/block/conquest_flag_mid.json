@@ -1,0 +1,21 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "stone": "minecraft:block/stone",
+    "particle": "minecraft:block/stone"
+  },
+  "elements": [
+    {
+      "from": [1, 0, 5],
+      "to": [4, 16, 9],
+      "faces": {
+        "down":  { "texture": "#stone", "uv": [0, 0, 16, 16] },
+        "up":    { "texture": "#stone", "uv": [0, 0, 16, 16] },
+        "north": { "texture": "#stone", "uv": [0, 0, 16, 16] },
+        "south": { "texture": "#stone", "uv": [0, 0, 16, 16] },
+        "west":  { "texture": "#stone", "uv": [0, 0, 16, 16] },
+        "east":  { "texture": "#stone", "uv": [0, 0, 16, 16] }
+      }
+    }
+  ]
+}

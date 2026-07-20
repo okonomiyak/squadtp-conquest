@@ -1,0 +1,34 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "stone": "minecraft:block/stone",
+    "cloth": "minecraft:block/red_wool",
+    "particle": "minecraft:block/red_wool"
+  },
+  "elements": [
+    {
+      "from": [1, 0, 5],
+      "to": [4, 16, 9],
+      "faces": {
+        "down":  { "texture": "#stone", "uv": [0, 0, 16, 16] },
+        "up":    { "texture": "#stone", "uv": [0, 0, 16, 16] },
+        "north": { "texture": "#stone", "uv": [0, 0, 16, 16] },
+        "south": { "texture": "#stone", "uv": [0, 0, 16, 16] },
+        "west":  { "texture": "#stone", "uv": [0, 0, 16, 16] },
+        "east":  { "texture": "#stone", "uv": [0, 0, 16, 16] }
+      }
+    },
+    {
+      "from": [4, 4, 6],
+      "to": [16, 15, 8],
+      "faces": {
+        "down":  { "texture": "#cloth", "uv": [0, 0, 16, 16] },
+        "up":    { "texture": "#cloth", "uv": [0, 0, 16, 16] },
+        "north": { "texture": "#cloth", "uv": [0, 0, 16, 16] },
+        "south": { "texture": "#cloth", "uv": [0, 0, 16, 16] },
+        "west":  { "texture": "#cloth", "uv": [0, 0, 16, 16] },
+        "east":  { "texture": "#cloth", "uv": [0, 0, 16, 16] }
+      }
+    }
+  ]
+}
