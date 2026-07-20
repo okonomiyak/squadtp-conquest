@@ -34,6 +34,20 @@ public enum Team implements StringRepresentable {
         return color;
     }
 
+    /**
+     * Fixed ARGB color for HUD/GUI elements (ticket bar, point icons, capture
+     * overlay): Team A is always this blue and Team B always this red,
+     * everywhere, regardless of which team the viewer is on.
+     */
+    public int hudColor() {
+        return switch (this) {
+            case A -> 0xFF3B6FE0;
+            case B -> 0xFFE03B3B;
+            case ADMIN -> 0xFFFFC83B;
+            case NEUTRAL -> 0xFF808080;
+        };
+    }
+
     /** Colored display name, e.g. "Team A" / "チームA". */
     public MutableComponent display() {
         return Component.translatable("conquest.team." + key).withStyle(color);

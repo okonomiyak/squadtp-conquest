@@ -86,6 +86,8 @@
   "conquest.score.deaths": "デス数 A:%s / B:%s",
   "conquest.score.your_kda": "自分: %s/%s/%s (スコア %s)",
   "conquest.score.col_header": "#   名前                        スコア  K/D/A",
+  "conquest.score.lifetime_header": "通算成績(このセッションの全ラウンド合計)",
+  "conquest.score.col_header_lifetime": "#   名前                        スコア  K/D  (比率)",
   "conquest.score.spectating": "観戦中",
 
   "conquest.capture.capturing": "占領中",

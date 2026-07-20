@@ -21,6 +21,8 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import uk.iwaservice.squadtp.squad.ReviveSystem;
+import uk.iwaservice.squadtp.squad.Squad;
+import uk.iwaservice.squadtp.squad.SquadManager;
 import uk.iwaservice.squadtp.squad.TeleportHelper;
 import uk.iwaservice.squadtpconquest.Config;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
@@ -80,6 +82,8 @@ public class ConquestManager extends SavedData {
     private int countdownSecondsRemaining;
     /** Round-scoped kill/death/assist/revive counters, reset on /conquest start. */
     private final Map<UUID, PlayerScore> scores = new HashMap<>();
+    /** Cumulative kill/death/assist/revive counters across all rounds; never cleared. */
+    private final Map<UUID, PlayerScore> lifetimeScores = new HashMap<>();
     /** Transient: players currently known to be downed, for revive-transition detection. */
     private final Set<UUID> trackedDowned = new HashSet<>();
 
@@ -193,6 +197,7 @@ public class ConquestManager extends SavedData {
      */
     public void recordKill(MinecraftServer server, UUID player) {
         scoreOf(player).kills++;
+        lifetimeScoreOf(player).kills++;
         setDirty();
         if (mode == GameMode.TDM && state == RoundState.IN_PROGRESS) {
             Team team = teamOf(player);
@@ -212,16 +217,19 @@ public class ConquestManager extends SavedData {
 
     public void recordDeath(UUID player) {
         scoreOf(player).deaths++;
+        lifetimeScoreOf(player).deaths++;
         setDirty();
     }
 
     public void recordAssist(UUID player) {
         scoreOf(player).assists++;
+        lifetimeScoreOf(player).assists++;
         setDirty();
     }
 
     public void recordRevive(UUID player) {
         scoreOf(player).revives++;
+        lifetimeScoreOf(player).revives++;
         setDirty();
     }
 
@@ -229,9 +237,21 @@ public class ConquestManager extends SavedData {
         return scores.computeIfAbsent(player, k -> new PlayerScore());
     }
 
+    private PlayerScore lifetimeScoreOf(UUID player) {
+        return lifetimeScores.computeIfAbsent(player, k -> new PlayerScore());
+    }
+
     /** Weighted total: kills/assists/revives per the scoreboard config, deaths don't subtract. */
     public int totalScore(UUID player) {
-        PlayerScore s = scores.get(player);
+        return weightedScore(scores.get(player));
+    }
+
+    /** Same weighting as {@link #totalScore}, but over the cross-round lifetime counters. */
+    public int totalLifetimeScore(UUID player) {
+        return weightedScore(lifetimeScores.get(player));
+    }
+
+    private static int weightedScore(@Nullable PlayerScore s) {
         if (s == null) {
             return 0;
         }
@@ -280,8 +300,11 @@ public class ConquestManager extends SavedData {
 
     /**
      * Randomly splits every online player who isn't on the admin team into
-     * Team A / Team B as evenly as possible. Returns the number of players
-     * reassigned.
+     * Team A / Team B as evenly as possible. Since a shuffle can freely split
+     * up existing squads across the two new teams, every squad touched by it
+     * is disbanded first and fresh same-team squads are formed afterward
+     * (chunked to squadtp's maxSquadSize) so nobody needs to manually reform.
+     * Returns the number of players reassigned.
      */
     public int shuffleTeams(MinecraftServer server) {
         List<ServerPlayer> players = new ArrayList<>();
@@ -291,10 +314,50 @@ public class ConquestManager extends SavedData {
             }
         }
         Collections.shuffle(players);
+
+        SquadManager squadManager = SquadManager.get(server);
+        disbandSquadsOf(server, squadManager, players);
+
+        List<ServerPlayer> teamA = new ArrayList<>();
+        List<ServerPlayer> teamB = new ArrayList<>();
         for (int i = 0; i < players.size(); i++) {
-            joinTeam(players.get(i), i % 2 == 0 ? Team.A : Team.B);
+            ServerPlayer player = players.get(i);
+            Team team = i % 2 == 0 ? Team.A : Team.B;
+            joinTeam(player, team);
+            (team == Team.A ? teamA : teamB).add(player);
         }
+
+        formSquads(server, squadManager, teamA);
+        formSquads(server, squadManager, teamB);
         return players.size();
+    }
+
+    private static void disbandSquadsOf(MinecraftServer server, SquadManager squadManager, List<ServerPlayer> players) {
+        Set<Squad> squads = new HashSet<>();
+        for (ServerPlayer player : players) {
+            Squad squad = squadManager.getSquadOf(player.getUUID());
+            if (squad != null) {
+                squads.add(squad);
+            }
+        }
+        for (Squad squad : squads) {
+            squadManager.disband(server, squad);
+        }
+    }
+
+    /** Groups same-team players into new squads of at most squadtp's maxSquadSize; lone leftovers stay squadless. */
+    private static void formSquads(MinecraftServer server, SquadManager squadManager, List<ServerPlayer> teamPlayers) {
+        int maxSize = uk.iwaservice.squadtp.Config.MAX_SQUAD_SIZE.get();
+        for (int i = 0; i < teamPlayers.size(); i += maxSize) {
+            List<ServerPlayer> chunk = teamPlayers.subList(i, Math.min(i + maxSize, teamPlayers.size()));
+            if (chunk.size() < 2) {
+                continue;
+            }
+            Squad squad = squadManager.create(chunk.get(0));
+            for (int j = 1; j < chunk.size(); j++) {
+                squadManager.join(server, squad, chunk.get(j));
+            }
+        }
     }
 
     private static void syncVanillaTeam(ServerPlayer player, Team team) {
@@ -642,8 +705,13 @@ public class ConquestManager extends SavedData {
             int kills = s == null ? 0 : s.kills;
             int deaths = s == null ? 0 : s.deaths;
             int assists = s == null ? 0 : s.assists;
+            PlayerScore lifetime = lifetimeScores.get(player.getUUID());
+            int lifetimeKills = lifetime == null ? 0 : lifetime.kills;
+            int lifetimeDeaths = lifetime == null ? 0 : lifetime.deaths;
+            int lifetimeAssists = lifetime == null ? 0 : lifetime.assists;
             entries.add(new ConquestScoreboardPacket.Entry(player.getUUID(), player.getGameProfile().getName(),
-                    team, kills, deaths, assists, totalScore(player.getUUID())));
+                    team, kills, deaths, assists, totalScore(player.getUUID()),
+                    lifetimeKills, lifetimeDeaths, lifetimeAssists, totalLifetimeScore(player.getUUID())));
         }
         return new ConquestScoreboardPacket(roundElapsedSeconds, entries);
     }
@@ -789,6 +857,16 @@ public class ConquestManager extends SavedData {
             score.revives = s.getInt("Revives");
             manager.scores.put(s.getUUID("Uuid"), score);
         }
+        ListTag lifetimeScoreList = tag.getList("LifetimeScores", Tag.TAG_COMPOUND);
+        for (int i = 0; i < lifetimeScoreList.size(); i++) {
+            CompoundTag s = lifetimeScoreList.getCompound(i);
+            PlayerScore score = new PlayerScore();
+            score.kills = s.getInt("Kills");
+            score.deaths = s.getInt("Deaths");
+            score.assists = s.getInt("Assists");
+            score.revives = s.getInt("Revives");
+            manager.lifetimeScores.put(s.getUUID("Uuid"), score);
+        }
         return manager;
     }
 
@@ -835,6 +913,17 @@ public class ConquestManager extends SavedData {
             scoreList.add(s);
         }
         tag.put("Scores", scoreList);
+        ListTag lifetimeScoreList = new ListTag();
+        for (Map.Entry<UUID, PlayerScore> e : lifetimeScores.entrySet()) {
+            CompoundTag s = new CompoundTag();
+            s.putUUID("Uuid", e.getKey());
+            s.putInt("Kills", e.getValue().kills);
+            s.putInt("Deaths", e.getValue().deaths);
+            s.putInt("Assists", e.getValue().assists);
+            s.putInt("Revives", e.getValue().revives);
+            lifetimeScoreList.add(s);
+        }
+        tag.put("LifetimeScores", lifetimeScoreList);
         return tag;
     }
 }

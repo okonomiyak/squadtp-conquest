@@ -2,6 +2,7 @@ package uk.iwaservice.squadtpconquest.client.gui;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -40,15 +41,17 @@ public class ConquestScoreScreen extends Screen {
 
     private static final int ICON_SIZE = 12;
     private static final int ICON_GAP = 4;
-    private static final int ICON_NEUTRAL = 0xFF808080;
     private static final int ICON_CONTESTED = 0xFFFFDD33;
 
     private static final int MAX_ROWS = 20;
+    private static final int PAGE_COUNT = 2;
 
     private int panelWidth;
     private int panelLeft;
     private int panelTop;
     private int panelHeight;
+    /** 0 = this round's stats, 1 = cumulative (lifetime) stats. Toggled by the header button. */
+    private int page;
 
     public ConquestScoreScreen() {
         super(Component.translatable("conquest.score.title"));
@@ -60,6 +63,9 @@ public class ConquestScoreScreen extends Screen {
         panelHeight = Math.min(320, this.height - 16);
         panelLeft = (this.width - panelWidth) / 2;
         panelTop = (this.height - panelHeight) / 2;
+
+        addRenderableWidget(Button.builder(Component.literal("»"), b -> page = (page + 1) % PAGE_COUNT)
+                .bounds(panelLeft + panelWidth - PAD - 20, panelTop + 4, 20, 16).build());
     }
 
     @Override
@@ -84,26 +90,42 @@ public class ConquestScoreScreen extends Screen {
         int elapsed = ConquestClientData.getRoundElapsedSeconds();
         MutableComponent header = this.title.copy().append(Component.literal("   " + formatTime(elapsed)));
         graphics.drawString(this.font, header, l + PAD, t + 8, COLOR_TEXT);
+        String pageText = (page + 1) + "/" + PAGE_COUNT;
+        graphics.drawString(this.font, pageText, r - PAD - 26 - this.font.width(pageText), t + 8, COLOR_TEXT_DIM);
 
         int cursor = t + 32;
         cursor = renderTicketBar(graphics, l, r, cursor);
         cursor += 4;
         cursor = renderPointIcons(graphics, l, r, cursor);
         cursor += 6;
-        cursor = renderSummaryLine(graphics, l, cursor);
-        cursor += 4;
-        graphics.fill(l + PAD, cursor, r - PAD, cursor + 1, COLOR_SEPARATOR);
-        cursor += 8;
 
         List<ConquestScoreboardPacket.Entry> all = ConquestClientData.getScoreboard();
-        List<ConquestScoreboardPacket.Entry> teamA = sortedTeam(all, Team.A);
-        List<ConquestScoreboardPacket.Entry> teamB = sortedTeam(all, Team.B);
-
         int colWidth = (panelWidth - 3 * PAD) / 2;
         int leftColX = l + PAD;
         int rightColX = l + PAD * 2 + colWidth;
-        renderColumn(graphics, leftColX, cursor, colWidth, Team.A, teamA);
-        renderColumn(graphics, rightColX, cursor, colWidth, Team.B, teamB);
+
+        if (page == 0) {
+            cursor = renderSummaryLine(graphics, l, cursor);
+            cursor += 4;
+            graphics.fill(l + PAD, cursor, r - PAD, cursor + 1, COLOR_SEPARATOR);
+            cursor += 8;
+
+            List<ConquestScoreboardPacket.Entry> teamA = sortedTeam(all, Team.A);
+            List<ConquestScoreboardPacket.Entry> teamB = sortedTeam(all, Team.B);
+            renderColumn(graphics, leftColX, cursor, colWidth, Team.A, teamA);
+            renderColumn(graphics, rightColX, cursor, colWidth, Team.B, teamB);
+        } else {
+            graphics.drawString(this.font, Component.translatable("conquest.score.lifetime_header")
+                    .withStyle(ChatFormatting.GRAY), l + PAD, cursor, COLOR_TEXT);
+            cursor += this.font.lineHeight + 4;
+            graphics.fill(l + PAD, cursor, r - PAD, cursor + 1, COLOR_SEPARATOR);
+            cursor += 8;
+
+            List<ConquestScoreboardPacket.Entry> teamA = sortedTeamLifetime(all, Team.A);
+            List<ConquestScoreboardPacket.Entry> teamB = sortedTeamLifetime(all, Team.B);
+            renderLifetimeColumn(graphics, leftColX, cursor, colWidth, Team.A, teamA);
+            renderLifetimeColumn(graphics, rightColX, cursor, colWidth, Team.B, teamB);
+        }
 
         // Admins are shown here, separately from the team tally above — they
         // never contribute kills/deaths/assists/tickets/captures.
@@ -130,8 +152,8 @@ public class ConquestScoreScreen extends Screen {
         int split = Math.round(barWidth * ticketsA / (float) total);
 
         graphics.fill(x - 1, y - 1, x + barWidth + 1, y + barHeight + 1, 0xA0000000);
-        graphics.fill(x, y, x + split, y + barHeight, 0xFF3B6FE0);
-        graphics.fill(x + split, y, x + barWidth, y + barHeight, 0xFFE03B3B);
+        graphics.fill(x, y, x + split, y + barHeight, Team.A.hudColor());
+        graphics.fill(x + split, y, x + barWidth, y + barHeight, Team.B.hudColor());
 
         String aText = String.valueOf(ticketsA);
         String bText = String.valueOf(ticketsB);
@@ -153,21 +175,11 @@ public class ConquestScoreScreen extends Screen {
 
         int totalWidth = points.size() * ICON_SIZE + (points.size() - 1) * ICON_GAP;
         int startX = panelLeft + (panelWidth - totalWidth) / 2;
-        Team yourTeam = ConquestClientData.getYourTeam();
 
         for (int i = 0; i < points.size(); i++) {
             PointIcon icon = points.get(i);
             int x = startX + i * (ICON_SIZE + ICON_GAP);
-            int color;
-            if (icon.contested()) {
-                color = ICON_CONTESTED;
-            } else if (icon.activeTeam() == Team.NEUTRAL) {
-                color = ICON_NEUTRAL;
-            } else if (icon.activeTeam() == yourTeam) {
-                color = 0xFF3B6FE0;
-            } else {
-                color = 0xFFE03B3B;
-            }
+            int color = icon.contested() ? ICON_CONTESTED : icon.activeTeam().hudColor();
             graphics.fill(x, y, x + ICON_SIZE, y + ICON_SIZE, color);
             graphics.renderOutline(x, y, ICON_SIZE, ICON_SIZE, 0xFFFFFFFF);
             String initial = icon.name().isEmpty() ? "?" : icon.name().substring(0, 1).toUpperCase();
@@ -266,6 +278,76 @@ public class ConquestScoreScreen extends Screen {
             graphics.fill(x - 2, y - 1, x + width, y + 9, ROW_SELF_BG);
             drawRow(graphics, x, y, width, ownRank, own);
         }
+    }
+
+    /** Same layout as {@link #renderColumn}, but ranked by cumulative (cross-round) score with a K/D ratio. */
+    private void renderLifetimeColumn(GuiGraphics graphics, int x, int y, int width, Team team,
+                                       List<ConquestScoreboardPacket.Entry> entries) {
+        MutableComponent header = team.display().copy()
+                .append(Component.literal("  (" + entries.size() + ")").withStyle(ChatFormatting.GRAY));
+        graphics.drawString(this.font, header, x, y, COLOR_TEXT);
+        y += 12;
+
+        graphics.drawString(this.font, Component.translatable("conquest.score.col_header_lifetime"), x, y, COLOR_TEXT_FAINT);
+        y += 11;
+
+        UUID self = selfUuid();
+        java.util.Set<UUID> squadMates = squadMateUuids();
+
+        int shown = Math.min(MAX_ROWS, entries.size());
+        int ownRank = -1;
+        for (int i = 0; i < entries.size(); i++) {
+            if (entries.get(i).uuid().equals(self)) {
+                ownRank = i + 1;
+                break;
+            }
+        }
+
+        for (int i = 0; i < shown; i++) {
+            ConquestScoreboardPacket.Entry e = entries.get(i);
+            boolean isSelf = e.uuid().equals(self);
+            boolean isSquadMate = !isSelf && squadMates.contains(e.uuid());
+            if (isSelf) {
+                graphics.fill(x - 2, y - 1, x + width, y + 9, ROW_SELF_BG);
+            } else if (isSquadMate) {
+                graphics.fill(x - 2, y - 1, x + width, y + 9, ROW_SQUAD_BG);
+            }
+            drawLifetimeRow(graphics, x, y, width, i + 1, e);
+            y += 10;
+        }
+
+        if (ownRank > MAX_ROWS) {
+            y += 2;
+            graphics.fill(x + PAD, y - 3, x + width, y + 8, COLOR_SEPARATOR);
+            ConquestScoreboardPacket.Entry own = entries.get(ownRank - 1);
+            graphics.fill(x - 2, y - 1, x + width, y + 9, ROW_SELF_BG);
+            drawLifetimeRow(graphics, x, y, width, ownRank, own);
+        }
+    }
+
+    private void drawLifetimeRow(GuiGraphics graphics, int x, int y, int width, int rank, ConquestScoreboardPacket.Entry e) {
+        graphics.drawString(this.font, "#" + rank, x, y, COLOR_TEXT_DIM);
+        graphics.drawString(this.font, e.name(), x + 22, y, COLOR_TEXT);
+        String stats = e.lifetimeScore() + "  " + e.lifetimeKills() + "/" + e.lifetimeDeaths()
+                + "  " + formatKd(e.lifetimeKills(), e.lifetimeDeaths());
+        graphics.drawString(this.font, stats, x + width - this.font.width(stats), y, COLOR_TEXT_DIM);
+    }
+
+    private static String formatKd(int kills, int deaths) {
+        double ratio = deaths == 0 ? kills : (double) kills / deaths;
+        return String.format("(%.2f)", ratio);
+    }
+
+    private static List<ConquestScoreboardPacket.Entry> sortedTeamLifetime(
+            List<ConquestScoreboardPacket.Entry> all, Team team) {
+        List<ConquestScoreboardPacket.Entry> list = new ArrayList<>();
+        for (ConquestScoreboardPacket.Entry e : all) {
+            if (e.team() == team) {
+                list.add(e);
+            }
+        }
+        list.sort(Comparator.comparingInt(ConquestScoreboardPacket.Entry::lifetimeScore).reversed());
+        return list;
     }
 
     private void renderAdminSection(GuiGraphics graphics, int panelLeft, int panelRight, int y,

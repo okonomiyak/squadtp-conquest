@@ -1,10 +1,10 @@
 modLoader="javafml"
 loaderVersion="[47,)"
-license="MIT"
+license="GPL-3.0"
 
 [[mods]]
 modId="squadtpconquest"
-version="0.1.0"
+version="0.2.0"
 displayName="SquadTP Conquest"
 description='''Battlefield-style conquest game mode built on top of the squadtp squad API.'''
 

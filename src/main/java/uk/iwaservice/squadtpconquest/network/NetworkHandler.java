@@ -17,7 +17,7 @@ public final class NetworkHandler {
     // Bump whenever a packet's wire format changes (field added/removed/reordered).
     // A mismatch then fails the connection handshake with a clear message instead
     // of silently decoding a malformed packet and crashing the client mid-game.
-    private static final String PROTOCOL_VERSION = "7";
+    private static final String PROTOCOL_VERSION = "8";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(SquadTpConquest.MODID, "main"),

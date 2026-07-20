@@ -86,6 +86,8 @@
   "conquest.score.deaths": "Deaths A:%s / B:%s",
   "conquest.score.your_kda": "You: %s/%s/%s (Score %s)",
   "conquest.score.col_header": "#   Name                        Score  K/D/A",
+  "conquest.score.lifetime_header": "Lifetime Stats (all rounds this session)",
+  "conquest.score.col_header_lifetime": "#   Name                        Score  K/D  (Ratio)",
   "conquest.score.spectating": "Spectating",
 
   "conquest.capture.capturing": "CAPTURING",

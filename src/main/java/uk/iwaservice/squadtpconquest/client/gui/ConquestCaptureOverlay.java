@@ -27,8 +27,6 @@ public class ConquestCaptureOverlay implements IGuiOverlay {
 
     private static final int BAR_WIDTH = 200;
     private static final int BAR_HEIGHT = 8;
-    private static final int SELF_COLOR = 0xFF3B6FE0;
-    private static final int ENEMY_COLOR = 0xFFE03B3B;
     private static final int CONTESTED_COLOR = 0xFFFFDD33;
 
     @Override
@@ -58,13 +56,13 @@ public class ConquestCaptureOverlay implements IGuiOverlay {
             color = CONTESTED_COLOR;
         } else if (activeTeam == yourTeam && point.owner() == yourTeam && flagLevel >= 100) {
             labelKey = "conquest.capture.secured";
-            color = SELF_COLOR;
+            color = activeTeam.hudColor();
         } else if (activeTeam == yourTeam) {
             labelKey = "conquest.capture.capturing";
-            color = SELF_COLOR;
+            color = activeTeam.hudColor();
         } else {
             labelKey = "conquest.capture.losing";
-            color = ENEMY_COLOR;
+            color = activeTeam.hudColor();
         }
 
         Font font = mc.font;
