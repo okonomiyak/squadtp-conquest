@@ -4,7 +4,7 @@ license="GPL-3.0"
 
 [[mods]]
 modId="squadtpconquest"
-version="0.2.0"
+version="0.2.1"
 displayName="SquadTP Conquest"
 description='''Battlefield-style conquest game mode built on top of the squadtp squad API.'''
 

@@ -1,28 +1,71 @@
-# squadtp-conquest 引き継ぎメモ (2026-07-19 更新)
+# squadtp-conquest 引き継ぎメモ (2026-07-21 更新)
 
-## 完了済み
-- squadtp API調査: `SquadManager.get(server)` / `getSquadOf(uuid)` / `Squad.getMembers()` 等が既にpublic。**squadtp側への変更は不要**(devlogファイルは存在せず、README.mdのみだった)
-- プロジェクト一式作成済み・`gradlew build` 成功(jar生成OK):
-  - Gradle設定 (squadtpと同じMDG legacyforge 2.0.141 / runClient・runClient2・runServer)
-  - mods.toml (squadtp mandatory依存)
-  - 全ソース: Config(5項目) / Team / CapturePoint(占領進行ロジック) / FlagPole(フェンス+羊毛の簡易旗) / ConquestManager(SavedData・チケット・1秒tick・アクションバーHUD) / ConquestCommand(/conquest team join・point set・start・stop・status) / ServerEvents
-  - statusコマンドでsquadtpの分隊APIを実際に参照している
-- **remapブロッカー解消済み**。真因は「MDG/ivyの不具合」ではなく**squadtp本体が別途0.1.0→0.1.1に更新されていたバージョン不一致**だった。
-  - `squadtp-conquest/build.gradle` の依存定義: ローカルivyレポ(`../squadtp/build/libs`、`patternLayout '[module]-[revision].[ext]'`、`metadataSources { artifact() }`)+ `modImplementation "uk.iwaservice:squadtp:${squadtp_version}"` で正常にSRG→namedのremapが効く(`transforms/`配下にremap済みjarが生成される)
-  - `gradle.properties` の `squadtp_version` を **0.1.1** に修正済み(squadtpをリビルドしたら要追随)
-  - `runServer` で `Done (12.639s)!` まで到達、squadtp・squadtpconquest両方のserverconfig(.toml)が生成され、ロードエラーなしを確認済み
+前回(2026-07-19)の引き継ぎ内容は解消済みのため全面更新。当時の課題(remapブロッカー・
+squadtpバージョン不一致)は恒久的な運用ルールとして「環境の罠」節に統合した。
 
-## 残タスク(次回セッションへ)
-実プレイヤー操作を伴う検証は未実施(トークン消費を抑えるため中断)。`runClient` / `runClient2` を2窓起動して手動で:
-1. `/conquest point set [radius]` で拠点設置 → `/conquest start`
-2. Dev1のみ拠点範囲内 → 進行度が上昇し100%で占領成立(チャットに captured メッセージ)
-3. Dev1・Dev2両方在圏 → 進行度停止(contested表示)
-4. 無人 → 進行度維持
-5. 拠点保有側が相手チケットを削り、0で victory メッセージが出ることを確認
-6. `/conquest status` で分隊情報(squadtpのSquad API経由)が表示されることを確認
-7. 確認後、devlog (squadtp-conquest-devlog-*.md) を作成してビルド・テスト結果を記録
+## 現在の状態
 
-## 環境の罠(再発注意)
-- PS5.1の `Set-Content/Out-File -Encoding utf8` はBOM付き → build.gradle等のコード/設定ファイルをこの方法で書くとGradleがparse errorになる。eula.txt/server.propertiesは `-Encoding ascii` で書くこと
-- runServerをバックグラウンド起動したまま次のrunServerを叩くと「Address already in use」でクラッシュする。起動前に `Get-CimInstance Win32_Process -Filter "Name='java.exe'"` でsquadtp/squadtp-conquest関連の残留javaプロセスがないか確認し、あれば `Stop-Process` してから再起動すること
-- ビルド時の警告 `ModLoadingContext.get()` 非推奨はsquadtpと同様で無害
+- **バージョン**: `mod_version=0.2.0`。GitHubに`v0.2.0`タグ+リリース公開済み
+  (https://github.com/okonomiyak/squadtp-conquest/releases/tag/v0.2.0 、jar添付)
+- **ライセンス**: GPL-3.0(`LICENSE`ファイルあり)
+- **squadtp依存**: `gradle.properties`の`squadtp_version=0.2.0`(2026-07-21時点で`../squadtp/build/libs`にある実際のjarと一致させてある。squadtp本体も同日0.2.0にバージョンアップ済み)
+- **ビルド**: `gradlew build`成功、警告のみ(エラーなし)
+- **Git**: `master`ブランチ、リモート`origin`(`git@github-okonomiyak:okonomiyak/squadtp-conquest.git`)にpush済み、作業ツリーはクリーン
+
+機能の全体像・コマンド一覧・設定項目は**README.md**、実装の経緯・設計判断・遭遇した罠は
+**squadtp-conquest-devlog-2026-07-20.md**、今後の改善案は**TODO.md**を参照。
+このファイルはそれらを読む前の「現在地」把握用。
+
+## 実装済み機能(要約、詳細はREADME参照)
+
+- コンクエストモード: 複数拠点占領・チケット・リスポーンコスト・開始前カウントダウン・
+  拠点範囲パーティクル・1×3旗ブロック
+- 管理人チーム(`Team.ADMIN`, OP限定の観戦チーム)
+- `/conquest team shuffle`: ランダム振り分け+分隊解散&同チームでの自動再編成
+- Team Deathmatch モード(`/conquest mode set tdm`, `tdmKillLimit`)
+- スコアボード(右Alt)2ページ目: 累計スコア+K/D比率
+- HUD/GUIのチーム色を自分/敵視点から**チーム固定色**(A=青・B=赤)に変更
+- 管理用GUI(Lキー)・BF風HUD(常時表示)・adjustable config(`/conquest config set`)
+
+## ⚠️ 未解決の既知の問題(次に着手すべきこと)
+
+**TDMモードでキル数が増えない不具合が未解決のまま棚上げになっている。**
+
+- ユーザーが実プレイでTDMを試した際、チーム合計キル数(チケットバー)どころか
+  **個人のK/D(スコアボードのK)すら増えなかった**と報告があった
+- `/conquest mode set tdm`は成功メッセージを確認済み、拠点が残っていた状態でテストしていたが、
+  拠点処理自体は`mode == CONQUEST`のときだけ動く設計なので拠点残存は理論上は無関係のはず
+- 個人のK/D/Aすら増えていない = `ScoreEvents.onDeath`より手前(ラウンド状態がIN_PROGRESSか、
+  両プレイヤーが実際にチームA/Bへ所属していたか、キルが本当にPvPだったか)を疑う必要がある
+- ユーザーは「まあいいか」と流して深掘りせずに次の作業(チームシャッフル等)に進んだため、
+  **根本原因は特定できていない**
+- 次回、TDMのキル計上を再現テストする際は `/conquest status` の `Mode:`行と`running`状態、
+  および両プレイヤーの`/conquest team join a|b`実行状況を最初に確認すること
+
+## 環境の罠(再発防止・恒久ルール)
+
+- **squadtpバージョン同期**: squadtpは独立にリビルドされ続けるため、squadtp-conquestのビルド前に
+  必ず`../squadtp/build/libs/`の実際のjarファイル名を確認し、`gradle.properties`の
+  `squadtp_version`と一致させること。不一致だと`Could not find uk.iwaservice:squadtp:x.x.x`で
+  ビルド失敗する(このセッション中も0.1.2→0.1.3→0.1.4と複数回発生)
+- **JDK21固定**: 既定のJava(25等)ではGradle 8.8が動かない。`gradle.properties`の
+  `org.gradle.java.home`で`C:/Program Files/Java/jdk-21.0.10`を明示指定済み。ビルドコマンドを
+  手動実行する場合も`JAVA_HOME`をJDK21に向けること
+- **PowerShellのBOM問題**: `Set-Content`/`Out-File -Encoding utf8`はBOM付きで書き出すため、
+  build.gradle等のコード/設定ファイルをこの方法で編集するとGradleがparse errorになる。
+  Writeツール(BOM無し)を使うこと
+- **PROTOCOL_VERSIONの上げ忘れ**: パケットのフィールド追加・変更、または列挙型への新定数挿入
+  (既存定数のordinalがズレる場合)は、バイト長が同じでも`NetworkHandler.PROTOCOL_VERSION`を
+  上げること。現在値は`8`。上げ忘れると新旧クライアント/サーバー混在時に
+  `IndexOutOfBoundsException`で原因不明の切断が起きる
+- **サーバー多重起動**: `runServer`を起動したまま次の`runServer`を叩くとポート競合で失敗する。
+  `Get-NetTCPConnection -LocalPort 25565`(または`Get-CimInstance Win32_Process -Filter "Name='java.exe'"`)
+  で残留プロセスを確認してから起動すること
+- **squadtp本体は改造しない**: 公開API(`SquadManager`/`Squad`/`ReviveSystem`/`TeleportHelper`)
+  経由の読み取り専用利用のみ。squadtp側のコード・configに手を入れたことは一度もない
+
+## 次にやること候補
+
+1. 上記のTDMキル計上バグの再現・原因特定(最優先)
+2. TODO.mdの「優先度高」2件(拠点からのリスポーン選択・スポーン安全確認)
+3. TODO.mdの「未検証」項目全般(実プレイでの動作確認がまだ大半未実施)
