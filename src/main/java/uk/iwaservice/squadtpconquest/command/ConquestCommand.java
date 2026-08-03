@@ -21,6 +21,7 @@ import uk.iwaservice.squadtpconquest.Config;
 import uk.iwaservice.squadtpconquest.conquest.CapturePoint;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.GameMode;
+import uk.iwaservice.squadtpconquest.conquest.MapPreset;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 
@@ -97,6 +98,10 @@ public final class ConquestCommand {
                     ConquestManager.get(ctx.getSource().getServer()).getPoints().stream()
                             .map(CapturePoint::getName), builder);
 
+    private static final com.mojang.brigadier.suggestion.SuggestionProvider<CommandSourceStack> PRESET_NAMES =
+            (ctx, builder) -> SharedSuggestionProvider.suggest(
+                    ConquestManager.get(ctx.getSource().getServer()).getPresetNames(), builder);
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("conquest")
                 .then(Commands.literal("team")
@@ -135,6 +140,20 @@ public final class ConquestCommand {
                                 .then(Commands.argument("mode", StringArgumentType.word())
                                         .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"conquest", "tdm"}, b))
                                         .executes(ConquestCommand::setMode))))
+                .then(Commands.literal("preset")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("save")
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .executes(ConquestCommand::presetSave)))
+                        .then(Commands.literal("load")
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .suggests(PRESET_NAMES)
+                                        .executes(ConquestCommand::presetLoad)))
+                        .then(Commands.literal("remove")
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .suggests(PRESET_NAMES)
+                                        .executes(ConquestCommand::presetRemove)))
+                        .then(Commands.literal("list").executes(ConquestCommand::presetList)))
                 .then(Commands.literal("start")
                         .requires(src -> src.hasPermission(2))
                         .executes(ConquestCommand::start))
@@ -181,6 +200,55 @@ public final class ConquestCommand {
             return fail(ctx, Component.translatable("conquest.msg.mode_locked"));
         }
         ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.mode_set", mode.display()), true);
+        return 1;
+    }
+
+    private static int presetSave(CommandContext<CommandSourceStack> ctx) {
+        String name = StringArgumentType.getString(ctx, "name");
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        manager.savePreset(name);
+        MapPreset preset = manager.getPreset(name);
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.preset_saved",
+                name, preset.getPoints().size(), preset.getMode().display()), true);
+        return 1;
+    }
+
+    private static int presetLoad(CommandContext<CommandSourceStack> ctx) {
+        String name = StringArgumentType.getString(ctx, "name");
+        MinecraftServer server = ctx.getSource().getServer();
+        ConquestManager.LoadPresetResult result = ConquestManager.get(server).loadPreset(server, name);
+        return switch (result) {
+            case OK -> {
+                ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.preset_loaded", name), true);
+                yield 1;
+            }
+            case NOT_FOUND -> fail(ctx, Component.translatable("conquest.msg.preset_not_found", name));
+            case ROUND_ACTIVE -> fail(ctx, Component.translatable("conquest.msg.preset_locked"));
+        };
+    }
+
+    private static int presetRemove(CommandContext<CommandSourceStack> ctx) {
+        String name = StringArgumentType.getString(ctx, "name");
+        if (!ConquestManager.get(ctx.getSource().getServer()).removePreset(name)) {
+            return fail(ctx, Component.translatable("conquest.msg.preset_not_found", name));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.preset_removed", name), true);
+        return 1;
+    }
+
+    private static int presetList(CommandContext<CommandSourceStack> ctx) {
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        if (manager.getPresetNames().isEmpty()) {
+            return fail(ctx, Component.translatable("conquest.msg.no_preset"));
+        }
+        MutableComponent msg = Component.translatable("conquest.msg.preset_list_header").withStyle(ChatFormatting.GOLD);
+        for (String name : manager.getPresetNames()) {
+            MapPreset preset = manager.getPreset(name);
+            msg.append("\n").append(Component.translatable("conquest.status.preset",
+                    name, preset.getPoints().size(), preset.getMode().display()));
+        }
+        MutableComponent result = msg;
+        ctx.getSource().sendSuccess(() -> result, false);
         return 1;
     }
 

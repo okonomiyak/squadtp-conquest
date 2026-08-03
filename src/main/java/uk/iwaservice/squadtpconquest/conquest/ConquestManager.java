@@ -52,6 +52,8 @@ public class ConquestManager extends SavedData {
 
     /** Capture points, keyed by name; insertion order kept for stable HUD/GUI ordering. */
     private final LinkedHashMap<String, CapturePoint> points = new LinkedHashMap<>();
+    /** Named, reusable map layouts (points/spawns/mode), keyed by name. */
+    private final LinkedHashMap<String, MapPreset> presets = new LinkedHashMap<>();
     /** Player UUID -> assigned team (players absent from the map are NEUTRAL). */
     private final Map<UUID, Team> playerTeams = new HashMap<>();
     private int ticketsA;
@@ -437,6 +439,75 @@ public class ConquestManager extends SavedData {
             spawnBPos = pos.immutable();
         }
         setDirty();
+    }
+
+    // --- map presets (named, reusable point/spawn/mode layouts) ---
+
+    public Collection<String> getPresetNames() {
+        return presets.keySet();
+    }
+
+    @Nullable
+    public MapPreset getPreset(String name) {
+        return presets.get(name);
+    }
+
+    /** Snapshots the current points/spawns/mode as a named preset, overwriting any existing one of that name. */
+    public void savePreset(String name) {
+        List<MapPreset.PointLayout> layout = new ArrayList<>();
+        for (CapturePoint point : points.values()) {
+            layout.add(new MapPreset.PointLayout(point.getName(), point.getDimension(), point.getPos(), point.getRadius()));
+        }
+        presets.put(name, new MapPreset(name, mode, layout, spawnADim, spawnAPos, spawnBDim, spawnBPos));
+        setDirty();
+    }
+
+    /** Outcome of a /conquest preset load attempt. */
+    public enum LoadPresetResult { OK, NOT_FOUND, ROUND_ACTIVE }
+
+    /**
+     * Replaces the live points/spawns/mode with a saved preset. Rejected while a round is
+     * running or showing a result, same rule as {@link #setMode}. Rebuilds flag poles for
+     * every point (clearing the previous ones first) in whichever dimensions are loaded.
+     */
+    public LoadPresetResult loadPreset(MinecraftServer server, String name) {
+        MapPreset preset = presets.get(name);
+        if (preset == null) {
+            return LoadPresetResult.NOT_FOUND;
+        }
+        if (state != RoundState.WAITING) {
+            return LoadPresetResult.ROUND_ACTIVE;
+        }
+        for (CapturePoint point : points.values()) {
+            ServerLevel level = server.getLevel(point.getDimension());
+            if (level != null) {
+                FlagPole.remove(level, point);
+            }
+        }
+        points.clear();
+        for (MapPreset.PointLayout layout : preset.getPoints()) {
+            CapturePoint point = new CapturePoint(layout.name(), layout.dimension(), layout.pos(), layout.radius());
+            points.put(layout.name(), point);
+            ServerLevel level = server.getLevel(layout.dimension());
+            if (level != null) {
+                FlagPole.build(level, point);
+            }
+        }
+        spawnADim = preset.getSpawnADim();
+        spawnAPos = preset.getSpawnAPos();
+        spawnBDim = preset.getSpawnBDim();
+        spawnBPos = preset.getSpawnBPos();
+        mode = preset.getMode();
+        setDirty();
+        return LoadPresetResult.OK;
+    }
+
+    public boolean removePreset(String name) {
+        if (presets.remove(name) == null) {
+            return false;
+        }
+        setDirty();
+        return true;
     }
 
     /** Outcome of a /conquest start attempt, used to pick the right failure message. */
@@ -878,6 +949,11 @@ public class ConquestManager extends SavedData {
             score.revives = s.getInt("Revives");
             manager.lifetimeScores.put(s.getUUID("Uuid"), score);
         }
+        ListTag presetList = tag.getList("Presets", Tag.TAG_COMPOUND);
+        for (int i = 0; i < presetList.size(); i++) {
+            MapPreset preset = MapPreset.load(presetList.getCompound(i));
+            manager.presets.put(preset.getName(), preset);
+        }
         return manager;
     }
 
@@ -935,6 +1011,11 @@ public class ConquestManager extends SavedData {
             lifetimeScoreList.add(s);
         }
         tag.put("LifetimeScores", lifetimeScoreList);
+        ListTag presetList = new ListTag();
+        for (MapPreset preset : presets.values()) {
+            presetList.add(preset.save());
+        }
+        tag.put("Presets", presetList);
         return tag;
     }
 }
