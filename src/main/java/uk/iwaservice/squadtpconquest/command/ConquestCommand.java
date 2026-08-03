@@ -23,6 +23,7 @@ import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.MapPreset;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
+import uk.iwaservice.squadtpconquest.conquest.Sector;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 
 import java.util.LinkedHashMap;
@@ -111,7 +112,14 @@ public final class ConquestCommand {
                                         .executes(ConquestCommand::joinTeam)))
                         .then(Commands.literal("shuffle")
                                 .requires(src -> src.hasPermission(2))
-                                .executes(ConquestCommand::shuffleTeams)))
+                                .executes(ConquestCommand::shuffleTeams))
+                        .then(Commands.literal("assign")
+                                .requires(src -> src.hasPermission(2))
+                                .then(Commands.argument("role", StringArgumentType.word())
+                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"attacker", "defender"}, b))
+                                        .then(Commands.argument("team", StringArgumentType.word())
+                                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
+                                                .executes(ConquestCommand::teamAssign)))))
                 .then(Commands.literal("point")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -138,8 +146,31 @@ public final class ConquestCommand {
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
                                 .then(Commands.argument("mode", StringArgumentType.word())
-                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"conquest", "tdm"}, b))
+                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"conquest", "tdm", "breakthrough"}, b))
                                         .executes(ConquestCommand::setMode))))
+                .then(Commands.literal("sector")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("add")
+                                .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                                        .then(Commands.argument("name", StringArgumentType.word())
+                                                .executes(ctx -> sectorAdd(ctx, Config.CAPTURE_RADIUS.get()))
+                                                .then(Commands.argument("radius", IntegerArgumentType.integer(2, 64))
+                                                        .executes(ctx -> sectorAdd(ctx, IntegerArgumentType.getInteger(ctx, "radius")))))))
+                        .then(Commands.literal("spawn")
+                                .then(Commands.literal("set")
+                                        .then(Commands.argument("role", StringArgumentType.word())
+                                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"attacker", "defender"}, b))
+                                                .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                                                        .executes(ConquestCommand::sectorSpawnSet)))))
+                        .then(Commands.literal("timelimit")
+                                .then(Commands.literal("set")
+                                        .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                                                .then(Commands.argument("seconds", IntegerArgumentType.integer(0, 86400))
+                                                        .executes(ConquestCommand::sectorTimeLimitSet)))))
+                        .then(Commands.literal("remove")
+                                .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                                        .executes(ConquestCommand::sectorRemove)))
+                        .then(Commands.literal("list").executes(ConquestCommand::sectorList)))
                 .then(Commands.literal("preset")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("save")
@@ -252,6 +283,90 @@ public final class ConquestCommand {
         return 1;
     }
 
+    private static int teamAssign(CommandContext<CommandSourceStack> ctx) {
+        String role = StringArgumentType.getString(ctx, "role");
+        if (!role.equalsIgnoreCase("attacker") && !role.equalsIgnoreCase("defender")) {
+            return fail(ctx, Component.translatable("conquest.msg.unknown_role"));
+        }
+        Team team = Team.byKey(StringArgumentType.getString(ctx, "team"));
+        if (team == null) {
+            return fail(ctx, Component.translatable("conquest.msg.unknown_team"));
+        }
+        Team attackerTeam = role.equalsIgnoreCase("attacker") ? team : team.opponent();
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        if (!manager.setAttackerTeam(attackerTeam)) {
+            return fail(ctx, Component.translatable("conquest.msg.mode_locked"));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.team_assigned",
+                attackerTeam.display(), attackerTeam.opponent().display()), true);
+        return 1;
+    }
+
+    private static int sectorAdd(CommandContext<CommandSourceStack> ctx, int radius) throws CommandSyntaxException {
+        int number = IntegerArgumentType.getInteger(ctx, "number");
+        String name = StringArgumentType.getString(ctx, "name");
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        ServerLevel level = player.serverLevel();
+        ConquestManager.get(ctx.getSource().getServer())
+                .addSectorPoint(level, number, name, player.blockPosition(), radius);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.sector_point_added", number, name, radius), true);
+        return 1;
+    }
+
+    private static int sectorSpawnSet(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        String role = StringArgumentType.getString(ctx, "role");
+        if (!role.equalsIgnoreCase("attacker") && !role.equalsIgnoreCase("defender")) {
+            return fail(ctx, Component.translatable("conquest.msg.unknown_role"));
+        }
+        int number = IntegerArgumentType.getInteger(ctx, "number");
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        boolean attackerRole = role.equalsIgnoreCase("attacker");
+        boolean ok = ConquestManager.get(ctx.getSource().getServer())
+                .setSectorSpawn(player.serverLevel(), number, attackerRole, player.blockPosition());
+        if (!ok) {
+            return fail(ctx, Component.translatable("conquest.msg.sector_not_found", number));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.sector_spawn_set", role, number), true);
+        return 1;
+    }
+
+    private static int sectorTimeLimitSet(CommandContext<CommandSourceStack> ctx) {
+        int number = IntegerArgumentType.getInteger(ctx, "number");
+        int seconds = IntegerArgumentType.getInteger(ctx, "seconds");
+        if (!ConquestManager.get(ctx.getSource().getServer()).setSectorTimeLimit(number, seconds)) {
+            return fail(ctx, Component.translatable("conquest.msg.sector_not_found", number));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.sector_timelimit_set", number, seconds), true);
+        return 1;
+    }
+
+    private static int sectorRemove(CommandContext<CommandSourceStack> ctx) {
+        int number = IntegerArgumentType.getInteger(ctx, "number");
+        if (!ConquestManager.get(ctx.getSource().getServer()).removeSector(ctx.getSource().getServer(), number)) {
+            return fail(ctx, Component.translatable("conquest.msg.sector_not_found", number));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.sector_removed", number), true);
+        return 1;
+    }
+
+    private static int sectorList(CommandContext<CommandSourceStack> ctx) {
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        if (!manager.hasSectors()) {
+            return fail(ctx, Component.translatable("conquest.msg.no_sector"));
+        }
+        MutableComponent msg = Component.translatable("conquest.msg.sector_list_header").withStyle(ChatFormatting.GOLD);
+        for (Sector sector : manager.getSectors()) {
+            String timeLimit = sector.getTimeLimitSecondsOverride() > 0
+                    ? sector.getTimeLimitSecondsOverride() + "s" : "default";
+            msg.append("\n").append(Component.translatable("conquest.status.sector",
+                    sector.getNumber(), String.join(", ", sector.getPointNames()), timeLimit));
+        }
+        MutableComponent result = msg;
+        ctx.getSource().sendSuccess(() -> result, false);
+        return 1;
+    }
+
     private static int shuffleTeams(CommandContext<CommandSourceStack> ctx) {
         MinecraftServer server = ctx.getSource().getServer();
         ConquestManager manager = ConquestManager.get(server);
@@ -328,6 +443,7 @@ public final class ConquestCommand {
             case ALREADY_RUNNING -> fail(ctx, Component.translatable("conquest.msg.already_active"));
             case RESULT_PENDING -> fail(ctx, Component.translatable("conquest.msg.result_pending"));
             case NO_POINT -> fail(ctx, Component.translatable("conquest.msg.no_point"));
+            case NO_SECTOR -> fail(ctx, Component.translatable("conquest.msg.no_sector"));
             case TEAM_A_EMPTY -> fail(ctx, Component.translatable("conquest.msg.team_empty", Team.A.display()));
             case TEAM_B_EMPTY -> fail(ctx, Component.translatable("conquest.msg.team_empty", Team.B.display()));
         };

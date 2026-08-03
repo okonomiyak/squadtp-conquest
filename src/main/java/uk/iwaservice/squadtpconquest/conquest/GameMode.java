@@ -12,7 +12,8 @@ import javax.annotation.Nullable;
  */
 public enum GameMode implements StringRepresentable {
     CONQUEST("conquest"),
-    TDM("tdm");
+    TDM("tdm"),
+    BREAKTHROUGH("breakthrough");
 
     private final String key;
 

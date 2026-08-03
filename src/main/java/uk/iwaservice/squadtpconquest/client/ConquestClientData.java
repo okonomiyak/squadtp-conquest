@@ -22,12 +22,19 @@ public final class ConquestClientData {
     private static boolean canAdmin;
     private static int roundElapsedSeconds;
     private static List<ConquestScoreboardPacket.Entry> scoreboard = List.of();
+    private static Team attackerTeam = Team.A;
+    private static int sectorIndex;
+    private static int sectorCount;
+    private static int attackerTickets;
+    private static int respawnWaveSecondsRemaining;
     /** Incremented on every update; lets the GUI detect changes cheaply. */
     private static int revision;
 
     public static synchronized void apply(List<ConquestSyncPacket.PointStatus> newPoints,
                                           int newTicketsA, int newTicketsB, boolean newActive, RoundState newState,
-                                          GameMode newMode, Team newYourTeam, boolean newCanAdmin) {
+                                          GameMode newMode, Team newYourTeam, boolean newCanAdmin,
+                                          Team newAttackerTeam, int newSectorIndex, int newSectorCount,
+                                          int newAttackerTickets, int newRespawnWaveSecondsRemaining) {
         points = List.copyOf(newPoints);
         ticketsA = newTicketsA;
         ticketsB = newTicketsB;
@@ -36,6 +43,11 @@ public final class ConquestClientData {
         mode = newMode;
         yourTeam = newYourTeam;
         canAdmin = newCanAdmin;
+        attackerTeam = newAttackerTeam;
+        sectorIndex = newSectorIndex;
+        sectorCount = newSectorCount;
+        attackerTickets = newAttackerTickets;
+        respawnWaveSecondsRemaining = newRespawnWaveSecondsRemaining;
         revision++;
     }
 
@@ -98,6 +110,26 @@ public final class ConquestClientData {
 
     public static synchronized boolean canAdmin() {
         return canAdmin;
+    }
+
+    public static synchronized Team getAttackerTeam() {
+        return attackerTeam;
+    }
+
+    public static synchronized int getSectorIndex() {
+        return sectorIndex;
+    }
+
+    public static synchronized int getSectorCount() {
+        return sectorCount;
+    }
+
+    public static synchronized int getAttackerTickets() {
+        return attackerTickets;
+    }
+
+    public static synchronized int getRespawnWaveSecondsRemaining() {
+        return respawnWaveSecondsRemaining;
     }
 
     private ConquestClientData() {}

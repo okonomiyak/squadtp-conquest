@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import uk.iwaservice.squadtpconquest.client.ConquestClientData;
+import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 
@@ -47,6 +48,12 @@ public class ConquestHudOverlay implements IGuiOverlay {
         }
 
         Font font = mc.font;
+
+        if (ConquestClientData.getMode() == GameMode.BREAKTHROUGH) {
+            renderBreakthrough(graphics, font, width, yourTeam);
+            return;
+        }
+
         int selfTickets = yourTeam == Team.A ? ConquestClientData.getTicketsA() : ConquestClientData.getTicketsB();
         int enemyTickets = yourTeam == Team.A ? ConquestClientData.getTicketsB() : ConquestClientData.getTicketsA();
         int selfColor = yourTeam.hudColor();
@@ -72,13 +79,41 @@ public class ConquestHudOverlay implements IGuiOverlay {
         graphics.drawCenteredString(font, Component.literal(lead), barX + BAR_WIDTH / 2, barY - 10, leadColor);
 
         if (!ConquestClientData.getPoints().isEmpty()) {
-            renderPointIcons(graphics, font, width, barY + BAR_HEIGHT + 4);
+            renderPointIcons(graphics, font, width, barY + BAR_HEIGHT + 4, ConquestClientData.getPoints());
         }
     }
 
-    private void renderPointIcons(GuiGraphics graphics, Font font, int width, int y) {
+    /** Breakthrough: sector progress + role-specific ticket/wave info, then only the active sector's flags. */
+    private void renderBreakthrough(GuiGraphics graphics, Font font, int width, Team yourTeam) {
+        Team attackerTeam = ConquestClientData.getAttackerTeam();
+        boolean isAttacker = yourTeam == attackerTeam;
+        int barY = BAR_Y;
+
+        graphics.drawCenteredString(font, Component.translatable("conquest.hud.sector",
+                ConquestClientData.getSectorIndex(), ConquestClientData.getSectorCount()), width / 2, barY - 10, 0xFFFFFF);
+
+        Component roleLine = isAttacker
+                ? Component.translatable("conquest.hud.attacker_tickets", ConquestClientData.getAttackerTickets())
+                : Component.translatable("conquest.hud.defending");
+        graphics.drawCenteredString(font, roleLine, width / 2, barY, attackerTeam.hudColor());
+
+        int nextY = barY + 10;
+        if (isAttacker) {
+            graphics.drawCenteredString(font, Component.translatable("conquest.hud.next_wave",
+                    ConquestClientData.getRespawnWaveSecondsRemaining()), width / 2, nextY, 0xAAAAAA);
+            nextY += 10;
+        }
+
+        List<ConquestSyncPacket.PointStatus> activePoints = ConquestClientData.getPoints().stream()
+                .filter(ConquestSyncPacket.PointStatus::active).toList();
+        if (!activePoints.isEmpty()) {
+            renderPointIcons(graphics, font, width, nextY + 2, activePoints);
+        }
+    }
+
+    private void renderPointIcons(GuiGraphics graphics, Font font, int width, int y, List<ConquestSyncPacket.PointStatus> source) {
         List<PointIcon> points = new java.util.ArrayList<>();
-        for (ConquestSyncPacket.PointStatus p : ConquestClientData.getPoints()) {
+        for (ConquestSyncPacket.PointStatus p : source) {
             points.add(new PointIcon(p.name(),
                     Team.resolveActive(p.owner(), p.capturingTeam(), p.flagLevel()),
                     p.contested(), (int) p.flagLevel()));

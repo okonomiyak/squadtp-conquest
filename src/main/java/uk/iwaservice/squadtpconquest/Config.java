@@ -22,6 +22,11 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue SCORE_PER_ASSIST;
     public static final ForgeConfigSpec.IntValue SCORE_PER_REVIVE;
 
+    public static final ForgeConfigSpec.IntValue BT_ATTACKER_TICKETS;
+    public static final ForgeConfigSpec.IntValue BT_RESPAWN_WAVE_INTERVAL_SECONDS;
+    public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_LIMIT_SECONDS;
+    public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_EXTENSION_ON_CAPTURE;
+
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
 
@@ -82,6 +87,25 @@ public final class Config {
         SCORE_PER_REVIVE = b
                 .comment("Score points awarded per successful revive.")
                 .defineInRange("scorePerRevive", 50, 0, 10000);
+        b.pop();
+
+        b.push("breakthrough");
+        BT_ATTACKER_TICKETS = b
+                .comment("Total respawn tickets the attacking team starts a Breakthrough round with.",
+                        "Each attacker death consumes one; once exhausted, that death is permanent for the round.")
+                .defineInRange("attackerTickets", 30, 1, 100000);
+        BT_RESPAWN_WAVE_INTERVAL_SECONDS = b
+                .comment("Seconds between attacker respawn waves. Dead attackers wait as spectators until the",
+                        "next wave, then deploy together at the active sector's attacker spawn.")
+                .defineInRange("respawnWaveIntervalSeconds", 15, 1, 600);
+        BT_SECTOR_TIME_LIMIT_SECONDS = b
+                .comment("Default seconds the attacker has to clear the active sector before the defenders win.",
+                        "Overridable per sector with /conquest sector timelimit set.")
+                .defineInRange("sectorTimeLimitSeconds", 300, 10, 86400);
+        BT_SECTOR_TIME_EXTENSION_ON_CAPTURE = b
+                .comment("Seconds added to the active sector's remaining time whenever the attacker captures",
+                        "one of its capture points (not just on clearing the whole sector).")
+                .defineInRange("sectorTimeExtensionOnCapture", 120, 0, 3600);
         b.pop();
 
         SPEC = b.build();

@@ -20,11 +20,18 @@ import java.util.List;
  */
 public record ConquestSyncPacket(List<PointStatus> points,
                                   int ticketsA, int ticketsB, boolean active, RoundState state, GameMode mode,
-                                  Team yourTeam, boolean canAdmin, boolean openScreen) {
+                                  Team yourTeam, boolean canAdmin, boolean openScreen,
+                                  Team attackerTeam, int sectorIndex, int sectorCount,
+                                  int attackerTickets, int respawnWaveSecondsRemaining) {
 
-    /** One capture point as seen by a specific viewer (contested/inZone are per-viewer). */
+    /**
+     * One capture point as seen by a specific viewer (contested/inZone are per-viewer).
+     * {@code active} is false for breakthrough points outside the currently active sector
+     * (locked ahead, or already cleared behind the front line) — always true in other modes.
+     * {@code sectorNumber} is 0 outside breakthrough or for a point not assigned to any sector.
+     */
     public record PointStatus(String name, int radius, Team owner, Team capturingTeam, double flagLevel,
-                               boolean contested, boolean inZone) {}
+                               boolean contested, boolean inZone, boolean active, int sectorNumber) {}
 
     public static void encode(ConquestSyncPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.points.size());
@@ -36,6 +43,8 @@ public record ConquestSyncPacket(List<PointStatus> points,
             buf.writeDouble(p.flagLevel());
             buf.writeBoolean(p.contested());
             buf.writeBoolean(p.inZone());
+            buf.writeBoolean(p.active());
+            buf.writeVarInt(p.sectorNumber());
         }
         buf.writeVarInt(msg.ticketsA);
         buf.writeVarInt(msg.ticketsB);
@@ -45,6 +54,11 @@ public record ConquestSyncPacket(List<PointStatus> points,
         buf.writeEnum(msg.yourTeam);
         buf.writeBoolean(msg.canAdmin);
         buf.writeBoolean(msg.openScreen);
+        buf.writeEnum(msg.attackerTeam);
+        buf.writeVarInt(msg.sectorIndex);
+        buf.writeVarInt(msg.sectorCount);
+        buf.writeVarInt(msg.attackerTickets);
+        buf.writeVarInt(msg.respawnWaveSecondsRemaining);
     }
 
     public static ConquestSyncPacket decode(FriendlyByteBuf buf) {
@@ -52,7 +66,8 @@ public record ConquestSyncPacket(List<PointStatus> points,
         List<PointStatus> points = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             points.add(new PointStatus(buf.readUtf(), buf.readVarInt(), buf.readEnum(Team.class),
-                    buf.readEnum(Team.class), buf.readDouble(), buf.readBoolean(), buf.readBoolean()));
+                    buf.readEnum(Team.class), buf.readDouble(), buf.readBoolean(), buf.readBoolean(), buf.readBoolean(),
+                    buf.readVarInt()));
         }
         int ticketsA = buf.readVarInt();
         int ticketsB = buf.readVarInt();
@@ -62,7 +77,13 @@ public record ConquestSyncPacket(List<PointStatus> points,
         Team yourTeam = buf.readEnum(Team.class);
         boolean canAdmin = buf.readBoolean();
         boolean openScreen = buf.readBoolean();
-        return new ConquestSyncPacket(points, ticketsA, ticketsB, active, state, mode, yourTeam, canAdmin, openScreen);
+        Team attackerTeam = buf.readEnum(Team.class);
+        int sectorIndex = buf.readVarInt();
+        int sectorCount = buf.readVarInt();
+        int attackerTickets = buf.readVarInt();
+        int respawnWaveSecondsRemaining = buf.readVarInt();
+        return new ConquestSyncPacket(points, ticketsA, ticketsB, active, state, mode, yourTeam, canAdmin, openScreen,
+                attackerTeam, sectorIndex, sectorCount, attackerTickets, respawnWaveSecondsRemaining);
     }
 
     public static void handle(ConquestSyncPacket msg, java.util.function.Supplier<NetworkEvent.Context> ctx) {

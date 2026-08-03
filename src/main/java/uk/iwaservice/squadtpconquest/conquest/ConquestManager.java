@@ -16,6 +16,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.scores.PlayerTeam;
@@ -39,7 +40,10 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 
 /**
@@ -89,6 +93,23 @@ public class ConquestManager extends SavedData {
     private final Map<UUID, PlayerScore> lifetimeScores = new HashMap<>();
     /** Transient: players currently known to be downed, for revive-transition detection. */
     private final Set<UUID> trackedDowned = new HashSet<>();
+
+    // --- breakthrough mode ---
+
+    /** Sectors keyed by their fixed number; ascending key order is the attack sequence. */
+    private final NavigableMap<Integer, Sector> sectors = new TreeMap<>();
+    /** Which of Team A/B plays attacker in breakthrough. Defender is always its opponent(). */
+    private Team attackerTeam = Team.A;
+    /** Number of the currently active sector; 0 means no round has activated one yet. */
+    private int activeSectorNumber;
+    /** Attacker respawn tickets remaining this round; a death consumes one if any are left. */
+    private int attackerTickets;
+    /** Seconds until the active sector's time limit expires (defenders win on 0). */
+    private int sectorSecondsRemaining;
+    /** Seconds until the next attacker respawn wave releases everyone waiting. */
+    private int respawnWaveSecondsRemaining;
+    /** Attackers who have died and are waiting (as spectators) for the next respawn wave. */
+    private final Set<UUID> pendingAttackerRespawns = new HashSet<>();
 
     public static ConquestManager get(MinecraftServer server) {
         return server.overworld().getDataStorage()
@@ -165,6 +186,137 @@ public class ConquestManager extends SavedData {
         mode = newMode;
         setDirty();
         return true;
+    }
+
+    // --- breakthrough: roles and sectors ---
+
+    public Team attackerTeam() {
+        return attackerTeam;
+    }
+
+    public Team defenderTeam() {
+        return attackerTeam.opponent();
+    }
+
+    /** Assigns which of Team A/B plays attacker. Rejected while a round is running or showing a result. */
+    public boolean setAttackerTeam(Team team) {
+        if (state != RoundState.WAITING || !team.isCombatant()) {
+            return false;
+        }
+        attackerTeam = team;
+        setDirty();
+        return true;
+    }
+
+    public Collection<Sector> getSectors() {
+        return sectors.values();
+    }
+
+    public boolean hasSectors() {
+        return !sectors.isEmpty();
+    }
+
+    @Nullable
+    public Sector getSector(int number) {
+        return sectors.get(number);
+    }
+
+    /** The sector currently being fought over, or null if breakthrough hasn't started a round yet. */
+    @Nullable
+    public Sector currentSector() {
+        return activeSectorNumber == 0 ? null : sectors.get(activeSectorNumber);
+    }
+
+    /** 1-based position of the active sector among all sectors, for "Sector X/Y" display; 0 if none active. */
+    public int sectorIndex() {
+        if (activeSectorNumber == 0) {
+            return 0;
+        }
+        int idx = 0;
+        for (int key : sectors.keySet()) {
+            idx++;
+            if (key == activeSectorNumber) {
+                break;
+            }
+        }
+        return idx;
+    }
+
+    public int sectorCount() {
+        return sectors.size();
+    }
+
+    public int attackerTickets() {
+        return attackerTickets;
+    }
+
+    public int respawnWaveSecondsRemaining() {
+        return respawnWaveSecondsRemaining;
+    }
+
+    /** Adds a capture point at the given position and assigns it to the named sector (creating it if new). */
+    public void addSectorPoint(ServerLevel level, int sectorNumber, String pointName, BlockPos pos, int radius) {
+        setPoint(level, pointName, pos, radius);
+        Sector sector = sectors.computeIfAbsent(sectorNumber, Sector::new);
+        if (!sector.getPointNames().contains(pointName)) {
+            sector.getPointNames().add(pointName);
+        }
+        setDirty();
+    }
+
+    /** Removes a sector and every capture point assigned to it. False if no sector has that number. */
+    public boolean removeSector(MinecraftServer server, int number) {
+        Sector sector = sectors.remove(number);
+        if (sector == null) {
+            return false;
+        }
+        for (String name : List.copyOf(sector.getPointNames())) {
+            removePoint(server, name);
+        }
+        setDirty();
+        return true;
+    }
+
+    /** Sets a sector's attacker or defender spawn. False if no sector has that number. */
+    public boolean setSectorSpawn(ServerLevel level, int number, boolean attackerRole, BlockPos pos) {
+        Sector sector = sectors.get(number);
+        if (sector == null) {
+            return false;
+        }
+        if (attackerRole) {
+            sector.setAttackerSpawn(level.dimension(), pos);
+        } else {
+            sector.setDefenderSpawn(level.dimension(), pos);
+        }
+        setDirty();
+        return true;
+    }
+
+    /** Overrides a sector's time limit (0 = fall back to the global default). False if no sector has that number. */
+    public boolean setSectorTimeLimit(int number, int seconds) {
+        Sector sector = sectors.get(number);
+        if (sector == null) {
+            return false;
+        }
+        sector.setTimeLimitSecondsOverride(seconds);
+        setDirty();
+        return true;
+    }
+
+    /** The sector number a point belongs to, or 0 if it isn't assigned to any sector. */
+    public int sectorNumberOf(String pointName) {
+        for (Sector sector : sectors.values()) {
+            if (sector.getPointNames().contains(pointName)) {
+                return sector.getNumber();
+            }
+        }
+        return 0;
+    }
+
+    private int currentSectorTimeLimit() {
+        Sector sector = currentSector();
+        int override = sector != null ? sector.getTimeLimitSecondsOverride() : 0;
+        return override > 0 ? override : Config.BT_SECTOR_TIME_LIMIT_SECONDS.get();
     }
 
     public int tickets(Team team) {
@@ -426,6 +578,9 @@ public class ConquestManager extends SavedData {
         if (level != null) {
             FlagPole.remove(level, point);
         }
+        for (Sector sector : sectors.values()) {
+            sector.getPointNames().remove(name);
+        }
         setDirty();
         return true;
     }
@@ -511,7 +666,7 @@ public class ConquestManager extends SavedData {
     }
 
     /** Outcome of a /conquest start attempt, used to pick the right failure message. */
-    public enum StartResult { OK, ALREADY_RUNNING, RESULT_PENDING, NO_POINT, TEAM_A_EMPTY, TEAM_B_EMPTY }
+    public enum StartResult { OK, ALREADY_RUNNING, RESULT_PENDING, NO_POINT, NO_SECTOR, TEAM_A_EMPTY, TEAM_B_EMPTY }
 
     /**
      * Validates, resets all points/tickets, teleports teams, then either goes
@@ -528,6 +683,9 @@ public class ConquestManager extends SavedData {
         if (mode == GameMode.CONQUEST && points.isEmpty()) {
             return StartResult.NO_POINT;
         }
+        if (mode == GameMode.BREAKTHROUGH && sectors.isEmpty()) {
+            return StartResult.NO_SECTOR;
+        }
         if (onlineCount(server, Team.A) == 0) {
             return StartResult.TEAM_A_EMPTY;
         }
@@ -535,7 +693,7 @@ public class ConquestManager extends SavedData {
             return StartResult.TEAM_B_EMPTY;
         }
 
-        if (mode == GameMode.CONQUEST) {
+        if (mode == GameMode.CONQUEST || mode == GameMode.BREAKTHROUGH) {
             for (CapturePoint point : points.values()) {
                 point.reset();
                 ServerLevel level = server.getLevel(point.getDimension());
@@ -552,6 +710,15 @@ public class ConquestManager extends SavedData {
         lastWinner = null;
         scores.clear();
         trackedDowned.clear();
+        pendingAttackerRespawns.clear();
+        if (mode == GameMode.BREAKTHROUGH) {
+            activeSectorNumber = sectors.firstKey();
+            attackerTickets = Config.BT_ATTACKER_TICKETS.get();
+            respawnWaveSecondsRemaining = Config.BT_RESPAWN_WAVE_INTERVAL_SECONDS.get();
+            sectorSecondsRemaining = currentSectorTimeLimit();
+        } else {
+            activeSectorNumber = 0;
+        }
         teleportToSpawns(server);
         if (mode != GameMode.CONQUEST) {
             SquadManager.get(server).setFeatureEnabled(SquadFeature.REVIVE, false);
@@ -582,6 +749,13 @@ public class ConquestManager extends SavedData {
                     Component.translatable("conquest.title.started_tdm_sub", limitText));
             return;
         }
+        if (mode == GameMode.BREAKTHROUGH) {
+            broadcast(server, Component.translatable("conquest.msg.started_breakthrough", attackerTickets)
+                    .withStyle(ChatFormatting.GOLD));
+            broadcastTitle(server, Component.translatable("conquest.title.started_breakthrough").withStyle(ChatFormatting.GOLD),
+                    Component.translatable("conquest.title.started_breakthrough_sub", attackerTickets));
+            return;
+        }
         broadcast(server, Component.translatable("conquest.msg.started", Config.STARTING_TICKETS.get())
                 .withStyle(ChatFormatting.GOLD));
         broadcastTitle(server, Component.translatable("conquest.title.started").withStyle(ChatFormatting.GOLD),
@@ -594,22 +768,46 @@ public class ConquestManager extends SavedData {
             if (!team.isCombatant()) {
                 continue;
             }
-            ResourceKey<Level> dim = team == Team.A ? spawnADim : spawnBDim;
-            BlockPos pos = team == Team.A ? spawnAPos : spawnBPos;
-            ServerLevel targetLevel;
-            if (dim == null || pos == null) {
+            teleportToRoleSpawn(player, team);
+        }
+    }
+
+    /**
+     * Teleports one player to their role's spawn: in breakthrough, the active sector's
+     * attacker/defender spawn if set, else the global spawnA/B, else the world spawn.
+     */
+    private void teleportToRoleSpawn(ServerPlayer player, Team team) {
+        MinecraftServer server = player.server;
+        Sector sector = mode == GameMode.BREAKTHROUGH ? currentSector() : null;
+        ResourceKey<Level> dim = null;
+        BlockPos pos = null;
+        if (sector != null) {
+            if (team == attackerTeam) {
+                dim = sector.getAttackerSpawnDim();
+                pos = sector.getAttackerSpawnPos();
+            } else {
+                dim = sector.getDefenderSpawnDim();
+                pos = sector.getDefenderSpawnPos();
+            }
+        }
+        if (pos == null) {
+            dim = team == Team.A ? spawnADim : spawnBDim;
+            pos = team == Team.A ? spawnAPos : spawnBPos;
+        }
+        ServerLevel targetLevel;
+        if (dim == null || pos == null) {
+            targetLevel = server.overworld();
+            pos = targetLevel.getSharedSpawnPos();
+        } else {
+            targetLevel = server.getLevel(dim);
+            if (targetLevel == null) {
                 targetLevel = server.overworld();
                 pos = targetLevel.getSharedSpawnPos();
-            } else {
-                targetLevel = server.getLevel(dim);
-                if (targetLevel == null) {
-                    continue;
-                }
             }
-            BlockPos safe = TeleportHelper.findSafeSpot(targetLevel, pos);
-            player.teleportTo(targetLevel, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
-                    Set.of(), player.getYRot(), player.getXRot());
         }
+        BlockPos safe = TeleportHelper.findSafeSpot(targetLevel, pos);
+        player.teleportTo(targetLevel, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
+                Set.of(), player.getYRot(), player.getXRot());
     }
 
     /** Forced end with no winner, or cancels a pending countdown: valid from STARTING or IN_PROGRESS. */
@@ -676,6 +874,138 @@ public class ConquestManager extends SavedData {
     }
 
     /**
+     * Runs one point's capture tick: occupancy, flag advance/neutralize/capture, flag-pole
+     * recolor. Shared by conquest (every point) and breakthrough (only the active sector's
+     * points). Null if the point's dimension isn't loaded.
+     */
+    @Nullable
+    private PointOccupancy tickOnePoint(MinecraftServer server, CapturePoint point) {
+        ServerLevel level = server.getLevel(point.getDimension());
+        if (level == null) {
+            return null;
+        }
+        // Downed players (squadtp revive system) cannot capture.
+        PointOccupancy occ = computeOccupancy(server, point);
+
+        // One team alone advances; both present = contested; empty = hold.
+        if (occ.countA() > 0 ^ occ.countB() > 0) {
+            Team holder = occ.countA() > 0 ? Team.A : Team.B;
+            CapturePoint.CaptureEvent event = point.advance(holder, Config.CAPTURE_RATE_PER_SECOND.get());
+            setDirty();
+            if (event == CapturePoint.CaptureEvent.CAPTURED) {
+                broadcast(server, Component.translatable("conquest.msg.captured",
+                        holder.display(), point.getName()).withStyle(ChatFormatting.GOLD));
+                if (mode == GameMode.BREAKTHROUGH && holder == attackerTeam) {
+                    sectorSecondsRemaining += Config.BT_SECTOR_TIME_EXTENSION_ON_CAPTURE.get();
+                }
+            } else if (event == CapturePoint.CaptureEvent.NEUTRALIZED) {
+                broadcast(server, Component.translatable("conquest.msg.neutralized", point.getName())
+                        .withStyle(ChatFormatting.YELLOW));
+            }
+        }
+        FlagPole.update(level, point);
+        return occ;
+    }
+
+    /** Breakthrough per-second logic: active sector's capture points, sector clock, respawn waves, win checks. */
+    private void tickBreakthrough(MinecraftServer server, Map<String, PointOccupancy> occupancyByPoint) {
+        Sector sector = currentSector();
+        if (sector != null) {
+            for (String name : sector.getPointNames()) {
+                CapturePoint point = points.get(name);
+                if (point == null) {
+                    continue;
+                }
+                PointOccupancy occ = tickOnePoint(server, point);
+                if (occ != null) {
+                    occupancyByPoint.put(name, occ);
+                }
+            }
+            boolean cleared = sector.getPointNames().stream()
+                    .map(points::get)
+                    .filter(Objects::nonNull)
+                    .allMatch(p -> p.getOwner() == attackerTeam);
+            if (cleared) {
+                advanceSector(server);
+            }
+        }
+
+        if (state == RoundState.IN_PROGRESS && --sectorSecondsRemaining <= 0) {
+            endRound(server, defenderTeam());
+        }
+
+        if (state == RoundState.IN_PROGRESS && --respawnWaveSecondsRemaining <= 0) {
+            respawnWaveSecondsRemaining = Config.BT_RESPAWN_WAVE_INTERVAL_SECONDS.get();
+            releaseAttackerWave(server);
+        }
+
+        if (state == RoundState.IN_PROGRESS && attackerTickets <= 0
+                && pendingAttackerRespawns.isEmpty() && countAliveAttackers(server) == 0) {
+            endRound(server, defenderTeam());
+        }
+        setDirty();
+    }
+
+    /** Clears the active sector and moves to the next one, or ends the round if that was the last. */
+    private void advanceSector(MinecraftServer server) {
+        Integer next = sectors.higherKey(activeSectorNumber);
+        if (next == null) {
+            endRound(server, attackerTeam);
+            return;
+        }
+        int clearedNumber = activeSectorNumber;
+        activeSectorNumber = next;
+        sectorSecondsRemaining = currentSectorTimeLimit();
+        setDirty();
+        broadcast(server, Component.translatable("conquest.msg.sector_cleared", clearedNumber, sectorIndex(), sectorCount())
+                .withStyle(ChatFormatting.GOLD));
+    }
+
+    /** Sends every attacker still waiting (as a spectator) since their last death back into the fight. */
+    private void releaseAttackerWave(MinecraftServer server) {
+        if (pendingAttackerRespawns.isEmpty()) {
+            return;
+        }
+        for (UUID uuid : List.copyOf(pendingAttackerRespawns)) {
+            ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+            if (player == null || !player.isSpectator()) {
+                continue; // still on the death screen; stays queued for the next wave
+            }
+            player.setGameMode(GameType.SURVIVAL);
+            teleportToRoleSpawn(player, attackerTeam);
+            pendingAttackerRespawns.remove(uuid);
+        }
+        setDirty();
+    }
+
+    private int countAliveAttackers(MinecraftServer server) {
+        int count = 0;
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (teamOf(player.getUUID()) == attackerTeam && player.isAlive() && !player.isSpectator()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Called from {@link uk.iwaservice.squadtpconquest.ScoreEvents#onDeath} for every death
+     * while a breakthrough round is running. Attacker deaths consume one ticket and queue the
+     * player for the next respawn wave; once tickets run out, deaths are permanent for the
+     * round. Defender deaths are unlimited and not tracked here.
+     */
+    public void handleBreakthroughDeath(UUID victim) {
+        if (state != RoundState.IN_PROGRESS || mode != GameMode.BREAKTHROUGH || teamOf(victim) != attackerTeam) {
+            return;
+        }
+        if (attackerTickets > 0) {
+            attackerTickets--;
+            pendingAttackerRespawns.add(victim);
+            setDirty();
+        }
+    }
+
+    /**
      * Runs capture/ticket/win-condition logic for every point while IN_PROGRESS,
      * advances the result auto-reset countdown while ENDED, then always
      * broadcasts a fresh snapshot to every player so the GUI/HUD show live
@@ -702,28 +1032,10 @@ public class ConquestManager extends SavedData {
 
             if (mode == GameMode.CONQUEST && !points.isEmpty()) {
                 for (CapturePoint point : points.values()) {
-                    ServerLevel level = server.getLevel(point.getDimension());
-                    if (level == null) {
-                        continue;
+                    PointOccupancy occ = tickOnePoint(server, point);
+                    if (occ != null) {
+                        occupancyByPoint.put(point.getName(), occ);
                     }
-                    // Downed players (squadtp revive system) cannot capture.
-                    PointOccupancy occ = computeOccupancy(server, point);
-                    occupancyByPoint.put(point.getName(), occ);
-
-                    // One team alone advances; both present = contested; empty = hold.
-                    if (occ.countA() > 0 ^ occ.countB() > 0) {
-                        Team holder = occ.countA() > 0 ? Team.A : Team.B;
-                        CapturePoint.CaptureEvent event = point.advance(holder, Config.CAPTURE_RATE_PER_SECOND.get());
-                        setDirty();
-                        if (event == CapturePoint.CaptureEvent.CAPTURED) {
-                            broadcast(server, Component.translatable("conquest.msg.captured",
-                                    holder.display(), point.getName()).withStyle(ChatFormatting.GOLD));
-                        } else if (event == CapturePoint.CaptureEvent.NEUTRALIZED) {
-                            broadcast(server, Component.translatable("conquest.msg.neutralized", point.getName())
-                                    .withStyle(ChatFormatting.YELLOW));
-                        }
-                    }
-                    FlagPole.update(level, point);
                 }
 
                 // Ticket bleed: scales with how many more points the leading team owns.
@@ -737,6 +1049,8 @@ public class ConquestManager extends SavedData {
                         drainTickets(server, Team.A, Config.TICKET_BLEED_AMOUNT.get() * -diff);
                     }
                 }
+            } else if (mode == GameMode.BREAKTHROUGH) {
+                tickBreakthrough(server, occupancyByPoint);
             }
 
             checkRevives(server);
@@ -750,9 +1064,10 @@ public class ConquestManager extends SavedData {
                 }
             }
 
-            // Time limit: higher tickets win, equal tickets draw.
+            // Time limit: higher tickets win, equal tickets draw. Breakthrough has its own
+            // sector-timer-based ending instead (ticketsA/B are unused in that mode).
             int limit = Config.ROUND_TIME_LIMIT_SECONDS.get();
-            if (state == RoundState.IN_PROGRESS && limit > 0 && roundElapsedSeconds >= limit) {
+            if (state == RoundState.IN_PROGRESS && mode != GameMode.BREAKTHROUGH && limit > 0 && roundElapsedSeconds >= limit) {
                 Team winner = ticketsA > ticketsB ? Team.A : ticketsB > ticketsA ? Team.B : null;
                 endRound(server, winner);
             }
@@ -806,7 +1121,10 @@ public class ConquestManager extends SavedData {
         }
 
         Component title;
-        Component subtitle = Component.translatable("conquest.title.result_tickets", ticketsA, ticketsB);
+        Component subtitle = mode == GameMode.BREAKTHROUGH
+                ? Component.translatable("conquest.title.result_breakthrough",
+                        sectorIndex(), sectorCount(), Math.max(0, attackerTickets))
+                : Component.translatable("conquest.title.result_tickets", ticketsA, ticketsB);
         if (winner == null) {
             title = Component.translatable("conquest.title.draw").withStyle(ChatFormatting.YELLOW);
             broadcast(server, Component.translatable("conquest.msg.draw").withStyle(ChatFormatting.YELLOW));
@@ -825,21 +1143,42 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Charges the respawning player's own team a ticket (Battlefield-style:
-     * deaths cost reinforcements). Not applicable in TDM, where the ticket
-     * counters instead count kills upward toward the kill limit.
+     * Conquest: charges the respawning player's own team a ticket (Battlefield-style:
+     * deaths cost reinforcements). TDM doesn't use this (its ticket counters instead count
+     * kills upward toward the kill limit). Breakthrough handles respawn placement itself,
+     * since it's asymmetric (wave-gated attackers, immediate defenders) — see
+     * {@link #handleBreakthroughRespawn}.
      */
     public void onRespawn(ServerPlayer player) {
-        if (state != RoundState.IN_PROGRESS || mode != GameMode.CONQUEST) {
+        if (state != RoundState.IN_PROGRESS) {
             return;
         }
         Team team = teamOf(player.getUUID());
         if (!team.isCombatant()) {
             return;
         }
-        int cost = Config.TICKET_COST_PER_RESPAWN.get();
-        if (cost > 0) {
-            drainTickets(player.server, team, cost);
+        if (mode == GameMode.CONQUEST) {
+            int cost = Config.TICKET_COST_PER_RESPAWN.get();
+            if (cost > 0) {
+                drainTickets(player.server, team, cost);
+            }
+        } else if (mode == GameMode.BREAKTHROUGH) {
+            handleBreakthroughRespawn(player, team);
+        }
+    }
+
+    /**
+     * Attackers who haven't been released by the current respawn wave yet are held as
+     * spectators until {@link #releaseAttackerWave} sends them back in. Defenders respawn
+     * immediately at the active sector's defender line (falling back with the front line).
+     */
+    private void handleBreakthroughRespawn(ServerPlayer player, Team team) {
+        if (team == attackerTeam) {
+            if (pendingAttackerRespawns.contains(player.getUUID())) {
+                player.setGameMode(GameType.SPECTATOR);
+            }
+        } else {
+            teleportToRoleSpawn(player, team);
         }
     }
 
@@ -861,14 +1200,18 @@ public class ConquestManager extends SavedData {
     public ConquestSyncPacket buildSyncPacket(ServerPlayer viewer, Map<String, PointOccupancy> occupancyByPoint,
                                                boolean openScreen) {
         List<ConquestSyncPacket.PointStatus> statuses = new ArrayList<>();
+        Sector active = currentSector();
         for (CapturePoint point : points.values()) {
             PointOccupancy occ = occupancyByPoint.getOrDefault(point.getName(), EMPTY_OCCUPANCY);
+            boolean pointActive = mode != GameMode.BREAKTHROUGH
+                    || (active != null && active.getPointNames().contains(point.getName()));
             statuses.add(new ConquestSyncPacket.PointStatus(point.getName(), point.getRadius(), point.getOwner(),
                     point.getCapturingTeam(), point.getFlagLevel(), occ.contested(),
-                    occ.inZone().contains(viewer.getUUID())));
+                    occ.inZone().contains(viewer.getUUID()), pointActive, sectorNumberOf(point.getName())));
         }
         return new ConquestSyncPacket(statuses, ticketsA, ticketsB, isActive(), state, mode,
-                teamOf(viewer.getUUID()), viewer.hasPermissions(2), openScreen);
+                teamOf(viewer.getUUID()), viewer.hasPermissions(2), openScreen,
+                attackerTeam, sectorIndex(), sectorCount(), attackerTickets, respawnWaveSecondsRemaining);
     }
 
     /** Used by the flag block's right-click handler: a fresh snapshot that opens the GUI. */
@@ -954,6 +1297,20 @@ public class ConquestManager extends SavedData {
             MapPreset preset = MapPreset.load(presetList.getCompound(i));
             manager.presets.put(preset.getName(), preset);
         }
+        ListTag sectorList = tag.getList("Sectors", Tag.TAG_COMPOUND);
+        for (int i = 0; i < sectorList.size(); i++) {
+            Sector sector = Sector.load(sectorList.getCompound(i));
+            manager.sectors.put(sector.getNumber(), sector);
+        }
+        manager.attackerTeam = tag.contains("AttackerTeam") ? Team.valueOf(tag.getString("AttackerTeam")) : Team.A;
+        manager.activeSectorNumber = tag.getInt("ActiveSectorNumber");
+        manager.attackerTickets = tag.getInt("AttackerTickets");
+        manager.sectorSecondsRemaining = tag.getInt("SectorSecondsRemaining");
+        manager.respawnWaveSecondsRemaining = tag.getInt("RespawnWaveSecondsRemaining");
+        ListTag pendingList = tag.getList("PendingAttackerRespawns", Tag.TAG_COMPOUND);
+        for (int i = 0; i < pendingList.size(); i++) {
+            manager.pendingAttackerRespawns.add(pendingList.getCompound(i).getUUID("Uuid"));
+        }
         return manager;
     }
 
@@ -1016,6 +1373,23 @@ public class ConquestManager extends SavedData {
             presetList.add(preset.save());
         }
         tag.put("Presets", presetList);
+        ListTag sectorList = new ListTag();
+        for (Sector sector : sectors.values()) {
+            sectorList.add(sector.save());
+        }
+        tag.put("Sectors", sectorList);
+        tag.putString("AttackerTeam", attackerTeam.name());
+        tag.putInt("ActiveSectorNumber", activeSectorNumber);
+        tag.putInt("AttackerTickets", attackerTickets);
+        tag.putInt("SectorSecondsRemaining", sectorSecondsRemaining);
+        tag.putInt("RespawnWaveSecondsRemaining", respawnWaveSecondsRemaining);
+        ListTag pendingList = new ListTag();
+        for (UUID uuid : pendingAttackerRespawns) {
+            CompoundTag p = new CompoundTag();
+            p.putUUID("Uuid", uuid);
+            pendingList.add(p);
+        }
+        tag.put("PendingAttackerRespawns", pendingList);
         return tag;
     }
 }

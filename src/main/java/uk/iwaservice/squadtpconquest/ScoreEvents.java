@@ -10,6 +10,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import uk.iwaservice.squadtp.squad.ReviveSystem;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.DamageLog;
+import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.ReviveAttribution;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.conquest.Team;
@@ -61,6 +62,9 @@ public final class ScoreEvents {
             return;
         }
         manager.recordDeath(victim.getUUID());
+        if (manager.getMode() == GameMode.BREAKTHROUGH) {
+            manager.handleBreakthroughDeath(victim.getUUID());
+        }
 
         UUID killerUuid = null;
         if (event.getSource().getEntity() instanceof ServerPlayer killer) {

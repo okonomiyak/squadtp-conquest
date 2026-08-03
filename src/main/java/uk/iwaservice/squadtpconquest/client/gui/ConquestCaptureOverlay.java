@@ -45,6 +45,17 @@ public class ConquestCaptureOverlay implements IGuiOverlay {
             return;
         }
 
+        Font font = mc.font;
+        if (!point.active()) {
+            int labelY = height - 92;
+            graphics.pose().pushPose();
+            graphics.pose().translate(width / 2f, labelY, 0);
+            graphics.pose().scale(1.5f, 1.5f, 1f);
+            graphics.drawCenteredString(font, Component.translatable("conquest.capture.locked"), 0, 0, 0xFF808080);
+            graphics.pose().popPose();
+            return;
+        }
+
         boolean contested = point.contested();
         Team activeTeam = Team.resolveActive(point.owner(), point.capturingTeam(), point.flagLevel());
         int flagLevel = (int) point.flagLevel();
@@ -65,7 +76,6 @@ public class ConquestCaptureOverlay implements IGuiOverlay {
             color = activeTeam.hudColor();
         }
 
-        Font font = mc.font;
         int labelY = height - 92;
         int barY = height - 76;
         int barX = (width - BAR_WIDTH) / 2;
