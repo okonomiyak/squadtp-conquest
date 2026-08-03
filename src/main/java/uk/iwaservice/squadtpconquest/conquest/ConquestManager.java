@@ -83,6 +83,25 @@ public class ConquestManager extends SavedData {
     @Nullable
     private BlockPos spawnBPos;
 
+    /**
+     * Team A's home zone: an axis-aligned box between two corners; enemies lingering inside are
+     * executed. Both corners must be set (and share zoneADim) for the zone to be active.
+     */
+    @Nullable
+    private ResourceKey<Level> zoneADim;
+    @Nullable
+    private BlockPos zoneAPos1;
+    @Nullable
+    private BlockPos zoneAPos2;
+    @Nullable
+    private ResourceKey<Level> zoneBDim;
+    @Nullable
+    private BlockPos zoneBPos1;
+    @Nullable
+    private BlockPos zoneBPos2;
+    /** Transient: continuous seconds each intruder has spent inside the enemy's home zone. */
+    private final Map<UUID, Integer> zoneIntrusionSeconds = new HashMap<>();
+
     /** Transient: seconds since the last ticket bleed. */
     private int bleedCounter;
     /** Seconds left in the pre-round countdown, ticked only while STARTING. Not persisted. */
@@ -596,6 +615,151 @@ public class ConquestManager extends SavedData {
         setDirty();
     }
 
+    // --- home zones (per-team territory; the opposing team is executed after lingering too long) ---
+
+    /** Defines/relocates {@code team}'s home zone as the box between two corners. */
+    public void setZone(ServerLevel level, Team team, BlockPos pos1, BlockPos pos2) {
+        if (team == Team.A) {
+            zoneADim = level.dimension();
+            zoneAPos1 = pos1.immutable();
+            zoneAPos2 = pos2.immutable();
+        } else if (team == Team.B) {
+            zoneBDim = level.dimension();
+            zoneBPos1 = pos1.immutable();
+            zoneBPos2 = pos2.immutable();
+        }
+        setDirty();
+    }
+
+    /**
+     * Sets one corner of {@code team}'s home zone to the given position, leaving the other
+     * corner untouched (the zone only becomes active once both are set). If the zone already had
+     * a corner in a different dimension, both corners are reset first — a box can't span
+     * dimensions, so switching dimension starts the zone over rather than silently corrupting it.
+     */
+    public void setZoneCorner(ServerLevel level, Team team, boolean corner1, BlockPos pos) {
+        ResourceKey<Level> dim = level.dimension();
+        if (team == Team.A) {
+            if (zoneADim != null && !zoneADim.equals(dim)) {
+                zoneAPos1 = null;
+                zoneAPos2 = null;
+            }
+            zoneADim = dim;
+            if (corner1) {
+                zoneAPos1 = pos.immutable();
+            } else {
+                zoneAPos2 = pos.immutable();
+            }
+        } else if (team == Team.B) {
+            if (zoneBDim != null && !zoneBDim.equals(dim)) {
+                zoneBPos1 = null;
+                zoneBPos2 = null;
+            }
+            zoneBDim = dim;
+            if (corner1) {
+                zoneBPos1 = pos.immutable();
+            } else {
+                zoneBPos2 = pos.immutable();
+            }
+        }
+        setDirty();
+    }
+
+    /** Clears a team's home zone. False if neither corner was set. */
+    public boolean removeZone(Team team) {
+        if (team == Team.A) {
+            if (zoneAPos1 == null && zoneAPos2 == null) {
+                return false;
+            }
+            zoneADim = null;
+            zoneAPos1 = null;
+            zoneAPos2 = null;
+        } else if (team == Team.B) {
+            if (zoneBPos1 == null && zoneBPos2 == null) {
+                return false;
+            }
+            zoneBDim = null;
+            zoneBPos1 = null;
+            zoneBPos2 = null;
+        } else {
+            return false;
+        }
+        setDirty();
+        return true;
+    }
+
+    @Nullable
+    public ResourceKey<Level> getZoneDim(Team team) {
+        return team == Team.A ? zoneADim : team == Team.B ? zoneBDim : null;
+    }
+
+    /** Lower corner of the zone's box (min of each axis across both corners); null unless both corners are set. */
+    @Nullable
+    public BlockPos getZoneMin(Team team) {
+        BlockPos[] bounds = zoneBounds(team);
+        return bounds == null ? null : bounds[0];
+    }
+
+    /** Upper corner of the zone's box; null unless both corners are set. */
+    @Nullable
+    public BlockPos getZoneMax(Team team) {
+        BlockPos[] bounds = zoneBounds(team);
+        return bounds == null ? null : bounds[1];
+    }
+
+    @Nullable
+    private BlockPos[] zoneBounds(Team team) {
+        BlockPos p1 = team == Team.A ? zoneAPos1 : team == Team.B ? zoneBPos1 : null;
+        BlockPos p2 = team == Team.A ? zoneAPos2 : team == Team.B ? zoneBPos2 : null;
+        if (p1 == null || p2 == null) {
+            return null;
+        }
+        BlockPos min = new BlockPos(Math.min(p1.getX(), p2.getX()), Math.min(p1.getY(), p2.getY()), Math.min(p1.getZ(), p2.getZ()));
+        BlockPos max = new BlockPos(Math.max(p1.getX(), p2.getX()), Math.max(p1.getY(), p2.getY()), Math.max(p1.getZ(), p2.getZ()));
+        return new BlockPos[]{min, max};
+    }
+
+    /**
+     * Once per second while a round is running: any player from the opposing team standing
+     * inside a home zone accrues intrusion time (reset to 0 the instant they step out) and is
+     * executed once it reaches {@code homeZoneKillSeconds}, with an action-bar countdown warning
+     * every second before that. Independent of game mode.
+     */
+    private void tickHomeZones(MinecraftServer server) {
+        checkZoneIntrusion(server, Team.A, zoneADim, getZoneMin(Team.A), getZoneMax(Team.A));
+        checkZoneIntrusion(server, Team.B, zoneBDim, getZoneMin(Team.B), getZoneMax(Team.B));
+    }
+
+    private void checkZoneIntrusion(MinecraftServer server, Team owner, @Nullable ResourceKey<Level> dim,
+                                     @Nullable BlockPos min, @Nullable BlockPos max) {
+        if (dim == null || min == null || max == null) {
+            return;
+        }
+        Team intruderTeam = owner.opponent();
+        int killSeconds = Config.HOME_ZONE_KILL_SECONDS.get();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            UUID uuid = player.getUUID();
+            boolean inside = teamOf(uuid) == intruderTeam && player.isAlive()
+                    && player.level().dimension() == dim
+                    && player.getX() >= min.getX() && player.getX() < max.getX() + 1
+                    && player.getY() >= min.getY() && player.getY() < max.getY() + 1
+                    && player.getZ() >= min.getZ() && player.getZ() < max.getZ() + 1;
+            if (!inside) {
+                zoneIntrusionSeconds.remove(uuid);
+                continue;
+            }
+            int seconds = zoneIntrusionSeconds.merge(uuid, 1, Integer::sum);
+            int remaining = killSeconds - seconds;
+            if (remaining <= 0) {
+                zoneIntrusionSeconds.remove(uuid);
+                player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
+            } else {
+                player.displayClientMessage(Component.translatable("conquest.msg.zone_warning", remaining)
+                        .withStyle(ChatFormatting.RED), true);
+            }
+        }
+    }
+
     // --- map presets (named, reusable point/spawn/mode layouts) ---
 
     public Collection<String> getPresetNames() {
@@ -711,6 +875,7 @@ public class ConquestManager extends SavedData {
         scores.clear();
         trackedDowned.clear();
         pendingAttackerRespawns.clear();
+        zoneIntrusionSeconds.clear();
         if (mode == GameMode.BREAKTHROUGH) {
             activeSectorNumber = sectors.firstKey();
             attackerTickets = Config.BT_ATTACKER_TICKETS.get();
@@ -1054,6 +1219,7 @@ public class ConquestManager extends SavedData {
             }
 
             checkRevives(server);
+            tickHomeZones(server);
 
             // Team-empty check (only if the round is still running after the checks above).
             if (state == RoundState.IN_PROGRESS && Config.END_ON_TEAM_EMPTY.get()) {
@@ -1272,6 +1438,24 @@ public class ConquestManager extends SavedData {
             manager.spawnBDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("SpawnBDim")));
             manager.spawnBPos = NbtUtils.readBlockPos(tag.getCompound("SpawnBPos"));
         }
+        if (tag.contains("ZoneADim")) {
+            manager.zoneADim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("ZoneADim")));
+            if (tag.contains("ZoneAPos1")) {
+                manager.zoneAPos1 = NbtUtils.readBlockPos(tag.getCompound("ZoneAPos1"));
+            }
+            if (tag.contains("ZoneAPos2")) {
+                manager.zoneAPos2 = NbtUtils.readBlockPos(tag.getCompound("ZoneAPos2"));
+            }
+        }
+        if (tag.contains("ZoneBDim")) {
+            manager.zoneBDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("ZoneBDim")));
+            if (tag.contains("ZoneBPos1")) {
+                manager.zoneBPos1 = NbtUtils.readBlockPos(tag.getCompound("ZoneBPos1"));
+            }
+            if (tag.contains("ZoneBPos2")) {
+                manager.zoneBPos2 = NbtUtils.readBlockPos(tag.getCompound("ZoneBPos2"));
+            }
+        }
         ListTag scoreList = tag.getList("Scores", Tag.TAG_COMPOUND);
         for (int i = 0; i < scoreList.size(); i++) {
             CompoundTag s = scoreList.getCompound(i);
@@ -1345,6 +1529,24 @@ public class ConquestManager extends SavedData {
         if (spawnBDim != null && spawnBPos != null) {
             tag.putString("SpawnBDim", spawnBDim.location().toString());
             tag.put("SpawnBPos", NbtUtils.writeBlockPos(spawnBPos));
+        }
+        if (zoneADim != null) {
+            tag.putString("ZoneADim", zoneADim.location().toString());
+            if (zoneAPos1 != null) {
+                tag.put("ZoneAPos1", NbtUtils.writeBlockPos(zoneAPos1));
+            }
+            if (zoneAPos2 != null) {
+                tag.put("ZoneAPos2", NbtUtils.writeBlockPos(zoneAPos2));
+            }
+        }
+        if (zoneBDim != null) {
+            tag.putString("ZoneBDim", zoneBDim.location().toString());
+            if (zoneBPos1 != null) {
+                tag.put("ZoneBPos1", NbtUtils.writeBlockPos(zoneBPos1));
+            }
+            if (zoneBPos2 != null) {
+                tag.put("ZoneBPos2", NbtUtils.writeBlockPos(zoneBPos2));
+            }
         }
         ListTag scoreList = new ListTag();
         for (Map.Entry<UUID, PlayerScore> e : scores.entrySet()) {

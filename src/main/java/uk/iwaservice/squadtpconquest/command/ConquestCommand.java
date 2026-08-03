@@ -6,7 +6,9 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
@@ -142,6 +144,29 @@ public final class ConquestCommand {
                                 .then(Commands.argument("team", StringArgumentType.word())
                                         .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
                                         .executes(ConquestCommand::setSpawn))))
+                .then(Commands.literal("zone")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("team", StringArgumentType.word())
+                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
+                                        .then(Commands.argument("pos1", BlockPosArgument.blockPos())
+                                                .then(Commands.argument("pos2", BlockPosArgument.blockPos())
+                                                        .executes(ConquestCommand::setZone)))))
+                        .then(Commands.literal("corner1")
+                                .then(Commands.literal("set")
+                                        .then(Commands.argument("team", StringArgumentType.word())
+                                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
+                                                .executes(ctx -> setZoneCorner(ctx, true)))))
+                        .then(Commands.literal("corner2")
+                                .then(Commands.literal("set")
+                                        .then(Commands.argument("team", StringArgumentType.word())
+                                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
+                                                .executes(ctx -> setZoneCorner(ctx, false)))))
+                        .then(Commands.literal("remove")
+                                .then(Commands.argument("team", StringArgumentType.word())
+                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
+                                        .executes(ConquestCommand::removeZone)))
+                        .then(Commands.literal("list").executes(ConquestCommand::zoneList)))
                 .then(Commands.literal("mode")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -431,6 +456,67 @@ public final class ConquestCommand {
                 .setSpawn(player.serverLevel(), team, player.blockPosition());
         ctx.getSource().sendSuccess(() ->
                 Component.translatable("conquest.msg.spawn_set", team.display()), true);
+        return 1;
+    }
+
+    private static int setZone(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        Team team = Team.byKey(StringArgumentType.getString(ctx, "team"));
+        if (team == null) {
+            return fail(ctx, Component.translatable("conquest.msg.unknown_team"));
+        }
+        BlockPos pos1 = BlockPosArgument.getBlockPos(ctx, "pos1");
+        BlockPos pos2 = BlockPosArgument.getBlockPos(ctx, "pos2");
+        ConquestManager.get(ctx.getSource().getServer())
+                .setZone(ctx.getSource().getLevel(), team, pos1, pos2);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.zone_set", team.display(),
+                        pos1.toShortString(), pos2.toShortString()), true);
+        return 1;
+    }
+
+    private static int setZoneCorner(CommandContext<CommandSourceStack> ctx, boolean corner1) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        Team team = Team.byKey(StringArgumentType.getString(ctx, "team"));
+        if (team == null) {
+            return fail(ctx, Component.translatable("conquest.msg.unknown_team"));
+        }
+        ConquestManager.get(ctx.getSource().getServer())
+                .setZoneCorner(player.serverLevel(), team, corner1, player.blockPosition());
+        ctx.getSource().sendSuccess(() -> Component.translatable(
+                corner1 ? "conquest.msg.zone_corner1_set" : "conquest.msg.zone_corner2_set", team.display()), true);
+        return 1;
+    }
+
+    private static int removeZone(CommandContext<CommandSourceStack> ctx) {
+        Team team = Team.byKey(StringArgumentType.getString(ctx, "team"));
+        if (team == null) {
+            return fail(ctx, Component.translatable("conquest.msg.unknown_team"));
+        }
+        if (!ConquestManager.get(ctx.getSource().getServer()).removeZone(team)) {
+            return fail(ctx, Component.translatable("conquest.msg.no_zone", team.display()));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.zone_removed", team.display()), true);
+        return 1;
+    }
+
+    private static int zoneList(CommandContext<CommandSourceStack> ctx) {
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        MutableComponent msg = Component.translatable("conquest.msg.zone_list_header").withStyle(ChatFormatting.GOLD);
+        boolean any = false;
+        for (Team team : new Team[]{Team.A, Team.B}) {
+            BlockPos min = manager.getZoneMin(team);
+            BlockPos max = manager.getZoneMax(team);
+            if (min != null && max != null) {
+                any = true;
+                msg.append("\n").append(Component.translatable("conquest.status.zone",
+                        team.display(), min.toShortString(), max.toShortString()));
+            }
+        }
+        if (!any) {
+            return fail(ctx, Component.translatable("conquest.msg.no_zone_any"));
+        }
+        MutableComponent result = msg;
+        ctx.getSource().sendSuccess(() -> result, false);
         return 1;
     }
 

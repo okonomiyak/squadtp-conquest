@@ -8,10 +8,14 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.server.ServerLifecycleHooks;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import uk.iwaservice.squadtpconquest.command.ConquestCommand;
 import uk.iwaservice.squadtpconquest.conquest.CapturePoint;
 import uk.iwaservice.squadtpconquest.conquest.CaptureZoneVisualizer;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
+import uk.iwaservice.squadtpconquest.conquest.Team;
 
 /** Forge-bus event handlers: command registration, respawn ticket cost and the game loop. */
 public final class ServerEvents {
@@ -51,6 +55,17 @@ public final class ServerEvents {
                 ServerLevel level = server.getLevel(point.getDimension());
                 if (level != null) {
                     CaptureZoneVisualizer.render(level, point);
+                }
+            }
+            for (Team team : new Team[]{Team.A, Team.B}) {
+                ResourceKey<Level> dim = manager.getZoneDim(team);
+                BlockPos min = manager.getZoneMin(team);
+                BlockPos max = manager.getZoneMax(team);
+                if (dim != null && min != null && max != null) {
+                    ServerLevel level = server.getLevel(dim);
+                    if (level != null) {
+                        CaptureZoneVisualizer.renderBox(level, min, max, team);
+                    }
                 }
             }
         }
