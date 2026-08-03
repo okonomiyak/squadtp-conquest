@@ -22,6 +22,7 @@ import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import uk.iwaservice.squadtp.squad.ReviveSystem;
 import uk.iwaservice.squadtp.squad.Squad;
+import uk.iwaservice.squadtp.squad.SquadFeature;
 import uk.iwaservice.squadtp.squad.SquadManager;
 import uk.iwaservice.squadtp.squad.TeleportHelper;
 import uk.iwaservice.squadtpconquest.Config;
@@ -481,6 +482,9 @@ public class ConquestManager extends SavedData {
         scores.clear();
         trackedDowned.clear();
         teleportToSpawns(server);
+        if (mode != GameMode.CONQUEST) {
+            SquadManager.get(server).setFeatureEnabled(SquadFeature.REVIVE, false);
+        }
 
         int countdown = Config.START_COUNTDOWN_SECONDS.get();
         if (countdown <= 0) {
@@ -545,6 +549,9 @@ public class ConquestManager extends SavedData {
         boolean wasStarting = state == RoundState.STARTING;
         state = RoundState.WAITING;
         setDirty();
+        if (mode != GameMode.CONQUEST) {
+            SquadManager.get(server).setFeatureEnabled(SquadFeature.REVIVE, true);
+        }
         broadcast(server, Component.translatable(wasStarting ? "conquest.msg.start_cancelled" : "conquest.msg.stopped")
                 .withStyle(ChatFormatting.YELLOW));
         return true;
@@ -722,6 +729,10 @@ public class ConquestManager extends SavedData {
         lastWinner = winner;
         resultElapsedSeconds = 0;
         setDirty();
+
+        if (mode != GameMode.CONQUEST) {
+            SquadManager.get(server).setFeatureEnabled(SquadFeature.REVIVE, true);
+        }
 
         Component title;
         Component subtitle = Component.translatable("conquest.title.result_tickets", ticketsA, ticketsB);
