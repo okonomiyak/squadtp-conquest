@@ -24,6 +24,7 @@ public class SquadTpConquest {
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
         MinecraftForge.EVENT_BUS.register(ServerEvents.class);
         MinecraftForge.EVENT_BUS.register(ScoreEvents.class);
+        MinecraftForge.EVENT_BUS.register(TerrainDestructionEvents.class);
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {

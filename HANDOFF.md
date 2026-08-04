@@ -74,6 +74,14 @@
   `radiusBox`が未生成でクラッシュしうる問題を避けるため)。`mouseScrolled`のヒット判定も
   `activeTab`でゲートし、非表示タブの古い行位置を誤ってスクロール対象にしないようにした。
   ネットワーク変更なし(クライアント側のみ)
+- **BF風の地形破壊**(`ExplosionEvent.Detonate`をフック、新規実装): ラウンド`IN_PROGRESS`中の
+  爆発(バニラTNT/クリーパー/他Mod由来も含む)を、単純な球形クレーターに差し替える。爆心付近は
+  air・外周(`craterRubbleRingRatio`)は`craterRubbleBlock`。アイテムドロップなし。
+  `maxBlocksPerExplosion`で処理上限を設け、超過分はバニラの通常処理に委ねる(負荷対策)。
+  破壊禁止指定はブロック種類(`indestructibleBlocks`config)とエリア(`/conquest protectzone
+  add|remove|list`、`conquest/ProtectZone.java`、自陣ゾーンと同じ2点AABBだが複数登録可)の
+  両対応。破壊は`/conquest start`のたびに元へ復元(`ConquestManager.destroyedBlocks`、
+  NBT非永続化の一時状態)。構造崩壊・素材別ガレキ出し分けは未実装(第1段階の意図的なスコープ外)
 - スコアボード(右Alt)2ページ目: 累計スコア+K/D比率
 - HUD/GUIのチーム色を自分/敵視点から**チーム固定色**(A=青・B=赤)に変更
 - 管理用GUI(Lキー)・BF風HUD(常時表示)・adjustable config(`/conquest config set`)
@@ -124,6 +132,13 @@
   「状況」タブに戻るか(タブ自体が消えるため)
 - 各タブでのスクロール(状況タブの拠点/分隊一覧、セクタータブのセクター一覧)が
   他タブの位置情報と混線しないか
+
+**地形破壊も実プレイ未検証(ビルド成功のみ)。** 次回確認が必要な点:
+- TNT起爆で実際にクレーター(air+外周ガレキ)ができるか、見た目のバランス(`craterRubbleRingRatio`)
+- `indestructibleBlocks`指定ブロック・`/conquest protectzone`登録エリア内が実際に無傷か
+- `/conquest start`で前ラウンドの破壊が確実に復元されるか(サーバーが1つだけの単純ケースでまず確認)
+- `maxBlocksPerExplosion`超過時(大量TNT同時起爆等)にラグ・クラッシュしないか
+- 自陣ゾーンと同じワイヤーフレームパーティクルで破壊禁止ゾーンが視認できるか
 
 ## 環境の罠(再発防止・恒久ルール)
 

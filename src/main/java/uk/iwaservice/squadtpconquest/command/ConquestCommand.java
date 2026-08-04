@@ -24,6 +24,7 @@ import uk.iwaservice.squadtpconquest.conquest.CapturePoint;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.MapPreset;
+import uk.iwaservice.squadtpconquest.conquest.ProtectZone;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.conquest.Sector;
 import uk.iwaservice.squadtpconquest.conquest.Team;
@@ -105,6 +106,11 @@ public final class ConquestCommand {
             (ctx, builder) -> SharedSuggestionProvider.suggest(
                     ConquestManager.get(ctx.getSource().getServer()).getPresetNames(), builder);
 
+    private static final com.mojang.brigadier.suggestion.SuggestionProvider<CommandSourceStack> PROTECT_ZONE_NAMES =
+            (ctx, builder) -> SharedSuggestionProvider.suggest(
+                    ConquestManager.get(ctx.getSource().getServer()).getProtectZones().stream()
+                            .map(ProtectZone::getName), builder);
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("conquest")
                 .then(Commands.literal("team")
@@ -167,6 +173,18 @@ public final class ConquestCommand {
                                         .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
                                         .executes(ConquestCommand::removeZone)))
                         .then(Commands.literal("list").executes(ConquestCommand::zoneList)))
+                .then(Commands.literal("protectzone")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("add")
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .then(Commands.argument("pos1", BlockPosArgument.blockPos())
+                                                .then(Commands.argument("pos2", BlockPosArgument.blockPos())
+                                                        .executes(ConquestCommand::protectZoneAdd)))))
+                        .then(Commands.literal("remove")
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .suggests(PROTECT_ZONE_NAMES)
+                                        .executes(ConquestCommand::protectZoneRemove)))
+                        .then(Commands.literal("list").executes(ConquestCommand::protectZoneList)))
                 .then(Commands.literal("mode")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -514,6 +532,42 @@ public final class ConquestCommand {
         }
         if (!any) {
             return fail(ctx, Component.translatable("conquest.msg.no_zone_any"));
+        }
+        MutableComponent result = msg;
+        ctx.getSource().sendSuccess(() -> result, false);
+        return 1;
+    }
+
+    private static int protectZoneAdd(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        String name = StringArgumentType.getString(ctx, "name");
+        BlockPos pos1 = BlockPosArgument.getBlockPos(ctx, "pos1");
+        BlockPos pos2 = BlockPosArgument.getBlockPos(ctx, "pos2");
+        ConquestManager.get(ctx.getSource().getServer())
+                .addProtectZone(name, ctx.getSource().getLevel(), pos1, pos2);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.protectzone_added", name,
+                        pos1.toShortString(), pos2.toShortString()), true);
+        return 1;
+    }
+
+    private static int protectZoneRemove(CommandContext<CommandSourceStack> ctx) {
+        String name = StringArgumentType.getString(ctx, "name");
+        if (!ConquestManager.get(ctx.getSource().getServer()).removeProtectZone(name)) {
+            return fail(ctx, Component.translatable("conquest.msg.protectzone_not_found", name));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.protectzone_removed", name), true);
+        return 1;
+    }
+
+    private static int protectZoneList(CommandContext<CommandSourceStack> ctx) {
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        if (manager.getProtectZones().isEmpty()) {
+            return fail(ctx, Component.translatable("conquest.msg.no_protectzone"));
+        }
+        MutableComponent msg = Component.translatable("conquest.msg.protectzone_list_header").withStyle(ChatFormatting.GOLD);
+        for (ProtectZone zone : manager.getProtectZones()) {
+            msg.append("\n").append(Component.translatable("conquest.status.protectzone",
+                    zone.getName(), zone.getMin().toShortString(), zone.getMax().toShortString()));
         }
         MutableComponent result = msg;
         ctx.getSource().sendSuccess(() -> result, false);

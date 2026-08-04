@@ -34,6 +34,9 @@ Minecraft 1.20.1 / Forge 47.x 向けの、Battlefieldの「コンクエスト」
 | `/conquest zone corner1 set <a\|b>` / `/conquest zone corner2 set <a\|b>` | 実行者の足元をそのチームのゾーンの角1/角2に設定(両方設定されて初めてゾーンが有効になる) | OP |
 | `/conquest zone remove <a\|b>` | 自陣ゾーンを削除 | OP |
 | `/conquest zone list` | 設定済みの自陣ゾーン一覧(角1〜角2の座標)を表示 | - |
+| `/conquest protectzone add <名前> <x1 y1 z1> <x2 y2 z2>` | 2点の座標を対角線とする直方体を**破壊禁止ゾーン**として登録(複数登録可)。ラウンド中の地形破壊(下記)がこの範囲内のブロックを一切変更しない | OP |
+| `/conquest protectzone remove <名前>` | 破壊禁止ゾーンを削除 | OP |
+| `/conquest protectzone list` | 登録済みの破壊禁止ゾーン一覧を表示 | - |
 | `/conquest start` | ラウンド開始。両チームに最低1人ずつオンラインでいることが条件(コンクエストモードはさらに拠点が1つ以上必要)。`startCountdownSeconds`秒のカウントダウン後に実際に開始 | OP |
 | `/conquest stop` | 強制終了、またはカウントダウン中の開始をキャンセル。勝敗をつけずに待機状態(WAITING)へ | OP |
 | `/conquest reset` | 結果表示中(ENDED)を手動で待機状態(WAITING)へ戻す。`autoResetAfterResult`が有効なら自動でも戻る | OP |
@@ -135,6 +138,30 @@ Minecraft 1.20.1 / Forge 47.x 向けの、Battlefieldの「コンクエスト」
 常時可視化される(ラウンド状態に関わらず表示)。自チームプレイヤー・管理人チーム・未参加者は
 対象外。管理用GUI(Lキー)からも角1/角2の設定・削除ができる(A/Bそれぞれ)。
 
+## 地形破壊(BF風クレーター)
+
+ラウンドが`IN_PROGRESS`の間に起きた爆発(バニラTNT・クリーパー・他Mod由来のものも含む、
+`ExplosionEvent.Detonate`をフックして拾う)を、バニラの単純なブロック除去ではなく
+BF風のクレーターに差し替える。爆心に近いブロックはair、外周(`craterRubbleRingRatio`、
+既定で影響ブロックのうち爆心から遠い側25%)は`craterRubbleBlock`(既定`minecraft:coarse_dirt`)
+に変わる。アイテムドロップは発生しない。1回の爆発で処理するブロック数は`maxBlocksPerExplosion`
+(既定200、爆心に近い順)で頭打ちにし、それを超えた分はバニラの通常処理に委ねる(サーバー負荷対策)。
+
+**破壊されないブロックの指定は2通り**:
+- `indestructibleBlocks`(config): ブロックの種類(レジストリ名)で常に除外。既定で
+  `minecraft:bedrock`・チェスト類・`squadtpconquest:conquest_flag`などを含む
+- `/conquest protectzone add|remove|list`: 2点座標の直方体エリアを破壊禁止として登録(自陣ゾーンと
+  同じ2点指定方式、複数登録可)。管理用GUIには未対応(コマンドのみ)。自陣ゾーンと同じワイヤーフレーム
+  パーティクル(白系)で常時可視化される
+
+**破壊された地形は`/conquest start`のたびに元へ復元される**(BFのラウンドリセットと同じ)。
+`/conquest stop`では復元しない(停止直後に被害状況を確認したい場合を想定)。破壊記録自体は
+ラウンドスコープの一時状態でありNBTに永続化されない(サーバー再起動を挟むと復元されない点に注意)。
+
+第1段階の実装のため、構造崩壊(支持を失ったブロックの落下)や壊す素材ごとのガレキの出し分けは
+行わない(単純な球形クレーターのみ)。`terrainDestructionEnabled`をfalseにすると機能全体を無効化し
+バニラの爆発挙動に戻せる。
+
 ## ラウンドの流れ
 
 状態は `WAITING`(待機中) → `STARTING`(開始カウントダウン中) → `IN_PROGRESS`(進行中) →
@@ -219,8 +246,18 @@ Minecraft 1.20.1 / Forge 47.x 向けの、Battlefieldの「コンクエスト」
 - `sectorTimeLimitSeconds`(既定300) — セクター1つあたりの制限時間の既定値(`/conquest sector timelimit set`で個別上書き可)
 - `sectorTimeExtensionOnCapture`(既定120) — 拠点を1つ占領するごとに残り時間へ加算される秒数
 
+`terrainDestruction`セクション:
+- `terrainDestructionEnabled`(既定true) — falseで機能全体を無効化しバニラの爆発挙動に戻す
+- `indestructibleBlocks`(既定`bedrock`・チェスト類・`squadtpconquest:conquest_flag`等) — ブロック種類による破壊禁止リスト(レジストリ名、`modid:block_id`形式)
+- `craterRubbleBlock`(既定`minecraft:coarse_dirt`) — クレーター外周に置き換わるブロック
+- `craterRubbleRingRatio`(既定0.25) — 影響ブロックのうち外周(ガレキ)になる割合。残りはair
+- `maxBlocksPerExplosion`(既定200) — 1回の爆発で処理する上限(爆心に近い順)。超過分はバニラ処理に委ねる
+
 これらは`/conquest config set <key> <value>`でゲーム内から再起動なしに変更できる
-(TOMLにも自動で永続化される)。
+(TOMLにも自動で永続化される)。ただし対応しているのは元々の`conquest`/`scoreboard`セクションの
+数値・真偽値項目のみで、`breakthrough`・`homeZoneKillSeconds`・`terrainDestruction`セクションの
+項目(リスト・文字列型を含む)は`world/serverconfig/squadtpconquest-server.toml`の直接編集が必要
+(既存の制約で、今回追加した項目も同様の扱いにしている)。
 
 キーバインドのデフォルト(Lキー・右Altキー)はクライアント側の設定でありサーバーconfigの対象外。
 

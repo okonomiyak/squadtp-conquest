@@ -2,6 +2,8 @@ package uk.iwaservice.squadtpconquest;
 
 import net.minecraftforge.common.ForgeConfigSpec;
 
+import java.util.List;
+
 public final class Config {
     public static final ForgeConfigSpec SPEC;
 
@@ -27,6 +29,12 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue BT_RESPAWN_WAVE_INTERVAL_SECONDS;
     public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_LIMIT_SECONDS;
     public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_EXTENSION_ON_CAPTURE;
+
+    public static final ForgeConfigSpec.BooleanValue TERRAIN_DESTRUCTION_ENABLED;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> INDESTRUCTIBLE_BLOCKS;
+    public static final ForgeConfigSpec.ConfigValue<String> CRATER_RUBBLE_BLOCK;
+    public static final ForgeConfigSpec.DoubleValue CRATER_RUBBLE_RING_RATIO;
+    public static final ForgeConfigSpec.IntValue MAX_BLOCKS_PER_EXPLOSION;
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
@@ -111,6 +119,36 @@ public final class Config {
                 .comment("Seconds added to the active sector's remaining time whenever the attacker captures",
                         "one of its capture points (not just on clearing the whole sector).")
                 .defineInRange("sectorTimeExtensionOnCapture", 120, 0, 3600);
+        b.pop();
+
+        b.push("terrainDestruction");
+        TERRAIN_DESTRUCTION_ENABLED = b
+                .comment("If true, explosions (TNT, creepers, and any other mod's explosions) that happen while",
+                        "a round is IN_PROGRESS carve a crater instead of vanilla's block removal, and the",
+                        "damage is restored the next time /conquest start runs.")
+                .define("terrainDestructionEnabled", true);
+        INDESTRUCTIBLE_BLOCKS = b
+                .comment("Block registry names that are never destroyed by conquest terrain destruction,",
+                        "regardless of blast resistance. Format: \"modid:block_id\".")
+                .defineList("indestructibleBlocks",
+                        List.of("minecraft:bedrock", "minecraft:chest", "minecraft:trapped_chest",
+                                "minecraft:barrel", "minecraft:end_portal_frame", "squadtpconquest:conquest_flag"),
+                        o -> o instanceof String);
+        CRATER_RUBBLE_BLOCK = b
+                .comment("Block placed in the outer ring of a crater (see craterRubbleRingRatio).",
+                        "Format: \"modid:block_id\".")
+                .define("craterRubbleBlock", "minecraft:coarse_dirt");
+        CRATER_RUBBLE_RING_RATIO = b
+                .comment("Fraction (0.0-1.0) of an explosion's affected blocks, by distance from the blast center,",
+                        "that become craterRubbleBlock instead of air. 0.25 means the outer 25% (by distance) is",
+                        "rubble and the inner 75% is air.")
+                .defineInRange("craterRubbleRingRatio", 0.25, 0.0, 1.0);
+        MAX_BLOCKS_PER_EXPLOSION = b
+                .comment("Safety cap: at most this many of an explosion's affected blocks (closest to the blast",
+                        "center first) are turned into crater/rubble. Any remainder is left to vanilla's default",
+                        "explosion handling instead of being skipped, so very large explosions degrade gracefully",
+                        "rather than lagging the server.")
+                .defineInRange("maxBlocksPerExplosion", 200, 1, 100000);
         b.pop();
 
         SPEC = b.build();

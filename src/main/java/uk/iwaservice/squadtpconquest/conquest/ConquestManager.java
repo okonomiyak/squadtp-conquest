@@ -2,6 +2,7 @@ package uk.iwaservice.squadtpconquest.conquest;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -18,6 +19,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
@@ -58,6 +60,8 @@ public class ConquestManager extends SavedData {
     private final LinkedHashMap<String, CapturePoint> points = new LinkedHashMap<>();
     /** Named, reusable map layouts (points/spawns/mode), keyed by name. */
     private final LinkedHashMap<String, MapPreset> presets = new LinkedHashMap<>();
+    /** Named boxes in which terrain destruction never modifies blocks; any number may exist. */
+    private final LinkedHashMap<String, ProtectZone> protectZones = new LinkedHashMap<>();
     /** Player UUID -> assigned team (players absent from the map are NEUTRAL). */
     private final Map<UUID, Team> playerTeams = new HashMap<>();
     private int ticketsA;
@@ -101,6 +105,14 @@ public class ConquestManager extends SavedData {
     private BlockPos zoneBPos2;
     /** Transient: continuous seconds each intruder has spent inside the enemy's home zone. */
     private final Map<UUID, Integer> zoneIntrusionSeconds = new HashMap<>();
+
+    /**
+     * Transient: original state of every block terrain destruction has modified this round,
+     * keyed by its first-seen state (repeat explosions at the same spot don't overwrite it).
+     * Restored and cleared at the start of the next round rather than persisted, matching
+     * pendingAttackerRespawns/trackedDowned's round-scoped, not-saved-to-NBT treatment.
+     */
+    private final Map<GlobalPos, BlockState> destroyedBlocks = new LinkedHashMap<>();
 
     /** Transient: seconds since the last ticket bleed. */
     private int bleedCounter;
@@ -760,6 +772,63 @@ public class ConquestManager extends SavedData {
         }
     }
 
+    // --- terrain destruction: protect zones and per-round restoration ---
+
+    public Collection<ProtectZone> getProtectZones() {
+        return protectZones.values();
+    }
+
+    /** Adds/replaces a named protect zone. */
+    public void addProtectZone(String name, ServerLevel level, BlockPos pos1, BlockPos pos2) {
+        protectZones.put(name, new ProtectZone(name, level.dimension(), pos1, pos2));
+        setDirty();
+    }
+
+    /** Removes a protect zone. False if no zone has that name. */
+    public boolean removeProtectZone(String name) {
+        if (protectZones.remove(name) == null) {
+            return false;
+        }
+        setDirty();
+        return true;
+    }
+
+    /** True if any protect zone in {@code dim} contains {@code pos} — terrain destruction must skip it. */
+    public boolean isProtected(ResourceKey<Level> dim, BlockPos pos) {
+        for (ProtectZone zone : protectZones.values()) {
+            if (zone.getDim().equals(dim) && containsPos(zone.getMin(), zone.getMax(), pos)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean containsPos(BlockPos min, BlockPos max, BlockPos pos) {
+        return pos.getX() >= min.getX() && pos.getX() <= max.getX()
+                && pos.getY() >= min.getY() && pos.getY() <= max.getY()
+                && pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();
+    }
+
+    /**
+     * Records a block's pre-destruction state the first time terrain destruction touches it this
+     * round; later explosions at the same position leave the recorded original alone, so
+     * restoration always recovers the real pre-round terrain rather than whatever a previous
+     * explosion left behind.
+     */
+    public void recordDestroyedBlock(ResourceKey<Level> dim, BlockPos pos, BlockState original) {
+        destroyedBlocks.putIfAbsent(GlobalPos.of(dim, pos), original);
+    }
+
+    /** Puts back every block terrain destruction has modified since the last round start. */
+    private void restoreDestroyedBlocks(MinecraftServer server) {
+        for (Map.Entry<GlobalPos, BlockState> entry : destroyedBlocks.entrySet()) {
+            ServerLevel level = server.getLevel(entry.getKey().dimension());
+            if (level != null) {
+                level.setBlock(entry.getKey().pos(), entry.getValue(), 3);
+            }
+        }
+    }
+
     // --- map presets (named, reusable point/spawn/mode layouts) ---
 
     public Collection<String> getPresetNames() {
@@ -856,6 +925,9 @@ public class ConquestManager extends SavedData {
         if (onlineCount(server, Team.B) == 0) {
             return StartResult.TEAM_B_EMPTY;
         }
+
+        restoreDestroyedBlocks(server);
+        destroyedBlocks.clear();
 
         if (mode == GameMode.CONQUEST || mode == GameMode.BREAKTHROUGH) {
             for (CapturePoint point : points.values()) {
@@ -1486,6 +1558,11 @@ public class ConquestManager extends SavedData {
             Sector sector = Sector.load(sectorList.getCompound(i));
             manager.sectors.put(sector.getNumber(), sector);
         }
+        ListTag protectZoneList = tag.getList("ProtectZones", Tag.TAG_COMPOUND);
+        for (int i = 0; i < protectZoneList.size(); i++) {
+            ProtectZone zone = ProtectZone.load(protectZoneList.getCompound(i));
+            manager.protectZones.put(zone.getName(), zone);
+        }
         manager.attackerTeam = tag.contains("AttackerTeam") ? Team.valueOf(tag.getString("AttackerTeam")) : Team.A;
         manager.activeSectorNumber = tag.getInt("ActiveSectorNumber");
         manager.attackerTickets = tag.getInt("AttackerTickets");
@@ -1580,6 +1657,11 @@ public class ConquestManager extends SavedData {
             sectorList.add(sector.save());
         }
         tag.put("Sectors", sectorList);
+        ListTag protectZoneList = new ListTag();
+        for (ProtectZone zone : protectZones.values()) {
+            protectZoneList.add(zone.save());
+        }
+        tag.put("ProtectZones", protectZoneList);
         tag.putString("AttackerTeam", attackerTeam.name());
         tag.putInt("ActiveSectorNumber", activeSectorNumber);
         tag.putInt("AttackerTickets", attackerTickets);

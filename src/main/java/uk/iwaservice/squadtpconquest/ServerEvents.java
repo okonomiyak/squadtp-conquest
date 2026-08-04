@@ -15,6 +15,7 @@ import uk.iwaservice.squadtpconquest.command.ConquestCommand;
 import uk.iwaservice.squadtpconquest.conquest.CapturePoint;
 import uk.iwaservice.squadtpconquest.conquest.CaptureZoneVisualizer;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
+import uk.iwaservice.squadtpconquest.conquest.ProtectZone;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 
 /** Forge-bus event handlers: command registration, respawn ticket cost and the game loop. */
@@ -66,6 +67,12 @@ public final class ServerEvents {
                     if (level != null) {
                         CaptureZoneVisualizer.renderBox(level, min, max, team);
                     }
+                }
+            }
+            for (ProtectZone zone : manager.getProtectZones()) {
+                ServerLevel level = server.getLevel(zone.getDim());
+                if (level != null) {
+                    CaptureZoneVisualizer.renderBox(level, zone.getMin(), zone.getMax(), Team.NEUTRAL);
                 }
             }
         }
