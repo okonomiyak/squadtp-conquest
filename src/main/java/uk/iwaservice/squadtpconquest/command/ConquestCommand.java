@@ -28,6 +28,7 @@ import uk.iwaservice.squadtpconquest.conquest.ProtectZone;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.conquest.Sector;
 import uk.iwaservice.squadtpconquest.conquest.Team;
+import uk.iwaservice.squadtpconquest.conquest.ZoneSelection;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -155,6 +156,7 @@ public final class ConquestCommand {
                         .then(Commands.literal("set")
                                 .then(Commands.argument("team", StringArgumentType.word())
                                         .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
+                                        .executes(ConquestCommand::setZoneFromWand)
                                         .then(Commands.argument("pos1", BlockPosArgument.blockPos())
                                                 .then(Commands.argument("pos2", BlockPosArgument.blockPos())
                                                         .executes(ConquestCommand::setZone)))))
@@ -177,6 +179,7 @@ public final class ConquestCommand {
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("add")
                                 .then(Commands.argument("name", StringArgumentType.word())
+                                        .executes(ConquestCommand::protectZoneAddFromWand)
                                         .then(Commands.argument("pos1", BlockPosArgument.blockPos())
                                                 .then(Commands.argument("pos2", BlockPosArgument.blockPos())
                                                         .executes(ConquestCommand::protectZoneAdd)))))
@@ -492,6 +495,25 @@ public final class ConquestCommand {
         return 1;
     }
 
+    /** {@code /conquest zone set <a|b>} with no coordinates: uses the sender's zone wand selection instead. */
+    private static int setZoneFromWand(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        Team team = Team.byKey(StringArgumentType.getString(ctx, "team"));
+        if (team == null) {
+            return fail(ctx, Component.translatable("conquest.msg.unknown_team"));
+        }
+        BlockPos[] selection = ZoneSelection.get(player);
+        if (selection == null) {
+            return fail(ctx, Component.translatable("conquest.msg.wand_no_selection"));
+        }
+        ConquestManager.get(ctx.getSource().getServer())
+                .setZone(player.serverLevel(), team, selection[0], selection[1]);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.zone_set", team.display(),
+                        selection[0].toShortString(), selection[1].toShortString()), true);
+        return 1;
+    }
+
     private static int setZoneCorner(CommandContext<CommandSourceStack> ctx, boolean corner1) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
         Team team = Team.byKey(StringArgumentType.getString(ctx, "team"));
@@ -547,6 +569,22 @@ public final class ConquestCommand {
         ctx.getSource().sendSuccess(() ->
                 Component.translatable("conquest.msg.protectzone_added", name,
                         pos1.toShortString(), pos2.toShortString()), true);
+        return 1;
+    }
+
+    /** {@code /conquest protectzone add <name>} with no coordinates: uses the sender's zone wand selection instead. */
+    private static int protectZoneAddFromWand(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        String name = StringArgumentType.getString(ctx, "name");
+        BlockPos[] selection = ZoneSelection.get(player);
+        if (selection == null) {
+            return fail(ctx, Component.translatable("conquest.msg.wand_no_selection"));
+        }
+        ConquestManager.get(ctx.getSource().getServer())
+                .addProtectZone(name, player.serverLevel(), selection[0], selection[1]);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.protectzone_added", name,
+                        selection[0].toShortString(), selection[1].toShortString()), true);
         return 1;
     }
 

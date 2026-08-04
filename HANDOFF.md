@@ -82,6 +82,12 @@
   add|remove|list`、`conquest/ProtectZone.java`、自陣ゾーンと同じ2点AABBだが複数登録可)の
   両対応。破壊は`/conquest start`のたびに元へ復元(`ConquestManager.destroyedBlocks`、
   NBT非永続化の一時状態)。構造崩壊・素材別ガレキ出し分けは未実装(第1段階の意図的なスコープ外)
+- **ゾーンワンド**(`squadtpconquest:zone_wand`、新規実装): 左クリックで角1・右クリックで角2を
+  記録する選択アイテム(WorldEdit/Createのスキーマティック&クイル方式)。選択はプレイヤーごとの
+  サーバー側一時状態(`conquest/ZoneSelection.java`、NBT非永続化)。`/conquest zone set <a|b>`・
+  `/conquest protectzone add <名前>`を座標なしで実行すると自動的にこの選択を使う(既存の座標指定版
+  はそのまま残っている)。左クリックの横取りは新規`ZoneWandEvents.java`
+  (`PlayerInteractEvent.LeftClickBlock`をキャンセル)、右クリックは`item/ZoneWandItem#useOn`
 - スコアボード(右Alt)2ページ目: 累計スコア+K/D比率
 - HUD/GUIのチーム色を自分/敵視点から**チーム固定色**(A=青・B=赤)に変更
 - 管理用GUI(Lキー)・BF風HUD(常時表示)・adjustable config(`/conquest config set`)
@@ -139,6 +145,13 @@
 - `/conquest start`で前ラウンドの破壊が確実に復元されるか(サーバーが1つだけの単純ケースでまず確認)
 - `maxBlocksPerExplosion`超過時(大量TNT同時起爆等)にラグ・クラッシュしないか
 - 自陣ゾーンと同じワイヤーフレームパーティクルで破壊禁止ゾーンが視認できるか
+
+**ゾーンワンドも実プレイ未検証(ビルド成功のみ)。** 次回確認が必要な点:
+- 左クリックが本当にブロック破壊をキャンセルしつつ角1を記録するか(サバイバルモードで確認)
+- 右クリックでの角2記録が、対象ブロックの設置/開閉等バニラの右クリック動作を邪魔しないか
+- `/conquest zone set <a|b>`・`/conquest protectzone add <名前>`の座標省略版が選択範囲を正しく使うか
+- ディメンションをまたいで角を設定した場合に選択がリセットされる(意図通り)か
+- アイテムのモデル表示(`models/item/zone_wand.json`、`minecraft:item/blaze_rod`を仮テクスチャ流用)
 
 ## 環境の罠(再発防止・恒久ルール)
 

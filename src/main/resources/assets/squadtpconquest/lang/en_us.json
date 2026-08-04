@@ -42,6 +42,9 @@
   "conquest.msg.protectzone_removed": "Protect zone %s removed",
   "conquest.msg.no_protectzone": "No protect zones set (/conquest protectzone add)",
   "conquest.msg.protectzone_list_header": "=== Protect Zones ===",
+  "conquest.msg.wand_corner1_set": "Corner 1 set at %s, %s, %s",
+  "conquest.msg.wand_corner2_set": "Corner 2 set at %s, %s, %s",
+  "conquest.msg.wand_no_selection": "No zone wand selection (left-click a block for corner 1, right-click for corner 2)",
   "conquest.msg.no_point": "No capture point set (/conquest point set)",
   "conquest.msg.point_not_found": "No capture point named %s",
   "conquest.msg.point_removed": "Capture point %s removed",
@@ -136,6 +139,7 @@
   "conquest.gui.squad_section": "Your Squad",
 
   "block.squadtpconquest.conquest_flag": "Conquest Flag",
+  "item.squadtpconquest.zone_wand": "Zone Wand",
 
   "key.categories.squadtpconquest": "SquadTP Conquest",
   "key.squadtpconquest.open_conquest_screen": "Open Conquest Screen",

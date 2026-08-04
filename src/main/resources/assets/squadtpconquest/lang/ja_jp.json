@@ -42,6 +42,9 @@
   "conquest.msg.protectzone_removed": "破壊禁止ゾーン%sを削除した",
   "conquest.msg.no_protectzone": "破壊禁止ゾーンが未設定です (/conquest protectzone add)",
   "conquest.msg.protectzone_list_header": "=== 破壊禁止ゾーン一覧 ===",
+  "conquest.msg.wand_corner1_set": "角1を %s, %s, %s に設定した",
+  "conquest.msg.wand_corner2_set": "角2を %s, %s, %s に設定した",
+  "conquest.msg.wand_no_selection": "ゾーンワンドで範囲選択されていません(左クリックで角1、右クリックで角2)",
   "conquest.msg.no_point": "拠点が未設置です (/conquest point set)",
   "conquest.msg.point_not_found": "拠点\"%s\"は存在しません",
   "conquest.msg.point_removed": "拠点%sを削除した",
@@ -136,6 +139,7 @@
   "conquest.gui.squad_section": "所属分隊",
 
   "block.squadtpconquest.conquest_flag": "コンクエストフラッグ",
+  "item.squadtpconquest.zone_wand": "ゾーンワンド",
 
   "key.categories.squadtpconquest": "SquadTP Conquest",
   "key.squadtpconquest.open_conquest_screen": "コンクエスト画面を開く",
