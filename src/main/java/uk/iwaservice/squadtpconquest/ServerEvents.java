@@ -75,6 +75,15 @@ public final class ServerEvents {
                     CaptureZoneVisualizer.renderBox(level, zone.getMin(), zone.getMax(), Team.NEUTRAL);
                 }
             }
+            ResourceKey<Level> boundaryDim = manager.getBoundaryDim();
+            BlockPos boundaryMin = manager.getBoundaryMin();
+            BlockPos boundaryMax = manager.getBoundaryMax();
+            if (boundaryDim != null && boundaryMin != null && boundaryMax != null) {
+                ServerLevel level = server.getLevel(boundaryDim);
+                if (level != null) {
+                    CaptureZoneVisualizer.renderBox(level, boundaryMin, boundaryMax, Team.NEUTRAL);
+                }
+            }
         }
     }
 

@@ -188,6 +188,19 @@ public final class ConquestCommand {
                                         .suggests(PROTECT_ZONE_NAMES)
                                         .executes(ConquestCommand::protectZoneRemove)))
                         .then(Commands.literal("list").executes(ConquestCommand::protectZoneList)))
+                .then(Commands.literal("boundary")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("set")
+                                .executes(ConquestCommand::setBoundaryFromWand)
+                                .then(Commands.argument("pos1", BlockPosArgument.blockPos())
+                                        .then(Commands.argument("pos2", BlockPosArgument.blockPos())
+                                                .executes(ConquestCommand::setBoundary))))
+                        .then(Commands.literal("corner1")
+                                .then(Commands.literal("set").executes(ctx -> setBoundaryCorner(ctx, true))))
+                        .then(Commands.literal("corner2")
+                                .then(Commands.literal("set").executes(ctx -> setBoundaryCorner(ctx, false))))
+                        .then(Commands.literal("remove").executes(ConquestCommand::removeBoundary))
+                        .then(Commands.literal("list").executes(ConquestCommand::boundaryList)))
                 .then(Commands.literal("mode")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -557,6 +570,61 @@ public final class ConquestCommand {
         }
         MutableComponent result = msg;
         ctx.getSource().sendSuccess(() -> result, false);
+        return 1;
+    }
+
+    private static int setBoundary(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        BlockPos pos1 = BlockPosArgument.getBlockPos(ctx, "pos1");
+        BlockPos pos2 = BlockPosArgument.getBlockPos(ctx, "pos2");
+        ConquestManager.get(ctx.getSource().getServer())
+                .setBoundary(ctx.getSource().getLevel(), pos1, pos2);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.boundary_set",
+                        pos1.toShortString(), pos2.toShortString()), true);
+        return 1;
+    }
+
+    /** {@code /conquest boundary set} with no coordinates: uses the sender's zone wand selection instead. */
+    private static int setBoundaryFromWand(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        BlockPos[] selection = ZoneSelection.get(player);
+        if (selection == null) {
+            return fail(ctx, Component.translatable("conquest.msg.wand_no_selection"));
+        }
+        ConquestManager.get(ctx.getSource().getServer())
+                .setBoundary(player.serverLevel(), selection[0], selection[1]);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.boundary_set",
+                        selection[0].toShortString(), selection[1].toShortString()), true);
+        return 1;
+    }
+
+    private static int setBoundaryCorner(CommandContext<CommandSourceStack> ctx, boolean corner1) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        ConquestManager.get(ctx.getSource().getServer())
+                .setBoundaryCorner(player.serverLevel(), corner1, player.blockPosition());
+        ctx.getSource().sendSuccess(() -> Component.translatable(
+                corner1 ? "conquest.msg.boundary_corner1_set" : "conquest.msg.boundary_corner2_set"), true);
+        return 1;
+    }
+
+    private static int removeBoundary(CommandContext<CommandSourceStack> ctx) {
+        if (!ConquestManager.get(ctx.getSource().getServer()).removeBoundary()) {
+            return fail(ctx, Component.translatable("conquest.msg.no_boundary"));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.boundary_removed"), true);
+        return 1;
+    }
+
+    private static int boundaryList(CommandContext<CommandSourceStack> ctx) {
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        BlockPos min = manager.getBoundaryMin();
+        BlockPos max = manager.getBoundaryMax();
+        if (min == null || max == null) {
+            return fail(ctx, Component.translatable("conquest.msg.no_boundary"));
+        }
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.status.boundary", min.toShortString(), max.toShortString()), false);
         return 1;
     }
 

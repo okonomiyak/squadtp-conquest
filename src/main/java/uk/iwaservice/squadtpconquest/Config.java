@@ -20,6 +20,7 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue START_COUNTDOWN_SECONDS;
     public static final ForgeConfigSpec.IntValue TDM_KILL_LIMIT;
     public static final ForgeConfigSpec.IntValue HOME_ZONE_KILL_SECONDS;
+    public static final ForgeConfigSpec.IntValue BOUNDARY_KILL_SECONDS;
     public static final ForgeConfigSpec.IntValue ASSIST_WINDOW_SECONDS;
     public static final ForgeConfigSpec.IntValue SCORE_PER_KILL;
     public static final ForgeConfigSpec.IntValue SCORE_PER_ASSIST;
@@ -85,6 +86,12 @@ public final class Config {
                 .comment("Continuous seconds an enemy player may spend inside a team's home zone before being",
                         "executed. Resets to 0 the instant they leave the zone. Applies in every game mode.")
                 .defineInRange("homeZoneKillSeconds", 10, 1, 600);
+        BOUNDARY_KILL_SECONDS = b
+                .comment("Continuous seconds any combatant player may spend outside the battlefield boundary",
+                        "before being executed (BF-style out-of-bounds). Resets to 0 the instant they return",
+                        "inside. Applies in every game mode, only while a round is IN_PROGRESS. No effect if no",
+                        "boundary is set (/conquest boundary set).")
+                .defineInRange("boundaryKillSeconds", 10, 1, 600);
         b.pop();
 
         b.push("scoreboard");

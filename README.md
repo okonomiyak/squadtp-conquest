@@ -37,6 +37,10 @@ Minecraft 1.20.1 / Forge 47.x 向けの、Battlefieldの「コンクエスト」
 | `/conquest protectzone add <名前> [<x1 y1 z1> <x2 y2 z2>]` | 2点の座標を対角線とする直方体を**破壊禁止ゾーン**として登録(複数登録可)。座標省略時はゾーンワンドの選択範囲を使用。ラウンド中の地形破壊(下記)がこの範囲内のブロックを一切変更しない | OP |
 | `/conquest protectzone remove <名前>` | 破壊禁止ゾーンを削除 | OP |
 | `/conquest protectzone list` | 登録済みの破壊禁止ゾーン一覧を表示 | - |
+| `/conquest boundary set [<x1 y1 z1> <x2 y2 z2>]` | 2点の座標を対角線とする直方体を**戦場境界**として設定(チーム別ではなく全体で1つ)。座標省略時はゾーンワンドの選択範囲を使用。生存中の全プレイヤーが対象で、境界の外に`boundaryKillSeconds`秒連続でいると処刑される(自陣ゾーンの内外を逆にした判定)。ラウンド進行中のみ判定 | OP |
+| `/conquest boundary corner1 set` / `/conquest boundary corner2 set` | 実行者の足元を境界の角1/角2に設定(両方設定されて初めて境界が有効になる) | OP |
+| `/conquest boundary remove` | 戦場境界を削除 | OP |
+| `/conquest boundary list` | 設定済みの戦場境界(角1〜角2の座標)を表示 | - |
 | `/conquest start` | ラウンド開始。両チームに最低1人ずつオンラインでいることが条件(コンクエストモードはさらに拠点が1つ以上必要)。`startCountdownSeconds`秒のカウントダウン後に実際に開始 | OP |
 | `/conquest stop` | 強制終了、またはカウントダウン中の開始をキャンセル。勝敗をつけずに待機状態(WAITING)へ | OP |
 | `/conquest reset` | 結果表示中(ENDED)を手動で待機状態(WAITING)へ戻す。`autoResetAfterResult`が有効なら自動でも戻る | OP |
@@ -137,6 +141,16 @@ Minecraft 1.20.1 / Forge 47.x 向けの、Battlefieldの「コンクエスト」
 拠点の円形パーティクルとは別に、直方体の12辺をなぞるワイヤーフレーム状のチーム色パーティクルで
 常時可視化される(ラウンド状態に関わらず表示)。自チームプレイヤー・管理人チーム・未参加者は
 対象外。管理用GUI(Lキー)からも角1/角2の設定・削除ができる(A/Bそれぞれ)。
+
+## 戦場境界(アウトオブバウンズ)
+
+自陣ゾーンと同じ2点AABBの仕組みを、判定を反転させて使う機能。チームA/B別ではなく**マップ全体で1つ**
+だけ設定でき、`/conquest boundary set|corner1 set|corner2 set|remove|list`で管理する(コマンド形は
+自陣ゾーンとほぼ同一、ゾーンワンドでの座標省略設定にも対応)。生存中で参加チーム(A/B)所属の
+プレイヤー全員が対象で、境界の**外**に`boundaryKillSeconds`秒連続でいると処刑される
+(自陣ゾーンが「中にいると処刑」なのに対しこちらは「外にいると処刑」)。ゲームモードを問わず、
+ラウンドが`IN_PROGRESS`の間のみ判定する。可視化は自陣ゾーン・破壊禁止ゾーンと同じワイヤーフレーム
+パーティクル(白系)。境界未設定なら何もしない(既定で無効)。
 
 ## 地形破壊(BF風クレーター)
 
@@ -247,6 +261,7 @@ WorldEditの選択ワンドやCreateの「Schematic and Quill」と同じ操作�
 - `startCountdownSeconds`(既定5) — `/conquest start`後のカウントダウン秒数。0で即開始
 - `tdmKillLimit`(既定50) — TDMモードでチームが勝利するのに必要なキル数。0で無効(制限時間頼み)
 - `homeZoneKillSeconds`(既定10) — 自陣ゾーンに敵が連続滞在できる秒数。超えると処刑される
+- `boundaryKillSeconds`(既定10) — 戦場境界の外に連続でいられる秒数。超えると処刑される(境界未設定なら無効)
 
 `scoreboard`セクション:
 - `assistWindowSeconds`(既定10)
@@ -267,7 +282,7 @@ WorldEditの選択ワンドやCreateの「Schematic and Quill」と同じ操作�
 
 これらは`/conquest config set <key> <value>`でゲーム内から再起動なしに変更できる
 (TOMLにも自動で永続化される)。ただし対応しているのは元々の`conquest`/`scoreboard`セクションの
-数値・真偽値項目のみで、`breakthrough`・`homeZoneKillSeconds`・`terrainDestruction`セクションの
+数値・真偽値項目のみで、`breakthrough`・`homeZoneKillSeconds`・`boundaryKillSeconds`・`terrainDestruction`セクションの
 項目(リスト・文字列型を含む)は`world/serverconfig/squadtpconquest-server.toml`の直接編集が必要
 (既存の制約で、今回追加した項目も同様の扱いにしている)。
 

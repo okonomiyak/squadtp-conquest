@@ -107,6 +107,20 @@ public class ConquestManager extends SavedData {
     private final Map<UUID, Integer> zoneIntrusionSeconds = new HashMap<>();
 
     /**
+     * The battlefield boundary: a single axis-aligned box (not per-team, unlike the home zones)
+     * outside which any combatant player is executed after lingering too long — BF's
+     * out-of-bounds. Both corners must be set (and share boundaryDim) to be active.
+     */
+    @Nullable
+    private ResourceKey<Level> boundaryDim;
+    @Nullable
+    private BlockPos boundaryPos1;
+    @Nullable
+    private BlockPos boundaryPos2;
+    /** Transient: continuous seconds each player has spent outside the boundary. */
+    private final Map<UUID, Integer> boundaryOutsideSeconds = new HashMap<>();
+
+    /**
      * Transient: original state of every block terrain destruction has modified this round,
      * keyed by its first-seen state (repeat explosions at the same spot don't overwrite it).
      * Restored and cleared at the start of the next round rather than persisted, matching
@@ -772,6 +786,117 @@ public class ConquestManager extends SavedData {
         }
     }
 
+    // --- battlefield boundary (single global box; outside it too long = executed) ---
+
+    /** Defines/relocates the battlefield boundary as the box between two corners. */
+    public void setBoundary(ServerLevel level, BlockPos pos1, BlockPos pos2) {
+        boundaryDim = level.dimension();
+        boundaryPos1 = pos1.immutable();
+        boundaryPos2 = pos2.immutable();
+        setDirty();
+    }
+
+    /**
+     * Sets one corner of the boundary to the given position, leaving the other corner untouched
+     * (the boundary only becomes active once both are set). Switching dimension resets both
+     * corners first, same rule as the home zone's corner1/corner2 set.
+     */
+    public void setBoundaryCorner(ServerLevel level, boolean corner1, BlockPos pos) {
+        ResourceKey<Level> dim = level.dimension();
+        if (boundaryDim != null && !boundaryDim.equals(dim)) {
+            boundaryPos1 = null;
+            boundaryPos2 = null;
+        }
+        boundaryDim = dim;
+        if (corner1) {
+            boundaryPos1 = pos.immutable();
+        } else {
+            boundaryPos2 = pos.immutable();
+        }
+        setDirty();
+    }
+
+    /** Clears the battlefield boundary. False if neither corner was set. */
+    public boolean removeBoundary() {
+        if (boundaryPos1 == null && boundaryPos2 == null) {
+            return false;
+        }
+        boundaryDim = null;
+        boundaryPos1 = null;
+        boundaryPos2 = null;
+        setDirty();
+        return true;
+    }
+
+    @Nullable
+    public ResourceKey<Level> getBoundaryDim() {
+        return boundaryDim;
+    }
+
+    /** Lower corner of the boundary's box; null unless both corners are set. */
+    @Nullable
+    public BlockPos getBoundaryMin() {
+        BlockPos[] bounds = boundaryBounds();
+        return bounds == null ? null : bounds[0];
+    }
+
+    /** Upper corner of the boundary's box; null unless both corners are set. */
+    @Nullable
+    public BlockPos getBoundaryMax() {
+        BlockPos[] bounds = boundaryBounds();
+        return bounds == null ? null : bounds[1];
+    }
+
+    @Nullable
+    private BlockPos[] boundaryBounds() {
+        if (boundaryPos1 == null || boundaryPos2 == null) {
+            return null;
+        }
+        BlockPos min = new BlockPos(Math.min(boundaryPos1.getX(), boundaryPos2.getX()), Math.min(boundaryPos1.getY(), boundaryPos2.getY()), Math.min(boundaryPos1.getZ(), boundaryPos2.getZ()));
+        BlockPos max = new BlockPos(Math.max(boundaryPos1.getX(), boundaryPos2.getX()), Math.max(boundaryPos1.getY(), boundaryPos2.getY()), Math.max(boundaryPos1.getZ(), boundaryPos2.getZ()));
+        return new BlockPos[]{min, max};
+    }
+
+    /**
+     * Once per second while a round is running: any combatant player outside the boundary
+     * accrues time (reset to 0 the instant they return inside) and is executed once it reaches
+     * {@code boundaryKillSeconds}, with an action-bar countdown warning every second before
+     * that. No-op if no boundary is set. Independent of game mode.
+     */
+    private void tickBoundary(MinecraftServer server) {
+        BlockPos[] bounds = boundaryBounds();
+        if (boundaryDim == null || bounds == null) {
+            return;
+        }
+        BlockPos min = bounds[0];
+        BlockPos max = bounds[1];
+        int killSeconds = Config.BOUNDARY_KILL_SECONDS.get();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            UUID uuid = player.getUUID();
+            if (!teamOf(uuid).isCombatant() || !player.isAlive()) {
+                boundaryOutsideSeconds.remove(uuid);
+                continue;
+            }
+            boolean inside = player.level().dimension() == boundaryDim
+                    && player.getX() >= min.getX() && player.getX() < max.getX() + 1
+                    && player.getY() >= min.getY() && player.getY() < max.getY() + 1
+                    && player.getZ() >= min.getZ() && player.getZ() < max.getZ() + 1;
+            if (inside) {
+                boundaryOutsideSeconds.remove(uuid);
+                continue;
+            }
+            int seconds = boundaryOutsideSeconds.merge(uuid, 1, Integer::sum);
+            int remaining = killSeconds - seconds;
+            if (remaining <= 0) {
+                boundaryOutsideSeconds.remove(uuid);
+                player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
+            } else {
+                player.displayClientMessage(Component.translatable("conquest.msg.boundary_warning", remaining)
+                        .withStyle(ChatFormatting.RED), true);
+            }
+        }
+    }
+
     // --- terrain destruction: protect zones and per-round restoration ---
 
     public Collection<ProtectZone> getProtectZones() {
@@ -948,6 +1073,7 @@ public class ConquestManager extends SavedData {
         trackedDowned.clear();
         pendingAttackerRespawns.clear();
         zoneIntrusionSeconds.clear();
+        boundaryOutsideSeconds.clear();
         if (mode == GameMode.BREAKTHROUGH) {
             activeSectorNumber = sectors.firstKey();
             attackerTickets = Config.BT_ATTACKER_TICKETS.get();
@@ -1292,6 +1418,7 @@ public class ConquestManager extends SavedData {
 
             checkRevives(server);
             tickHomeZones(server);
+            tickBoundary(server);
 
             // Team-empty check (only if the round is still running after the checks above).
             if (state == RoundState.IN_PROGRESS && Config.END_ON_TEAM_EMPTY.get()) {
@@ -1528,6 +1655,15 @@ public class ConquestManager extends SavedData {
                 manager.zoneBPos2 = NbtUtils.readBlockPos(tag.getCompound("ZoneBPos2"));
             }
         }
+        if (tag.contains("BoundaryDim")) {
+            manager.boundaryDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("BoundaryDim")));
+            if (tag.contains("BoundaryPos1")) {
+                manager.boundaryPos1 = NbtUtils.readBlockPos(tag.getCompound("BoundaryPos1"));
+            }
+            if (tag.contains("BoundaryPos2")) {
+                manager.boundaryPos2 = NbtUtils.readBlockPos(tag.getCompound("BoundaryPos2"));
+            }
+        }
         ListTag scoreList = tag.getList("Scores", Tag.TAG_COMPOUND);
         for (int i = 0; i < scoreList.size(); i++) {
             CompoundTag s = scoreList.getCompound(i);
@@ -1623,6 +1759,15 @@ public class ConquestManager extends SavedData {
             }
             if (zoneBPos2 != null) {
                 tag.put("ZoneBPos2", NbtUtils.writeBlockPos(zoneBPos2));
+            }
+        }
+        if (boundaryDim != null) {
+            tag.putString("BoundaryDim", boundaryDim.location().toString());
+            if (boundaryPos1 != null) {
+                tag.put("BoundaryPos1", NbtUtils.writeBlockPos(boundaryPos1));
+            }
+            if (boundaryPos2 != null) {
+                tag.put("BoundaryPos2", NbtUtils.writeBlockPos(boundaryPos2));
             }
         }
         ListTag scoreList = new ListTag();

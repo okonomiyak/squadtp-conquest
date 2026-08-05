@@ -88,6 +88,11 @@
   `/conquest protectzone add <名前>`を座標なしで実行すると自動的にこの選択を使う(既存の座標指定版
   はそのまま残っている)。左クリックの横取りは新規`ZoneWandEvents.java`
   (`PlayerInteractEvent.LeftClickBlock`をキャンセル)、右クリックは`item/ZoneWandItem#useOn`
+- **戦場境界(アウトオブバウンズ)**(`/conquest boundary set|corner1 set|corner2 set|remove|list`、
+  新規実装): 自陣ゾーンと同じ2点AABB判定を反転させただけ(境界の**外**に`boundaryKillSeconds`秒
+  連続でいると処刑)。チームA/B別ではなくマップ全体で1つ。参加チーム全員が対象、ラウンド
+  `IN_PROGRESS`中のみ判定、ゾーンワンドの座標省略設定にも対応。可視化・NBT永続化・実装パターンは
+  自陣ゾーンをそのまま踏襲(専用クラス無し、`ConquestManager`に直接フィールド保持)
 - スコアボード(右Alt)2ページ目: 累計スコア+K/D比率
 - HUD/GUIのチーム色を自分/敵視点から**チーム固定色**(A=青・B=赤)に変更
 - 管理用GUI(Lキー)・BF風HUD(常時表示)・adjustable config(`/conquest config set`)
@@ -152,6 +157,13 @@
 - `/conquest zone set <a|b>`・`/conquest protectzone add <名前>`の座標省略版が選択範囲を正しく使うか
 - ディメンションをまたいで角を設定した場合に選択がリセットされる(意図通り)か
 - アイテムのモデル表示(`models/item/zone_wand.json`、`minecraft:item/blaze_rod`を仮テクスチャ流用)
+
+**戦場境界も実プレイ未検証(ビルド成功のみ)。** 次回確認が必要な点:
+- 境界の外に出て`boundaryKillSeconds`秒後に実際に処刑されるか、境界内に戻った瞬間カウントが
+  リセットされるか
+- 自陣ゾーンとの重複時(境界の外かつ敵陣の中、等)に処刑理由メッセージが混線しないか
+  (両方とも`player.hurt(genericKill, MAX_VALUE)`を独立に呼ぶだけなので実害は無いはずだが未確認)
+- 管理人チーム・未参加者が対象外になっているか(`teamOf(uuid).isCombatant()`判定)
 
 ## 環境の罠(再発防止・恒久ルール)
 
