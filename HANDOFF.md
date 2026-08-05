@@ -124,6 +124,12 @@
   テレポートが一切無かった(ラウンド開始時の初回移動のみ)ため、`onRespawn`にビーコン用の
   テレポート呼び出しを追加で足した(ビーコン無しの場合の挙動は変更していない)。可視化は拠点と
   同じ円形パーティクル(`CaptureZoneVisualizer.render`)を流用、敵からの破壊要素は無し(第1段階)
+- **コールインのプレイヤー向けGUI**(新規実装): 管理用GUI(Lキー)状況タブに、登録済みコールイン
+  一覧+[使用]ボタン(利用可能スコア不足時は無効化)を追加。表示にはコールイン一覧・利用可能スコアの
+  同期が必要だったため`ConquestSyncPacket`に`callIns`(`CallInStatus`レコード新規)・
+  `availableScore`フィールドを追加し`PROTOCOL_VERSION` 10→11。`ConquestClientData`/
+  `ClientPacketHandler`もあわせて更新。登録(`add`)・削除(`remove`)は引き続きコマンドのみ
+  (GUIは`use`のみ対応)、拠点/分隊一覧と同じ5件超過時スクロール対応
 - スコアボード(右Alt)2ページ目: 累計スコア+K/D比率
 - HUD/GUIのチーム色を自分/敵視点から**チーム固定色**(A=青・B=赤)に変更
 - 管理用GUI(Lキー)・BF風HUD(常時表示)・adjustable config(`/conquest config set`)
@@ -219,6 +225,15 @@
   防衛側の即時リスポーンでも同様か
 - 敵チームのビーコンには一切影響を受けない(自チームのみ対象)ことの確認
 
+**コールインのプレイヤー向けGUIも実プレイ未検証(ビルド成功のみ、`runClient`でのみ確認可能)。**
+次回確認が必要な点:
+- コールイン未登録時は状況タブに何も表示されない(既存レイアウトを崩さない)ことの確認
+- 登録済みコールインの一覧・[使用]ボタンが正しく表示され、利用可能スコア不足時にボタンが
+  グレーアウトすること
+- ボタン押下で実際に`/conquest callin use`相当の効果(アイテム付与・スコア消費)が起きること
+- 5件を超えるコールイン登録時、マウスホイールでスクロールできること
+- PROTOCOL_VERSION不一致(旧クライアントでの接続)が想定通り拒否されること
+
 ## 環境の罠(再発防止・恒久ルール)
 
 - **squadtpバージョン同期**: squadtpは独立にリビルドされ続けるため、squadtp-conquestのビルド前に
@@ -233,7 +248,8 @@
   Writeツール(BOM無し)を使うこと
 - **PROTOCOL_VERSIONの上げ忘れ**: パケットのフィールド追加・変更、または列挙型への新定数挿入
   (既存定数のordinalがズレる場合)は、バイト長が同じでも`NetworkHandler.PROTOCOL_VERSION`を
-  上げること。現在値は`10`(ブレイクスルー実装で`8`→`9`、GUIセクター管理追加で`9`→`10`)。
+  上げること。現在値は`11`(ブレイクスルー実装で`8`→`9`、GUIセクター管理追加で`9`→`10`、
+  コールインGUI追加で`callIns`/`availableScore`フィールドを`ConquestSyncPacket`に追加し`10`→`11`)。
   上げ忘れると新旧クライアント/サーバー混在時に`IndexOutOfBoundsException`で原因不明の切断が起きる
 - **サーバー多重起動**: `runServer`を起動したまま次の`runServer`を叩くとポート競合で失敗する。
   `Get-NetTCPConnection -LocalPort 25565`(または`Get-CimInstance Win32_Process -Filter "Name='java.exe'"`)

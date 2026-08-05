@@ -1755,9 +1755,15 @@ public class ConquestManager extends SavedData {
                     point.getCapturingTeam(), point.getFlagLevel(), occ.contested(),
                     occ.inZone().contains(viewer.getUUID()), pointActive, sectorNumberOf(point.getName())));
         }
+        List<ConquestSyncPacket.CallInStatus> callInStatuses = new ArrayList<>();
+        for (CallIn callIn : callIns.values()) {
+            callInStatuses.add(new ConquestSyncPacket.CallInStatus(
+                    callIn.getName(), callIn.getScoreCost(), callIn.getItemId(), callIn.getCount()));
+        }
         return new ConquestSyncPacket(statuses, ticketsA, ticketsB, isActive(), state, mode,
                 teamOf(viewer.getUUID()), viewer.hasPermissions(2), openScreen,
-                attackerTeam, sectorIndex(), sectorCount(), attackerTickets, respawnWaveSecondsRemaining);
+                attackerTeam, sectorIndex(), sectorCount(), attackerTickets, respawnWaveSecondsRemaining,
+                callInStatuses, availableScore(viewer.getUUID()));
     }
 
     /** Used by the flag block's right-click handler: a fresh snapshot that opens the GUI. */

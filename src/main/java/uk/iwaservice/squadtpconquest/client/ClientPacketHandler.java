@@ -12,7 +12,8 @@ public final class ClientPacketHandler {
         ConquestClientData.apply(msg.points(), msg.ticketsA(), msg.ticketsB(), msg.active(), msg.state(),
                 msg.mode(), msg.yourTeam(), msg.canAdmin(),
                 msg.attackerTeam(), msg.sectorIndex(), msg.sectorCount(),
-                msg.attackerTickets(), msg.respawnWaveSecondsRemaining());
+                msg.attackerTickets(), msg.respawnWaveSecondsRemaining(),
+                msg.callIns(), msg.availableScore());
         if (msg.openScreen()) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null && mc.screen == null) {

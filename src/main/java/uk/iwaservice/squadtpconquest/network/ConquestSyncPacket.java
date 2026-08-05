@@ -1,6 +1,7 @@
 package uk.iwaservice.squadtpconquest.network;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
@@ -22,7 +23,8 @@ public record ConquestSyncPacket(List<PointStatus> points,
                                   int ticketsA, int ticketsB, boolean active, RoundState state, GameMode mode,
                                   Team yourTeam, boolean canAdmin, boolean openScreen,
                                   Team attackerTeam, int sectorIndex, int sectorCount,
-                                  int attackerTickets, int respawnWaveSecondsRemaining) {
+                                  int attackerTickets, int respawnWaveSecondsRemaining,
+                                  List<CallInStatus> callIns, int availableScore) {
 
     /**
      * One capture point as seen by a specific viewer (contested/inZone are per-viewer).
@@ -32,6 +34,9 @@ public record ConquestSyncPacket(List<PointStatus> points,
      */
     public record PointStatus(String name, int radius, Team owner, Team capturingTeam, double flagLevel,
                                boolean contested, boolean inZone, boolean active, int sectorNumber) {}
+
+    /** One registered /conquest callin, for the player-facing GUI list (see availableScore). */
+    public record CallInStatus(String name, int scoreCost, ResourceLocation itemId, int count) {}
 
     public static void encode(ConquestSyncPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.points.size());
@@ -59,6 +64,14 @@ public record ConquestSyncPacket(List<PointStatus> points,
         buf.writeVarInt(msg.sectorCount);
         buf.writeVarInt(msg.attackerTickets);
         buf.writeVarInt(msg.respawnWaveSecondsRemaining);
+        buf.writeVarInt(msg.callIns.size());
+        for (CallInStatus c : msg.callIns) {
+            buf.writeUtf(c.name());
+            buf.writeVarInt(c.scoreCost());
+            buf.writeResourceLocation(c.itemId());
+            buf.writeVarInt(c.count());
+        }
+        buf.writeVarInt(msg.availableScore);
     }
 
     public static ConquestSyncPacket decode(FriendlyByteBuf buf) {
@@ -82,8 +95,15 @@ public record ConquestSyncPacket(List<PointStatus> points,
         int sectorCount = buf.readVarInt();
         int attackerTickets = buf.readVarInt();
         int respawnWaveSecondsRemaining = buf.readVarInt();
+        int callInCount = buf.readVarInt();
+        List<CallInStatus> callIns = new ArrayList<>(callInCount);
+        for (int i = 0; i < callInCount; i++) {
+            callIns.add(new CallInStatus(buf.readUtf(), buf.readVarInt(), buf.readResourceLocation(), buf.readVarInt()));
+        }
+        int availableScore = buf.readVarInt();
         return new ConquestSyncPacket(points, ticketsA, ticketsB, active, state, mode, yourTeam, canAdmin, openScreen,
-                attackerTeam, sectorIndex, sectorCount, attackerTickets, respawnWaveSecondsRemaining);
+                attackerTeam, sectorIndex, sectorCount, attackerTickets, respawnWaveSecondsRemaining,
+                callIns, availableScore);
     }
 
     public static void handle(ConquestSyncPacket msg, java.util.function.Supplier<NetworkEvent.Context> ctx) {

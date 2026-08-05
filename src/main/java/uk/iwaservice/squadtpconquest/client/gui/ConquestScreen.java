@@ -56,6 +56,7 @@ public class ConquestScreen extends Screen {
     private static final int MAX_POINT_ROWS = 5;
     private static final int MAX_SECTOR_ROWS = 5;
     private static final int MAX_SQUAD_ROWS = 5;
+    private static final int MAX_CALLIN_ROWS = 5;
 
     private static final int HEADER_H = 24;
     private static final int PAD = 12;
@@ -86,6 +87,8 @@ public class ConquestScreen extends Screen {
     private int pointRows;
     private int teamY;
     private int squadY;
+    private int callInY;
+    private int callInRows;
 
     // SETUP tab.
     private int adminY;
@@ -101,6 +104,7 @@ public class ConquestScreen extends Screen {
     private int pointScrollOffset;
     private int sectorScrollOffset;
     private int squadScrollOffset;
+    private int callInScrollOffset;
 
     private EditBox radiusBox;
     private EditBox sectorNumberBox;
@@ -205,6 +209,26 @@ public class ConquestScreen extends Screen {
         squadScrollOffset = clamp(squadScrollOffset, 0, Math.max(0, squadTotal - MAX_SQUAD_ROWS));
         int squadRows = SquadClientData.isInSquad() ? Math.min(MAX_SQUAD_ROWS, squadTotal) : 0;
         cursor = squadY + 16 + squadRows * 12 + (squadRows == 0 ? 12 : 0);
+
+        List<ConquestSyncPacket.CallInStatus> callIns = ConquestClientData.getCallIns();
+        if (!callIns.isEmpty()) {
+            cursor += 4;
+            callInY = cursor;
+            cursor += 12;
+            callInScrollOffset = clamp(callInScrollOffset, 0, Math.max(0, callIns.size() - MAX_CALLIN_ROWS));
+            callInRows = Math.min(MAX_CALLIN_ROWS, callIns.size());
+            int availableScore = ConquestClientData.getAvailableScore();
+            for (int row = 0; row < callInRows; row++) {
+                ConquestSyncPacket.CallInStatus callIn = callIns.get(callInScrollOffset + row);
+                Button use = Button.builder(Component.translatable("conquest.gui.callin_use"),
+                        b -> command("conquest callin use " + callIn.name()))
+                        .bounds(panelLeft + panelWidth - PAD - 40, 0, 40, 12).build();
+                use.active = availableScore >= callIn.scoreCost();
+                placeAt(use, cursor + row * 13);
+                addRenderableWidget(use);
+            }
+            cursor += callInRows * 13 + 4;
+        }
 
         return cursor;
     }
@@ -474,6 +498,14 @@ public class ConquestScreen extends Screen {
                     return true;
                 }
             }
+
+            int callInTotal = ConquestClientData.getCallIns().size();
+            int callInBottom = callInY + 14 + Math.max(callInRows, 1) * 13;
+            if (callInTotal > MAX_CALLIN_ROWS && localY >= callInY && localY < callInBottom) {
+                callInScrollOffset = clamp(callInScrollOffset + step, 0, callInTotal - MAX_CALLIN_ROWS);
+                rebuild();
+                return true;
+            }
         } else if (activeTab == Tab.SECTORS) {
             int sectorBottom = sectorY + 12 + Math.max(sectorRows, 1) * 12;
             if (sectorNumbersOrdered.size() > MAX_SECTOR_ROWS && localY >= sectorY && localY < sectorBottom) {
@@ -580,6 +612,26 @@ public class ConquestScreen extends Screen {
                 graphics.drawString(this.font, name, l + PAD + 4, t + squadY + 14 + row * 12, COLOR_TEXT_FAINT);
             }
             drawScrollHint(graphics, r, t + squadY, offset, squadRows, members.size());
+        }
+
+        List<ConquestSyncPacket.CallInStatus> callIns = ConquestClientData.getCallIns();
+        if (!callIns.isEmpty()) {
+            int availableScore = ConquestClientData.getAvailableScore();
+            graphics.drawString(this.font, Component.translatable("conquest.status.available_score", availableScore),
+                    l + PAD, t + callInY, COLOR_TEXT_DIM);
+            // Same live-recompute as the other lists: don't trust the cached callInRows/offset
+            // against a list that may have shrunk since rebuild() (an OP removing a call-in).
+            int rows = Math.min(callInRows, callIns.size());
+            int offset = clamp(callInScrollOffset, 0, Math.max(0, callIns.size() - rows));
+            for (int row = 0; row < rows; row++) {
+                ConquestSyncPacket.CallInStatus callIn = callIns.get(offset + row);
+                MutableComponent line = Component.literal(callIn.name() + "  ").withStyle(ChatFormatting.WHITE)
+                        .append(Component.literal(callIn.scoreCost() + " ").withStyle(ChatFormatting.GRAY))
+                        .append(Component.literal(callIn.count() + "x " + callIn.itemId().getPath())
+                                .withStyle(ChatFormatting.GRAY));
+                graphics.drawString(this.font, line, l + PAD, t + callInY + 14 + row * 13, COLOR_TEXT);
+            }
+            drawScrollHint(graphics, r, t + callInY, offset, rows, callIns.size());
         }
     }
 

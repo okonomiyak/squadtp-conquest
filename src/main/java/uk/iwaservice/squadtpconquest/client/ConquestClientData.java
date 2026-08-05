@@ -27,6 +27,8 @@ public final class ConquestClientData {
     private static int sectorCount;
     private static int attackerTickets;
     private static int respawnWaveSecondsRemaining;
+    private static List<ConquestSyncPacket.CallInStatus> callIns = List.of();
+    private static int availableScore;
     /** Incremented on every update; lets the GUI detect changes cheaply. */
     private static int revision;
 
@@ -34,7 +36,8 @@ public final class ConquestClientData {
                                           int newTicketsA, int newTicketsB, boolean newActive, RoundState newState,
                                           GameMode newMode, Team newYourTeam, boolean newCanAdmin,
                                           Team newAttackerTeam, int newSectorIndex, int newSectorCount,
-                                          int newAttackerTickets, int newRespawnWaveSecondsRemaining) {
+                                          int newAttackerTickets, int newRespawnWaveSecondsRemaining,
+                                          List<ConquestSyncPacket.CallInStatus> newCallIns, int newAvailableScore) {
         points = List.copyOf(newPoints);
         ticketsA = newTicketsA;
         ticketsB = newTicketsB;
@@ -48,6 +51,8 @@ public final class ConquestClientData {
         sectorCount = newSectorCount;
         attackerTickets = newAttackerTickets;
         respawnWaveSecondsRemaining = newRespawnWaveSecondsRemaining;
+        callIns = List.copyOf(newCallIns);
+        availableScore = newAvailableScore;
         revision++;
     }
 
@@ -130,6 +135,14 @@ public final class ConquestClientData {
 
     public static synchronized int getRespawnWaveSecondsRemaining() {
         return respawnWaveSecondsRemaining;
+    }
+
+    public static synchronized List<ConquestSyncPacket.CallInStatus> getCallIns() {
+        return callIns;
+    }
+
+    public static synchronized int getAvailableScore() {
+        return availableScore;
     }
 
     private ConquestClientData() {}

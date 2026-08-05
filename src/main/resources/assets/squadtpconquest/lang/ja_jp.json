@@ -159,6 +159,7 @@
   "conquest.gui.team_a": "チームAに参加",
   "conquest.gui.team_b": "チームBに参加",
   "conquest.gui.squad_section": "所属分隊",
+  "conquest.gui.callin_use": "使用",
 
   "block.squadtpconquest.conquest_flag": "コンクエストフラッグ",
   "item.squadtpconquest.zone_wand": "ゾーンワンド",

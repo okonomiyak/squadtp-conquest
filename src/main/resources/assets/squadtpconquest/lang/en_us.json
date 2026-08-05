@@ -159,6 +159,7 @@
   "conquest.gui.team_a": "Join Team A",
   "conquest.gui.team_b": "Join Team B",
   "conquest.gui.squad_section": "Your Squad",
+  "conquest.gui.callin_use": "Use",
 
   "block.squadtpconquest.conquest_flag": "Conquest Flag",
   "item.squadtpconquest.zone_wand": "Zone Wand",
