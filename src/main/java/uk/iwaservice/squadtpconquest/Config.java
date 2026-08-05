@@ -30,6 +30,7 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue BT_RESPAWN_WAVE_INTERVAL_SECONDS;
     public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_LIMIT_SECONDS;
     public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_EXTENSION_ON_CAPTURE;
+    public static final ForgeConfigSpec.IntValue BT_SECTOR_AREA_TRANSITION_GRACE_SECONDS;
 
     public static final ForgeConfigSpec.BooleanValue TERRAIN_DESTRUCTION_ENABLED;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> INDESTRUCTIBLE_BLOCKS;
@@ -126,6 +127,12 @@ public final class Config {
                 .comment("Seconds added to the active sector's remaining time whenever the attacker captures",
                         "one of its capture points (not just on clearing the whole sector).")
                 .defineInRange("sectorTimeExtensionOnCapture", 120, 0, 3600);
+        BT_SECTOR_AREA_TRANSITION_GRACE_SECONDS = b
+                .comment("Seconds after a sector is cleared before the next sector's combat area (if it has",
+                        "one, see /conquest sector area set) starts being enforced as an out-of-bounds",
+                        "boundary. Gives players time to walk into the new area without being executed for",
+                        "still being outside it. No effect on sectors with no combat area set.")
+                .defineInRange("sectorAreaTransitionGraceSeconds", 20, 0, 600);
         b.pop();
 
         b.push("terrainDestruction");

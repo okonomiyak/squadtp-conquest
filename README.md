@@ -19,6 +19,8 @@ Minecraft 1.20.1 / Forge 47.x 向けの、Battlefieldの「コンクエスト」
 | `/conquest sector add <番号> <拠点名> [半径]` | 実行者の足元に拠点を追加し、指定番号のセクターに割り当てる(セクターが無ければ新規作成) | OP |
 | `/conquest sector spawn set <attacker\|defender> <番号>` | 実行者の足元を、指定セクターのその役割のスポーン地点に設定 | OP |
 | `/conquest sector timelimit set <番号> <秒>` | セクター個別の制限時間を上書き(0で`sectorTimeLimitSeconds`既定値に戻す) | OP |
+| `/conquest sector area set <番号> [<x1 y1 z1> <x2 y2 z2>]` | セクターの**戦闘エリア**(そのセクターがアクティブな間だけ有効な戦場境界)を設定。座標省略時はゾーンワンドの選択範囲を使用 | OP |
+| `/conquest sector area remove <番号>` | セクターの戦闘エリアを削除(未設定に戻す。グローバルの`/conquest boundary`があればそちらにフォールバック) | OP |
 | `/conquest sector remove <番号>` | セクターと、それに属する全拠点を削除(旗ブロックも撤去) | OP |
 | `/conquest sector list` | 全セクターの番号・所属拠点一覧を表示 | - |
 | `/conquest preset save <名前>` | 現在の拠点配置・スポーン地点・ゲームモードを名前付きで保存(同名は上書き) | OP |
@@ -115,6 +117,12 @@ Minecraft 1.20.1 / Forge 47.x 向けの、Battlefieldの「コンクエスト」
   - 各セクターには`sectorTimeLimitSeconds`(`/conquest sector timelimit set`で個別上書き可)の
     制限時間があり、攻撃側が拠点を1つ占領するたびに`sectorTimeExtensionOnCapture`秒延長される。
     時間切れは防衛側の勝利
+  - セクターごとに`/conquest sector area set`で**戦闘エリア**(2点AABB)を設定できる。設定した
+    セクターがアクティブな間、そのエリアの外は[戦場境界](#戦場境界アウトオブバウンズ)と同じ
+    「外に出て`boundaryKillSeconds`秒経つと処刑」判定が働く(グローバルな`/conquest boundary`
+    より優先)。エリア未設定のセクターはグローバル境界にフォールバック。セクターが突破されて
+    次のセクターへ前線が進んだ直後は`sectorAreaTransitionGraceSeconds`秒(既定20)の猶予があり、
+    その間は境界判定そのものが働かない(新エリアへ移動する時間を確保するため)
   - **squadtpの蘇生システムはブレイクスルー中(TDMも同様)は自動的に無効化**され、
     ラウンド終了時に元へ戻される。死亡が即座にスコア/チケットへ反映される必要があるため
     (詳細は「設計メモ」参照)
@@ -272,6 +280,8 @@ WorldEditの選択ワンドやCreateの「Schematic and Quill」と同じ操作�
 - `respawnWaveIntervalSeconds`(既定15) — 攻撃側のリスポーンウェーブ間隔(秒)
 - `sectorTimeLimitSeconds`(既定300) — セクター1つあたりの制限時間の既定値(`/conquest sector timelimit set`で個別上書き可)
 - `sectorTimeExtensionOnCapture`(既定120) — 拠点を1つ占領するごとに残り時間へ加算される秒数
+- `sectorAreaTransitionGraceSeconds`(既定20) — セクター突破直後、次のセクターの戦闘エリア境界判定が
+  始まるまでの猶予秒数(`/conquest sector area set`で戦闘エリアを設定している場合のみ意味を持つ)
 
 `terrainDestruction`セクション:
 - `terrainDestructionEnabled`(既定true) — falseで機能全体を無効化しバニラの爆発挙動に戻す

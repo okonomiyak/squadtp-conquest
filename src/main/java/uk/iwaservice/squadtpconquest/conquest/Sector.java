@@ -38,6 +38,19 @@ public final class Sector {
     /** Seconds; 0 means "use the global breakthrough.sectorTimeLimitSeconds default". */
     private int timeLimitSecondsOverride;
 
+    /**
+     * Optional combat area: while this sector is active (and past the post-capture transition
+     * grace period), any player outside this box is treated like being outside the battlefield
+     * boundary. Both corners must be set (and share combatAreaDim) to be active; unset means
+     * this sector falls back to the global /conquest boundary, if any.
+     */
+    @Nullable
+    private ResourceKey<Level> combatAreaDim;
+    @Nullable
+    private BlockPos combatAreaPos1;
+    @Nullable
+    private BlockPos combatAreaPos2;
+
     public Sector(int number) {
         this.number = number;
     }
@@ -88,6 +101,52 @@ public final class Sector {
         this.timeLimitSecondsOverride = seconds;
     }
 
+    public void setCombatArea(ResourceKey<Level> dim, BlockPos pos1, BlockPos pos2) {
+        this.combatAreaDim = dim;
+        this.combatAreaPos1 = pos1.immutable();
+        this.combatAreaPos2 = pos2.immutable();
+    }
+
+    /** Clears this sector's combat area (falls back to the global boundary). False if it wasn't set. */
+    public boolean removeCombatArea() {
+        if (combatAreaPos1 == null && combatAreaPos2 == null) {
+            return false;
+        }
+        combatAreaDim = null;
+        combatAreaPos1 = null;
+        combatAreaPos2 = null;
+        return true;
+    }
+
+    @Nullable
+    public ResourceKey<Level> getCombatAreaDim() {
+        return combatAreaDim;
+    }
+
+    /** Lower corner of the combat area's box; null unless both corners are set. */
+    @Nullable
+    public BlockPos getCombatAreaMin() {
+        BlockPos[] bounds = combatAreaBounds();
+        return bounds == null ? null : bounds[0];
+    }
+
+    /** Upper corner of the combat area's box; null unless both corners are set. */
+    @Nullable
+    public BlockPos getCombatAreaMax() {
+        BlockPos[] bounds = combatAreaBounds();
+        return bounds == null ? null : bounds[1];
+    }
+
+    @Nullable
+    private BlockPos[] combatAreaBounds() {
+        if (combatAreaPos1 == null || combatAreaPos2 == null) {
+            return null;
+        }
+        BlockPos min = new BlockPos(Math.min(combatAreaPos1.getX(), combatAreaPos2.getX()), Math.min(combatAreaPos1.getY(), combatAreaPos2.getY()), Math.min(combatAreaPos1.getZ(), combatAreaPos2.getZ()));
+        BlockPos max = new BlockPos(Math.max(combatAreaPos1.getX(), combatAreaPos2.getX()), Math.max(combatAreaPos1.getY(), combatAreaPos2.getY()), Math.max(combatAreaPos1.getZ(), combatAreaPos2.getZ()));
+        return new BlockPos[]{min, max};
+    }
+
     // --- persistence ---
 
     CompoundTag save() {
@@ -106,6 +165,11 @@ public final class Sector {
             tag.putString("DefenderSpawnDim", defenderSpawnDim.location().toString());
             tag.put("DefenderSpawnPos", NbtUtils.writeBlockPos(defenderSpawnPos));
         }
+        if (combatAreaDim != null && combatAreaPos1 != null && combatAreaPos2 != null) {
+            tag.putString("CombatAreaDim", combatAreaDim.location().toString());
+            tag.put("CombatAreaPos1", NbtUtils.writeBlockPos(combatAreaPos1));
+            tag.put("CombatAreaPos2", NbtUtils.writeBlockPos(combatAreaPos2));
+        }
         tag.putInt("TimeLimitOverride", timeLimitSecondsOverride);
         return tag;
     }
@@ -123,6 +187,11 @@ public final class Sector {
         if (tag.contains("DefenderSpawnDim")) {
             sector.defenderSpawnDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("DefenderSpawnDim")));
             sector.defenderSpawnPos = NbtUtils.readBlockPos(tag.getCompound("DefenderSpawnPos"));
+        }
+        if (tag.contains("CombatAreaDim")) {
+            sector.combatAreaDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("CombatAreaDim")));
+            sector.combatAreaPos1 = NbtUtils.readBlockPos(tag.getCompound("CombatAreaPos1"));
+            sector.combatAreaPos2 = NbtUtils.readBlockPos(tag.getCompound("CombatAreaPos2"));
         }
         sector.timeLimitSecondsOverride = tag.getInt("TimeLimitOverride");
         return sector;

@@ -93,6 +93,14 @@
   連続でいると処刑)。チームA/B別ではなくマップ全体で1つ。参加チーム全員が対象、ラウンド
   `IN_PROGRESS`中のみ判定、ゾーンワンドの座標省略設定にも対応。可視化・NBT永続化・実装パターンは
   自陣ゾーンをそのまま踏襲(専用クラス無し、`ConquestManager`に直接フィールド保持)
+- **セクター別戦闘エリア**(`/conquest sector area set|remove`、新規実装): ブレイクスルーの
+  各セクターに個別の戦闘エリア(2点AABB、`Sector.java`に追加)を設定でき、そのセクターが
+  アクティブな間だけ戦場境界と同じ「外に出て`boundaryKillSeconds`秒で処刑」判定がそのエリアに
+  対して働く(グローバルな`/conquest boundary`より優先、エリア未設定セクターはグローバル境界に
+  フォールバック)。セクター突破直後は`sectorAreaTransitionGraceSeconds`秒(既定20)の猶予期間があり
+  境界判定自体が止まる(`ConquestManager.sectorAreaGraceSecondsRemaining`、ラウンドスコープの
+  一時状態でNBT非永続化、`advanceSector()`でセット)。可視化はアクティブセクターのエリアのみ
+  (グローバル境界と排他、両方は出さない)
 - スコアボード(右Alt)2ページ目: 累計スコア+K/D比率
 - HUD/GUIのチーム色を自分/敵視点から**チーム固定色**(A=青・B=赤)に変更
 - 管理用GUI(Lキー)・BF風HUD(常時表示)・adjustable config(`/conquest config set`)
@@ -164,6 +172,13 @@
 - 自陣ゾーンとの重複時(境界の外かつ敵陣の中、等)に処刑理由メッセージが混線しないか
   (両方とも`player.hurt(genericKill, MAX_VALUE)`を独立に呼ぶだけなので実害は無いはずだが未確認)
 - 管理人チーム・未参加者が対象外になっているか(`teamOf(uuid).isCombatant()`判定)
+
+**セクター別戦闘エリアも実プレイ未検証(ビルド成功のみ)。** 次回確認が必要な点:
+- セクターの戦闘エリア外に出て`boundaryKillSeconds`秒後に処刑されるか、エリア内に戻ればリセットされるか
+- セクター突破直後の`sectorAreaTransitionGraceSeconds`秒間、実際に境界判定が止まっているか
+  (突破した瞬間に新エリア外にいても処刑されないこと)
+- エリア未設定のセクターでグローバル`/conquest boundary`へ正しくフォールバックするか
+- セクター切替でエリアの可視化(ワイヤーフレーム)が正しく新エリアに切り替わるか
 
 ## 環境の罠(再発防止・恒久ルール)
 

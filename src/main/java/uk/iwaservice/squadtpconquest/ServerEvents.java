@@ -16,6 +16,7 @@ import uk.iwaservice.squadtpconquest.conquest.CapturePoint;
 import uk.iwaservice.squadtpconquest.conquest.CaptureZoneVisualizer;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.ProtectZone;
+import uk.iwaservice.squadtpconquest.conquest.Sector;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 
 /** Forge-bus event handlers: command registration, respawn ticket cost and the game loop. */
@@ -75,13 +76,22 @@ public final class ServerEvents {
                     CaptureZoneVisualizer.renderBox(level, zone.getMin(), zone.getMax(), Team.NEUTRAL);
                 }
             }
-            ResourceKey<Level> boundaryDim = manager.getBoundaryDim();
-            BlockPos boundaryMin = manager.getBoundaryMin();
-            BlockPos boundaryMax = manager.getBoundaryMax();
-            if (boundaryDim != null && boundaryMin != null && boundaryMax != null) {
-                ServerLevel level = server.getLevel(boundaryDim);
+            Sector activeSector = manager.currentSector();
+            if (activeSector != null && activeSector.getCombatAreaDim() != null
+                    && activeSector.getCombatAreaMin() != null && activeSector.getCombatAreaMax() != null) {
+                ServerLevel level = server.getLevel(activeSector.getCombatAreaDim());
                 if (level != null) {
-                    CaptureZoneVisualizer.renderBox(level, boundaryMin, boundaryMax, Team.NEUTRAL);
+                    CaptureZoneVisualizer.renderBox(level, activeSector.getCombatAreaMin(), activeSector.getCombatAreaMax(), Team.NEUTRAL);
+                }
+            } else {
+                ResourceKey<Level> boundaryDim = manager.getBoundaryDim();
+                BlockPos boundaryMin = manager.getBoundaryMin();
+                BlockPos boundaryMax = manager.getBoundaryMax();
+                if (boundaryDim != null && boundaryMin != null && boundaryMax != null) {
+                    ServerLevel level = server.getLevel(boundaryDim);
+                    if (level != null) {
+                        CaptureZoneVisualizer.renderBox(level, boundaryMin, boundaryMax, Team.NEUTRAL);
+                    }
                 }
             }
         }

@@ -151,6 +151,12 @@ public class ConquestManager extends SavedData {
     private int attackerTickets;
     /** Seconds until the active sector's time limit expires (defenders win on 0). */
     private int sectorSecondsRemaining;
+    /**
+     * Seconds left in the post-capture grace period before the new active sector's combat area
+     * (if it has one) starts being enforced as an out-of-bounds boundary. Transient, not
+     * persisted; 0 outside this window.
+     */
+    private int sectorAreaGraceSecondsRemaining;
     /** Seconds until the next attacker respawn wave releases everyone waiting. */
     private int respawnWaveSecondsRemaining;
     /** Attackers who have died and are waiting (as spectators) for the next respawn wave. */
@@ -344,6 +350,27 @@ public class ConquestManager extends SavedData {
             return false;
         }
         sector.setTimeLimitSecondsOverride(seconds);
+        setDirty();
+        return true;
+    }
+
+    /** Sets a sector's combat area (out-of-bounds while it's active). False if no sector has that number. */
+    public boolean setSectorArea(ServerLevel level, int number, BlockPos pos1, BlockPos pos2) {
+        Sector sector = sectors.get(number);
+        if (sector == null) {
+            return false;
+        }
+        sector.setCombatArea(level.dimension(), pos1, pos2);
+        setDirty();
+        return true;
+    }
+
+    /** Clears a sector's combat area. False if no sector has that number, or it had none set. */
+    public boolean removeSectorArea(int number) {
+        Sector sector = sectors.get(number);
+        if (sector == null || !sector.removeCombatArea()) {
+            return false;
+        }
         setDirty();
         return true;
     }
@@ -864,8 +891,22 @@ public class ConquestManager extends SavedData {
      * that. No-op if no boundary is set. Independent of game mode.
      */
     private void tickBoundary(MinecraftServer server) {
+        if (sectorAreaGraceSecondsRemaining > 0) {
+            sectorAreaGraceSecondsRemaining--;
+            return;
+        }
+
+        ResourceKey<Level> dim = boundaryDim;
         BlockPos[] bounds = boundaryBounds();
-        if (boundaryDim == null || bounds == null) {
+        if (mode == GameMode.BREAKTHROUGH) {
+            Sector sector = currentSector();
+            if (sector != null && sector.getCombatAreaDim() != null
+                    && sector.getCombatAreaMin() != null && sector.getCombatAreaMax() != null) {
+                dim = sector.getCombatAreaDim();
+                bounds = new BlockPos[]{sector.getCombatAreaMin(), sector.getCombatAreaMax()};
+            }
+        }
+        if (dim == null || bounds == null) {
             return;
         }
         BlockPos min = bounds[0];
@@ -877,7 +918,7 @@ public class ConquestManager extends SavedData {
                 boundaryOutsideSeconds.remove(uuid);
                 continue;
             }
-            boolean inside = player.level().dimension() == boundaryDim
+            boolean inside = player.level().dimension() == dim
                     && player.getX() >= min.getX() && player.getX() < max.getX() + 1
                     && player.getY() >= min.getY() && player.getY() < max.getY() + 1
                     && player.getZ() >= min.getZ() && player.getZ() < max.getZ() + 1;
@@ -1074,6 +1115,7 @@ public class ConquestManager extends SavedData {
         pendingAttackerRespawns.clear();
         zoneIntrusionSeconds.clear();
         boundaryOutsideSeconds.clear();
+        sectorAreaGraceSecondsRemaining = 0;
         if (mode == GameMode.BREAKTHROUGH) {
             activeSectorNumber = sectors.firstKey();
             attackerTickets = Config.BT_ATTACKER_TICKETS.get();
@@ -1319,6 +1361,7 @@ public class ConquestManager extends SavedData {
         int clearedNumber = activeSectorNumber;
         activeSectorNumber = next;
         sectorSecondsRemaining = currentSectorTimeLimit();
+        sectorAreaGraceSecondsRemaining = Config.BT_SECTOR_AREA_TRANSITION_GRACE_SECONDS.get();
         setDirty();
         broadcast(server, Component.translatable("conquest.msg.sector_cleared", clearedNumber, sectorIndex(), sectorCount())
                 .withStyle(ChatFormatting.GOLD));

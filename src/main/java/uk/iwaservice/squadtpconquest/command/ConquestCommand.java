@@ -226,6 +226,16 @@ public final class ConquestCommand {
                                         .then(Commands.argument("number", IntegerArgumentType.integer(1))
                                                 .then(Commands.argument("seconds", IntegerArgumentType.integer(0, 86400))
                                                         .executes(ConquestCommand::sectorTimeLimitSet)))))
+                        .then(Commands.literal("area")
+                                .then(Commands.literal("set")
+                                        .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                                                .executes(ConquestCommand::sectorAreaSetFromWand)
+                                                .then(Commands.argument("pos1", BlockPosArgument.blockPos())
+                                                        .then(Commands.argument("pos2", BlockPosArgument.blockPos())
+                                                                .executes(ConquestCommand::sectorAreaSet)))))
+                                .then(Commands.literal("remove")
+                                        .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                                                .executes(ConquestCommand::sectorAreaRemove))))
                         .then(Commands.literal("remove")
                                 .then(Commands.argument("number", IntegerArgumentType.integer(1))
                                         .executes(ConquestCommand::sectorRemove)))
@@ -397,6 +407,43 @@ public final class ConquestCommand {
             return fail(ctx, Component.translatable("conquest.msg.sector_not_found", number));
         }
         ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.sector_timelimit_set", number, seconds), true);
+        return 1;
+    }
+
+    private static int sectorAreaSet(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        int number = IntegerArgumentType.getInteger(ctx, "number");
+        BlockPos pos1 = BlockPosArgument.getBlockPos(ctx, "pos1");
+        BlockPos pos2 = BlockPosArgument.getBlockPos(ctx, "pos2");
+        if (!ConquestManager.get(ctx.getSource().getServer()).setSectorArea(ctx.getSource().getLevel(), number, pos1, pos2)) {
+            return fail(ctx, Component.translatable("conquest.msg.sector_not_found", number));
+        }
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.sector_area_set", number, pos1.toShortString(), pos2.toShortString()), true);
+        return 1;
+    }
+
+    /** {@code /conquest sector area set <number>} with no coordinates: uses the sender's zone wand selection instead. */
+    private static int sectorAreaSetFromWand(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        int number = IntegerArgumentType.getInteger(ctx, "number");
+        BlockPos[] selection = ZoneSelection.get(player);
+        if (selection == null) {
+            return fail(ctx, Component.translatable("conquest.msg.wand_no_selection"));
+        }
+        if (!ConquestManager.get(ctx.getSource().getServer()).setSectorArea(player.serverLevel(), number, selection[0], selection[1])) {
+            return fail(ctx, Component.translatable("conquest.msg.sector_not_found", number));
+        }
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.sector_area_set", number, selection[0].toShortString(), selection[1].toShortString()), true);
+        return 1;
+    }
+
+    private static int sectorAreaRemove(CommandContext<CommandSourceStack> ctx) {
+        int number = IntegerArgumentType.getInteger(ctx, "number");
+        if (!ConquestManager.get(ctx.getSource().getServer()).removeSectorArea(number)) {
+            return fail(ctx, Component.translatable("conquest.msg.sector_area_not_found", number));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.sector_area_removed", number), true);
         return 1;
     }
 
