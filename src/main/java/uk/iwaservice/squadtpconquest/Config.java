@@ -31,6 +31,7 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_LIMIT_SECONDS;
     public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_EXTENSION_ON_CAPTURE;
     public static final ForgeConfigSpec.IntValue BT_SECTOR_AREA_TRANSITION_GRACE_SECONDS;
+    public static final ForgeConfigSpec.IntValue BT_TICKETS_PER_SECTOR_CAPTURE;
 
     public static final ForgeConfigSpec.BooleanValue TERRAIN_DESTRUCTION_ENABLED;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> INDESTRUCTIBLE_BLOCKS;
@@ -133,6 +134,12 @@ public final class Config {
                         "boundary. Gives players time to walk into the new area without being executed for",
                         "still being outside it. No effect on sectors with no combat area set.")
                 .defineInRange("sectorAreaTransitionGraceSeconds", 20, 0, 600);
+        BT_TICKETS_PER_SECTOR_CAPTURE = b
+                .comment("Tickets added to the attacker's shared pool whenever a sector is fully captured and",
+                        "the front line advances (not per individual capture point, see",
+                        "sectorTimeExtensionOnCapture for that). 0 disables the bonus. Not awarded on the final",
+                        "sector, since capturing it ends the round immediately.")
+                .defineInRange("ticketsPerSectorCapture", 10, 0, 100000);
         b.pop();
 
         b.push("terrainDestruction");

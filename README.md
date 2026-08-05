@@ -108,6 +108,9 @@ Minecraft 1.20.1 / Forge 47.x 向けの、Battlefieldの「コンクエスト」
   - 現在アクティブなセクターの拠点を**すべて攻撃側が占領**すると次のセクターへ前線が進み、
     前のセクターの拠点はそれ以降占領判定の対象外になる(HUD/GUI/占領インジケーターには
     「占領不可」として表示される)。最終セクターを陥落させると攻撃側の勝利
+  - セクターを突破するたびに、攻撃側の共有チケットへ`ticketsPerSectorCapture`枚(既定10)が
+    加算される(個々の拠点占領ごとの`sectorTimeExtensionOnCapture`とは別の、セクター単位のボーナス)。
+    最終セクター突破時はラウンドが即終了するため加算されない
   - 攻撃側は`attackerTickets`枚のリスポーンチケットを共有する**ウェーブリスポーン制**。
     死亡のたびに1枚消費し、`respawnWaveIntervalSeconds`秒ごとにまとめてアクティブセクターの
     攻撃側スポーン地点へ再出撃する(それまでは観戦者として待機)。チケットが尽きた状態での
@@ -282,6 +285,7 @@ WorldEditの選択ワンドやCreateの「Schematic and Quill」と同じ操作�
 - `sectorTimeExtensionOnCapture`(既定120) — 拠点を1つ占領するごとに残り時間へ加算される秒数
 - `sectorAreaTransitionGraceSeconds`(既定20) — セクター突破直後、次のセクターの戦闘エリア境界判定が
   始まるまでの猶予秒数(`/conquest sector area set`で戦闘エリアを設定している場合のみ意味を持つ)
+- `ticketsPerSectorCapture`(既定10) — セクター突破のたびに攻撃側の共有チケットへ加算される数。0で無効
 
 `terrainDestruction`セクション:
 - `terrainDestructionEnabled`(既定true) — falseで機能全体を無効化しバニラの爆発挙動に戻す

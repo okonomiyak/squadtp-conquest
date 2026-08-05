@@ -101,6 +101,11 @@
   境界判定自体が止まる(`ConquestManager.sectorAreaGraceSecondsRemaining`、ラウンドスコープの
   一時状態でNBT非永続化、`advanceSector()`でセット)。可視化はアクティブセクターのエリアのみ
   (グローバル境界と排他、両方は出さない)
+- **セクター突破時の攻撃側チケットボーナス**(`ticketsPerSectorCapture`既定10、新規実装):
+  `advanceSector()`内で`attackerTickets`へ直接加算するだけの単純な変更。個々の拠点占領ごとの
+  `sectorTimeExtensionOnCapture`(制限時間延長)とは別軸のボーナスで、最終セクター突破時
+  (`next == null`で即`endRound`する分岐)は加算されない。`conquest.msg.sector_cleared`の
+  チャットメッセージにボーナス数を追記(パラメータ追加のため翻訳キー変更、後方互換は考慮していない)
 - スコアボード(右Alt)2ページ目: 累計スコア+K/D比率
 - HUD/GUIのチーム色を自分/敵視点から**チーム固定色**(A=青・B=赤)に変更
 - 管理用GUI(Lキー)・BF風HUD(常時表示)・adjustable config(`/conquest config set`)

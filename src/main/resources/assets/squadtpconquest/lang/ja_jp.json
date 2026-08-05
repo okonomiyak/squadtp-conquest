@@ -19,7 +19,7 @@
   "conquest.msg.mode_set": "ゲームモードを%sに設定した",
   "conquest.msg.started_tdm": "チームデスマッチ開始! %sキルで勝利",
   "conquest.msg.started_breakthrough": "ブレイクスルー開始! 攻撃側チケット: %s",
-  "conquest.msg.sector_cleared": "セクター%sを突破! 前線が進んだ (%s/%s)",
+  "conquest.msg.sector_cleared": "セクター%sを突破! 前線が進んだ (%s/%s)、攻撃側チケット+%s",
   "conquest.msg.sector_point_added": "セクター%s: 拠点%sをここに追加した (半径%s)",
   "conquest.msg.sector_spawn_set": "セクター%2$sの%1$sスポーンを設定した",
   "conquest.msg.sector_timelimit_set": "セクター%sの制限時間を%s秒に設定した(0=既定値を使用)",

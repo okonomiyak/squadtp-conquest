@@ -19,7 +19,7 @@
   "conquest.msg.mode_set": "Game mode set to %s",
   "conquest.msg.started_tdm": "Team Deathmatch started! First to %s kills wins",
   "conquest.msg.started_breakthrough": "Breakthrough started! Attacker tickets: %s",
-  "conquest.msg.sector_cleared": "Sector %s cleared! Frontline advances (%s/%s)",
+  "conquest.msg.sector_cleared": "Sector %s cleared! Frontline advances (%s/%s), +%s attacker tickets",
   "conquest.msg.sector_point_added": "Sector %s: capture point %s added here (radius %s)",
   "conquest.msg.sector_spawn_set": "%s spawn set for sector %s",
   "conquest.msg.sector_timelimit_set": "Sector %s time limit set to %s seconds (0 = use default)",

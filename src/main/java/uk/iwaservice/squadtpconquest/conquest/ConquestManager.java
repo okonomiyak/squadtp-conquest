@@ -1362,8 +1362,10 @@ public class ConquestManager extends SavedData {
         activeSectorNumber = next;
         sectorSecondsRemaining = currentSectorTimeLimit();
         sectorAreaGraceSecondsRemaining = Config.BT_SECTOR_AREA_TRANSITION_GRACE_SECONDS.get();
+        int ticketBonus = Config.BT_TICKETS_PER_SECTOR_CAPTURE.get();
+        attackerTickets += ticketBonus;
         setDirty();
-        broadcast(server, Component.translatable("conquest.msg.sector_cleared", clearedNumber, sectorIndex(), sectorCount())
+        broadcast(server, Component.translatable("conquest.msg.sector_cleared", clearedNumber, sectorIndex(), sectorCount(), ticketBonus)
                 .withStyle(ChatFormatting.GOLD));
     }
 
