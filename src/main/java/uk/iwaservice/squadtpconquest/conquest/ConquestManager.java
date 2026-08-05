@@ -17,12 +17,15 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
+import net.minecraftforge.registries.ForgeRegistries;
 import uk.iwaservice.squadtp.squad.ReviveSystem;
 import uk.iwaservice.squadtp.squad.Squad;
 import uk.iwaservice.squadtp.squad.SquadFeature;
@@ -62,6 +65,8 @@ public class ConquestManager extends SavedData {
     private final LinkedHashMap<String, MapPreset> presets = new LinkedHashMap<>();
     /** Named boxes in which terrain destruction never modifies blocks; any number may exist. */
     private final LinkedHashMap<String, ProtectZone> protectZones = new LinkedHashMap<>();
+    /** Named scorestreak-style rewards (score cost -> item), keyed by name. */
+    private final LinkedHashMap<String, CallIn> callIns = new LinkedHashMap<>();
     /** Player UUID -> assigned team (players absent from the map are NEUTRAL). */
     private final Map<UUID, Team> playerTeams = new HashMap<>();
     private int ticketsA;
@@ -485,6 +490,70 @@ public class ConquestManager extends SavedData {
         return s.kills * Config.SCORE_PER_KILL.get()
                 + s.assists * Config.SCORE_PER_ASSIST.get()
                 + s.revives * Config.SCORE_PER_REVIVE.get();
+    }
+
+    /** This round's score minus whatever the player has already spent on call-ins this round. */
+    public int availableScore(UUID player) {
+        return totalScore(player) - scoreOf(player).spent;
+    }
+
+    // --- call-ins (scorestreak-style rewards: spend available score for an item) ---
+
+    public Collection<CallIn> getCallIns() {
+        return callIns.values();
+    }
+
+    @Nullable
+    public CallIn getCallIn(String name) {
+        return callIns.get(name);
+    }
+
+    /** Adds/replaces a named call-in. */
+    public void addCallIn(String name, int scoreCost, ResourceLocation itemId, int count) {
+        callIns.put(name, new CallIn(name, scoreCost, itemId, count));
+        setDirty();
+    }
+
+    /** Removes a call-in. False if no call-in has that name. */
+    public boolean removeCallIn(String name) {
+        if (callIns.remove(name) == null) {
+            return false;
+        }
+        setDirty();
+        return true;
+    }
+
+    /** Outcome of a /conquest callin use attempt. */
+    public enum UseCallInResult { OK, NOT_FOUND, NOT_ACTIVE, INSUFFICIENT_SCORE, UNKNOWN_ITEM }
+
+    /**
+     * Spends {@link CallIn#getScoreCost()} from the player's {@link #availableScore} and gives
+     * them the item (dropped at their feet if the inventory is full), if they have enough and a
+     * round is running.
+     */
+    public UseCallInResult useCallIn(ServerPlayer player, String name) {
+        if (state != RoundState.IN_PROGRESS) {
+            return UseCallInResult.NOT_ACTIVE;
+        }
+        CallIn callIn = callIns.get(name);
+        if (callIn == null) {
+            return UseCallInResult.NOT_FOUND;
+        }
+        if (availableScore(player.getUUID()) < callIn.getScoreCost()) {
+            return UseCallInResult.INSUFFICIENT_SCORE;
+        }
+        Item item = ForgeRegistries.ITEMS.getValue(callIn.getItemId());
+        if (item == null) {
+            return UseCallInResult.UNKNOWN_ITEM;
+        }
+        scoreOf(player.getUUID()).spent += callIn.getScoreCost();
+        setDirty();
+        ItemStack stack = new ItemStack(item, callIn.getCount());
+        player.getInventory().add(stack);
+        if (!stack.isEmpty()) {
+            player.drop(stack, false);
+        }
+        return UseCallInResult.OK;
     }
 
     /**
@@ -1717,6 +1786,7 @@ public class ConquestManager extends SavedData {
             score.deaths = s.getInt("Deaths");
             score.assists = s.getInt("Assists");
             score.revives = s.getInt("Revives");
+            score.spent = s.getInt("Spent");
             manager.scores.put(s.getUUID("Uuid"), score);
         }
         ListTag lifetimeScoreList = tag.getList("LifetimeScores", Tag.TAG_COMPOUND);
@@ -1743,6 +1813,11 @@ public class ConquestManager extends SavedData {
         for (int i = 0; i < protectZoneList.size(); i++) {
             ProtectZone zone = ProtectZone.load(protectZoneList.getCompound(i));
             manager.protectZones.put(zone.getName(), zone);
+        }
+        ListTag callInList = tag.getList("CallIns", Tag.TAG_COMPOUND);
+        for (int i = 0; i < callInList.size(); i++) {
+            CallIn callIn = CallIn.load(callInList.getCompound(i));
+            manager.callIns.put(callIn.getName(), callIn);
         }
         manager.attackerTeam = tag.contains("AttackerTeam") ? Team.valueOf(tag.getString("AttackerTeam")) : Team.A;
         manager.activeSectorNumber = tag.getInt("ActiveSectorNumber");
@@ -1823,6 +1898,7 @@ public class ConquestManager extends SavedData {
             s.putInt("Deaths", e.getValue().deaths);
             s.putInt("Assists", e.getValue().assists);
             s.putInt("Revives", e.getValue().revives);
+            s.putInt("Spent", e.getValue().spent);
             scoreList.add(s);
         }
         tag.put("Scores", scoreList);
@@ -1852,6 +1928,11 @@ public class ConquestManager extends SavedData {
             protectZoneList.add(zone.save());
         }
         tag.put("ProtectZones", protectZoneList);
+        ListTag callInList = new ListTag();
+        for (CallIn callIn : callIns.values()) {
+            callInList.add(callIn.save());
+        }
+        tag.put("CallIns", callInList);
         tag.putString("AttackerTeam", attackerTeam.name());
         tag.putInt("ActiveSectorNumber", activeSectorNumber);
         tag.putInt("AttackerTickets", attackerTickets);

@@ -6,4 +6,6 @@ public final class PlayerScore {
     public int deaths;
     public int assists;
     public int revives;
+    /** Score already spent on call-ins this round (round-scoped only; lifetime scores don't track this). */
+    public int spent;
 }

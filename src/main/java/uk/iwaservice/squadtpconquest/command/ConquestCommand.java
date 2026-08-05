@@ -8,18 +8,22 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraftforge.registries.ForgeRegistries;
 import uk.iwaservice.squadtp.squad.Squad;
 import uk.iwaservice.squadtp.squad.SquadManager;
 import uk.iwaservice.squadtpconquest.Config;
+import uk.iwaservice.squadtpconquest.conquest.CallIn;
 import uk.iwaservice.squadtpconquest.conquest.CapturePoint;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.GameMode;
@@ -112,6 +116,11 @@ public final class ConquestCommand {
                     ConquestManager.get(ctx.getSource().getServer()).getProtectZones().stream()
                             .map(ProtectZone::getName), builder);
 
+    private static final com.mojang.brigadier.suggestion.SuggestionProvider<CommandSourceStack> CALLIN_NAMES =
+            (ctx, builder) -> SharedSuggestionProvider.suggest(
+                    ConquestManager.get(ctx.getSource().getServer()).getCallIns().stream()
+                            .map(CallIn::getName), builder);
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("conquest")
                 .then(Commands.literal("team")
@@ -201,6 +210,25 @@ public final class ConquestCommand {
                                 .then(Commands.literal("set").executes(ctx -> setBoundaryCorner(ctx, false))))
                         .then(Commands.literal("remove").executes(ConquestCommand::removeBoundary))
                         .then(Commands.literal("list").executes(ConquestCommand::boundaryList)))
+                .then(Commands.literal("callin")
+                        .then(Commands.literal("add")
+                                .requires(src -> src.hasPermission(2))
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .then(Commands.argument("cost", IntegerArgumentType.integer(0))
+                                                .then(Commands.argument("item", ResourceLocationArgument.id())
+                                                        .executes(ctx -> callInAdd(ctx, 1))
+                                                        .then(Commands.argument("count", IntegerArgumentType.integer(1, 64))
+                                                                .executes(ctx -> callInAdd(ctx, IntegerArgumentType.getInteger(ctx, "count"))))))))
+                        .then(Commands.literal("remove")
+                                .requires(src -> src.hasPermission(2))
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .suggests(CALLIN_NAMES)
+                                        .executes(ConquestCommand::callInRemove)))
+                        .then(Commands.literal("list").executes(ConquestCommand::callInList))
+                        .then(Commands.literal("use")
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .suggests(CALLIN_NAMES)
+                                        .executes(ConquestCommand::callInUse))))
                 .then(Commands.literal("mode")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -675,6 +703,62 @@ public final class ConquestCommand {
         return 1;
     }
 
+    private static int callInAdd(CommandContext<CommandSourceStack> ctx, int count) {
+        String name = StringArgumentType.getString(ctx, "name");
+        int cost = IntegerArgumentType.getInteger(ctx, "cost");
+        ResourceLocation itemId = ResourceLocationArgument.getId(ctx, "item");
+        if (!ForgeRegistries.ITEMS.containsKey(itemId)) {
+            return fail(ctx, Component.translatable("conquest.msg.unknown_item", itemId.toString()));
+        }
+        ConquestManager.get(ctx.getSource().getServer()).addCallIn(name, cost, itemId, count);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.callin_added", name, cost, count, itemId.toString()), true);
+        return 1;
+    }
+
+    private static int callInRemove(CommandContext<CommandSourceStack> ctx) {
+        String name = StringArgumentType.getString(ctx, "name");
+        if (!ConquestManager.get(ctx.getSource().getServer()).removeCallIn(name)) {
+            return fail(ctx, Component.translatable("conquest.msg.callin_not_found", name));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.callin_removed", name), true);
+        return 1;
+    }
+
+    private static int callInList(CommandContext<CommandSourceStack> ctx) {
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        if (manager.getCallIns().isEmpty()) {
+            return fail(ctx, Component.translatable("conquest.msg.no_callin"));
+        }
+        MutableComponent msg = Component.translatable("conquest.msg.callin_list_header").withStyle(ChatFormatting.GOLD);
+        for (CallIn callIn : manager.getCallIns()) {
+            msg.append("\n").append(Component.translatable("conquest.status.callin",
+                    callIn.getName(), callIn.getScoreCost(), callIn.getCount(), callIn.getItemId().toString()));
+        }
+        MutableComponent result = msg;
+        ctx.getSource().sendSuccess(() -> result, false);
+        return 1;
+    }
+
+    private static int callInUse(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        String name = StringArgumentType.getString(ctx, "name");
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        ConquestManager.UseCallInResult result = manager.useCallIn(player, name);
+        return switch (result) {
+            case OK -> {
+                CallIn callIn = manager.getCallIn(name);
+                int cost = callIn == null ? 0 : callIn.getScoreCost();
+                ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.callin_used", name, cost), true);
+                yield 1;
+            }
+            case NOT_FOUND -> fail(ctx, Component.translatable("conquest.msg.callin_not_found", name));
+            case NOT_ACTIVE -> fail(ctx, Component.translatable("conquest.msg.not_active"));
+            case INSUFFICIENT_SCORE -> fail(ctx, Component.translatable("conquest.msg.callin_insufficient_score", name));
+            case UNKNOWN_ITEM -> fail(ctx, Component.translatable("conquest.msg.callin_unknown_item", name));
+        };
+    }
+
     private static int protectZoneAdd(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         String name = StringArgumentType.getString(ctx, "name");
         BlockPos pos1 = BlockPosArgument.getBlockPos(ctx, "pos1");
@@ -839,6 +923,11 @@ public final class ConquestCommand {
                 }
             }
             msg.append("\n").append(Component.translatable("conquest.status.squad", members));
+        }
+
+        if (!manager.getCallIns().isEmpty()) {
+            msg.append("\n").append(Component.translatable("conquest.status.available_score",
+                    manager.availableScore(player.getUUID())).withStyle(ChatFormatting.GRAY));
         }
 
         MutableComponent result = msg;

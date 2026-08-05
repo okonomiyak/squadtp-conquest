@@ -106,6 +106,14 @@
   `sectorTimeExtensionOnCapture`(制限時間延長)とは別軸のボーナスで、最終セクター突破時
   (`next == null`で即`endRound`する分岐)は加算されない。`conquest.msg.sector_cleared`の
   チャットメッセージにボーナス数を追記(パラメータ追加のため翻訳キー変更、後方互換は考慮していない)
+- **コールイン(スコアストリーク報酬)**(`/conquest callin add|remove|list|use`、新規実装、
+  `conquest/CallIn.java`): OPがスコア閾値↔アイテムの組み合わせを複数登録でき、プレイヤーは
+  `/conquest callin use`で利用可能スコア(`totalScore` − 使用済み)を消費してアイテムを受け取る。
+  `PlayerScore`に`spent`フィールドを追加(ラウンドスコープのみ、NBT永続化は`Scores`リストのみで
+  `LifetimeScores`には含めない)。キル/デス/アシスト/蘇生の実カウントは書き換えず、
+  `availableScore()`で差し引くだけなのでスコアボード表示は影響を受けない。アイテムIDは
+  `ForgeRegistries.ITEMS`で存在確認(登録時・使用時とも)、入りきらない分は足元にドロップ。
+  コールインが1つ以上登録されていれば`/conquest status`に自分の利用可能スコアを表示
 - スコアボード(右Alt)2ページ目: 累計スコア+K/D比率
 - HUD/GUIのチーム色を自分/敵視点から**チーム固定色**(A=青・B=赤)に変更
 - 管理用GUI(Lキー)・BF風HUD(常時表示)・adjustable config(`/conquest config set`)
@@ -184,6 +192,14 @@
   (突破した瞬間に新エリア外にいても処刑されないこと)
 - エリア未設定のセクターでグローバル`/conquest boundary`へ正しくフォールバックするか
 - セクター切替でエリアの可視化(ワイヤーフレーム)が正しく新エリアに切り替わるか
+
+**セクター突破チケットボーナス・コールインも実プレイ未検証(ビルド成功のみ)。** 次回確認が必要な点:
+- セクター突破のたびに`attackerTickets`が正しく増えるか(最終セクターでは増えないこと)
+- `/conquest callin add`で登録したコールインが`/conquest callin use`で正しく消費・付与されるか、
+  利用可能スコア不足時に拒否されるか
+- インベントリが満杯の時に足元へドロップされるか
+- `/conquest status`の利用可能スコア表示がキル/アシスト/蘇生に応じて増減し、コールイン使用後に
+  正しく減るか
 
 ## 環境の罠(再発防止・恒久ルール)
 
