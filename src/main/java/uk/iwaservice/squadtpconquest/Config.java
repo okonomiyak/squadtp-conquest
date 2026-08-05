@@ -21,6 +21,7 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue TDM_KILL_LIMIT;
     public static final ForgeConfigSpec.IntValue HOME_ZONE_KILL_SECONDS;
     public static final ForgeConfigSpec.IntValue BOUNDARY_KILL_SECONDS;
+    public static final ForgeConfigSpec.IntValue TEAM_BEACON_LIFETIME_SECONDS;
     public static final ForgeConfigSpec.IntValue ASSIST_WINDOW_SECONDS;
     public static final ForgeConfigSpec.IntValue SCORE_PER_KILL;
     public static final ForgeConfigSpec.IntValue SCORE_PER_ASSIST;
@@ -94,6 +95,12 @@ public final class Config {
                         "inside. Applies in every game mode, only while a round is IN_PROGRESS. No effect if no",
                         "boundary is set (/conquest boundary set).")
                 .defineInRange("boundaryKillSeconds", 10, 1, 600);
+        TEAM_BEACON_LIFETIME_SECONDS = b
+                .comment("Seconds a placed team respawn beacon (squadtpconquest:team_beacon item) stays active.",
+                        "While active, any teammate who dies respawns there instead of the usual spawn point,",
+                        "with no limit on how many times. Placing a new beacon for a team replaces that team's",
+                        "existing one.")
+                .defineInRange("teamBeaconLifetimeSeconds", 30, 5, 600);
         b.pop();
 
         b.push("scoreboard");

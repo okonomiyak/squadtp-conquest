@@ -23,6 +23,7 @@ import uk.iwaservice.squadtpconquest.conquest.Team;
 public final class ServerEvents {
 
     private static final int ZONE_VISUAL_INTERVAL_TICKS = 10;
+    private static final int BEACON_VISUAL_RADIUS = 2;
 
     private static int tickCounter;
 
@@ -91,6 +92,16 @@ public final class ServerEvents {
                     ServerLevel level = server.getLevel(boundaryDim);
                     if (level != null) {
                         CaptureZoneVisualizer.renderBox(level, boundaryMin, boundaryMax, Team.NEUTRAL);
+                    }
+                }
+            }
+            for (Team team : new Team[]{Team.A, Team.B}) {
+                ResourceKey<Level> dim = manager.getTeamBeaconDim(team);
+                BlockPos pos = manager.getTeamBeaconPos(team);
+                if (dim != null && pos != null) {
+                    ServerLevel level = server.getLevel(dim);
+                    if (level != null) {
+                        CaptureZoneVisualizer.render(level, pos, BEACON_VISUAL_RADIUS, team);
                     }
                 }
             }

@@ -9,6 +9,7 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import uk.iwaservice.squadtpconquest.block.ConquestFlagBlock;
+import uk.iwaservice.squadtpconquest.item.TeamBeaconItem;
 import uk.iwaservice.squadtpconquest.item.ZoneWandItem;
 
 public final class ModRegistry {
@@ -26,6 +27,10 @@ public final class ModRegistry {
     /** Admin selection tool for zone/protectzone commands' no-coordinates overloads; obtained via /give only. */
     public static final RegistryObject<Item> ZONE_WAND = ITEMS.register("zone_wand",
             () -> new ZoneWandItem(new Item.Properties().stacksTo(1)));
+
+    /** Deployable team-shared temporary respawn point; obtained via /give or a /conquest callin. */
+    public static final RegistryObject<Item> TEAM_BEACON = ITEMS.register("team_beacon",
+            () -> new TeamBeaconItem(new Item.Properties()));
 
     public static void register(IEventBus modBus) {
         BLOCKS.register(modBus);

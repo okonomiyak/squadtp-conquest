@@ -40,6 +40,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -1185,6 +1186,7 @@ public class ConquestManager extends SavedData {
         zoneIntrusionSeconds.clear();
         boundaryOutsideSeconds.clear();
         sectorAreaGraceSecondsRemaining = 0;
+        teamBeacons.clear();
         if (mode == GameMode.BREAKTHROUGH) {
             activeSectorNumber = sectors.firstKey();
             attackerTickets = Config.BT_ATTACKER_TICKETS.get();
@@ -1247,10 +1249,14 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Teleports one player to their role's spawn: in breakthrough, the active sector's
-     * attacker/defender spawn if set, else the global spawnA/B, else the world spawn.
+     * Teleports one player to their role's spawn: their team's active respawn beacon if any
+     * (see {@link #placeTeamBeacon}), else in breakthrough the active sector's attacker/defender
+     * spawn if set, else the global spawnA/B, else the world spawn.
      */
     private void teleportToRoleSpawn(ServerPlayer player, Team team) {
+        if (tryTeleportToBeacon(player, team)) {
+            return;
+        }
         MinecraftServer server = player.server;
         Sector sector = mode == GameMode.BREAKTHROUGH ? currentSector() : null;
         ResourceKey<Level> dim = null;
@@ -1282,6 +1288,61 @@ public class ConquestManager extends SavedData {
         BlockPos safe = TeleportHelper.findSafeSpot(targetLevel, pos);
         player.teleportTo(targetLevel, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
                 Set.of(), player.getYRot(), player.getXRot());
+    }
+
+    // --- team respawn beacon ---
+
+    /** One-per-team active beacon: expires after teamBeaconLifetimeSeconds, not persisted across restarts. */
+    private static final class TeamBeacon {
+        final ResourceKey<Level> dim;
+        final BlockPos pos;
+        int secondsRemaining;
+
+        TeamBeacon(ResourceKey<Level> dim, BlockPos pos, int secondsRemaining) {
+            this.dim = dim;
+            this.pos = pos;
+            this.secondsRemaining = secondsRemaining;
+        }
+    }
+
+    private final Map<Team, TeamBeacon> teamBeacons = new EnumMap<>(Team.class);
+
+    /** Places (or replaces) {@code team}'s respawn beacon at {@code pos}, active for teamBeaconLifetimeSeconds. */
+    public void placeTeamBeacon(Team team, ServerLevel level, BlockPos pos) {
+        teamBeacons.put(team, new TeamBeacon(level.dimension(), pos.immutable(), Config.TEAM_BEACON_LIFETIME_SECONDS.get()));
+    }
+
+    @Nullable
+    public ResourceKey<Level> getTeamBeaconDim(Team team) {
+        TeamBeacon beacon = teamBeacons.get(team);
+        return beacon == null ? null : beacon.dim;
+    }
+
+    @Nullable
+    public BlockPos getTeamBeaconPos(Team team) {
+        TeamBeacon beacon = teamBeacons.get(team);
+        return beacon == null ? null : beacon.pos;
+    }
+
+    /** Teleports the player to their team's active respawn beacon, if any. False (no-op) if none is active. */
+    private boolean tryTeleportToBeacon(ServerPlayer player, Team team) {
+        TeamBeacon beacon = teamBeacons.get(team);
+        if (beacon == null) {
+            return false;
+        }
+        ServerLevel level = player.server.getLevel(beacon.dim);
+        if (level == null) {
+            return false;
+        }
+        BlockPos safe = TeleportHelper.findSafeSpot(level, beacon.pos);
+        player.teleportTo(level, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
+                Set.of(), player.getYRot(), player.getXRot());
+        return true;
+    }
+
+    /** Once per second while a round is running: counts down every active beacon, clearing expired ones. */
+    private void tickTeamBeacons() {
+        teamBeacons.values().removeIf(beacon -> --beacon.secondsRemaining <= 0);
     }
 
     /** Forced end with no winner, or cancels a pending countdown: valid from STARTING or IN_PROGRESS. */
@@ -1533,6 +1594,7 @@ public class ConquestManager extends SavedData {
             checkRevives(server);
             tickHomeZones(server);
             tickBoundary(server);
+            tickTeamBeacons();
 
             // Team-empty check (only if the round is still running after the checks above).
             if (state == RoundState.IN_PROGRESS && Config.END_ON_TEAM_EMPTY.get()) {
@@ -1643,7 +1705,12 @@ public class ConquestManager extends SavedData {
             }
         } else if (mode == GameMode.BREAKTHROUGH) {
             handleBreakthroughRespawn(player, team);
+            return;
         }
+        // Conquest and TDM don't otherwise teleport on respawn (only at round start); an active
+        // team beacon is the one exception. Breakthrough already checks this inside
+        // teleportToRoleSpawn via handleBreakthroughRespawn, so it returns above instead.
+        tryTeleportToBeacon(player, team);
     }
 
     /**

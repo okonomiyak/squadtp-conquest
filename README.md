@@ -203,6 +203,23 @@ WorldEditの選択ワンドやCreateの「Schematic and Quill」と同じ操作�
 (選択が無ければエラーメッセージ)。選択の可視化(ワイヤーフレーム等)は無く、角を設定するたびに
 チャットへ座標が表示されるのみ。
 
+## チームリスポーンビーコン
+
+`squadtpconquest:team_beacon`(`/give`または[コールイン](#コールインスコアストリーク報酬)経由で入手)。
+ラウンド進行中に右クリックした面に隣接する位置へ設置すると、設置者の**チーム全員が対象**の
+一時的なリスポーン地点になる。squadtp本体にも似た仕組み(`RespawnBeaconItem`)があるが、あちらは
+**分隊単位・使用回数制限(既定4回)・時間無制限**なのに対し、こちらは**チーム単位・
+`teamBeaconLifetimeSeconds`秒(既定30)で自動消滅・その間は何度でもスポーン可能**という逆の設計
+(squadtp本体は無改造、完全に別実装)。
+
+- 設置中は死亡してリスポーンするたびに、通常のスポーン地点(ブレイクスルーならセクターの
+  役割別スポーン、それ以外ならチームのグローバルスポーン/ワールドスポーン)より**優先**して
+  ビーコンの位置へテレポートする
+- チームごとに同時に有効なビーコンは1つまで。新しく設置すると同じチームの既存のビーコンを置き換える
+  (使用回数の消費はなく、アイテム1個につき1回設置できるだけ)
+- 消滅にはタイマーのみで、敵からの攻撃で壊されることはない(第1段階の実装)
+- 拠点の円形パーティクルと同じ描画(`CaptureZoneVisualizer.render`)でチーム色の輪として常時可視化
+
 ## ラウンドの流れ
 
 状態は `WAITING`(待機中) → `STARTING`(開始カウントダウン中) → `IN_PROGRESS`(進行中) →
@@ -292,6 +309,7 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 - `tdmKillLimit`(既定50) — TDMモードでチームが勝利するのに必要なキル数。0で無効(制限時間頼み)
 - `homeZoneKillSeconds`(既定10) — 自陣ゾーンに敵が連続滞在できる秒数。超えると処刑される
 - `boundaryKillSeconds`(既定10) — 戦場境界の外に連続でいられる秒数。超えると処刑される(境界未設定なら無効)
+- `teamBeaconLifetimeSeconds`(既定30) — チームリスポーンビーコンが設置から自動消滅するまでの秒数
 
 `scoreboard`セクション:
 - `assistWindowSeconds`(既定10)
@@ -315,7 +333,8 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 
 これらは`/conquest config set <key> <value>`でゲーム内から再起動なしに変更できる
 (TOMLにも自動で永続化される)。ただし対応しているのは元々の`conquest`/`scoreboard`セクションの
-数値・真偽値項目のみで、`breakthrough`・`homeZoneKillSeconds`・`boundaryKillSeconds`・`terrainDestruction`セクションの
+数値・真偽値項目のみで、`breakthrough`・`homeZoneKillSeconds`・`boundaryKillSeconds`・
+`teamBeaconLifetimeSeconds`・`terrainDestruction`セクションの
 項目(リスト・文字列型を含む)は`world/serverconfig/squadtpconquest-server.toml`の直接編集が必要
 (既存の制約で、今回追加した項目も同様の扱いにしている)。
 

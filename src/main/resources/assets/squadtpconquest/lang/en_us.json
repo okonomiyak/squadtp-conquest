@@ -55,6 +55,7 @@
   "conquest.msg.callin_used": "Call-in %s used! -%s score",
   "conquest.msg.callin_insufficient_score": "Not enough available score for call-in %s",
   "conquest.msg.callin_unknown_item": "Call-in %s references an item that no longer exists",
+  "conquest.msg.beacon_placed": "%s respawn beacon placed",
   "conquest.msg.protectzone_added": "Protect zone %s added: %s to %s (terrain destruction disabled inside)",
   "conquest.msg.protectzone_not_found": "No protect zone named %s",
   "conquest.msg.protectzone_removed": "Protect zone %s removed",
@@ -161,6 +162,7 @@
 
   "block.squadtpconquest.conquest_flag": "Conquest Flag",
   "item.squadtpconquest.zone_wand": "Zone Wand",
+  "item.squadtpconquest.team_beacon": "Team Respawn Beacon",
 
   "key.categories.squadtpconquest": "SquadTP Conquest",
   "key.squadtpconquest.open_conquest_screen": "Open Conquest Screen",
