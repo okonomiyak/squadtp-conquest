@@ -8,7 +8,9 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
+import uk.iwaservice.squadtp.api.RespawnChoiceRegistry;
 import uk.iwaservice.squadtpconquest.client.ClientConfig;
+import uk.iwaservice.squadtpconquest.conquest.ConquestRespawnChoiceProvider;
 import uk.iwaservice.squadtpconquest.network.NetworkHandler;
 
 @Mod(SquadTpConquest.MODID)
@@ -26,6 +28,7 @@ public class SquadTpConquest {
         MinecraftForge.EVENT_BUS.register(ScoreEvents.class);
         MinecraftForge.EVENT_BUS.register(TerrainDestructionEvents.class);
         MinecraftForge.EVENT_BUS.register(ZoneWandEvents.class);
+        RespawnChoiceRegistry.register(new ConquestRespawnChoiceProvider());
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {

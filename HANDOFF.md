@@ -1,16 +1,18 @@
-# squadtp-conquest 引き継ぎメモ (2026-07-25 更新)
+# squadtp-conquest 引き継ぎメモ (2026-08-06 更新)
 
-前回(2026-07-21)からの主な変化: マッププリセット機能(`/conquest preset`)追加、
-そして本日ブレイクスルーモード(攻撃側/防衛側非対称・複数セクター)を新規実装。
-実装の副産物として、長らく棚上げだったTDMキル計上バグの根本原因への対処
-(squadtp蘇生システムの自動無効化)も入った。詳細は下記および**README.md**参照。
+前回(2026-07-25)からの主な変化: BF風の各種機能(地形破壊・ゾーンワンド・戦場境界・
+セクター別戦闘エリア・セクター突破チケットボーナス・コールイン・チームリスポーンビーコン)を
+連続実装した後、本日**squadtp本体に初めて手を入れ**(ユーザー明示許可、詳細は下記
+「squadtp本体は改造しない」節参照)、チームビーコン/拠点スポーンをsquadtpの死亡後リスポーン
+選択画面(`RespawnChoiceScreen`)から選べる公開API(`RespawnChoiceProvider`)を追加した。
+詳細は下記および**README.md**参照。
 
 ## 現在の状態
 
-- **バージョン**: `mod_version=0.2.0`。GitHubに`v0.2.0`タグ+リリース公開済み
-  (https://github.com/okonomiyak/squadtp-conquest/releases/tag/v0.2.0 、jar添付)
+- **バージョン**: `mod_version=0.2.1`
 - **ライセンス**: GPL-3.0(`LICENSE`ファイルあり)
-- **squadtp依存**: `gradle.properties`の`squadtp_version=0.2.0`(2026-07-21時点で`../squadtp/build/libs`にある実際のjarと一致させてある。squadtp本体も同日0.2.0にバージョンアップ済み)
+- **squadtp依存**: `gradle.properties`の`squadtp_version=0.2.1`(squadtp本体も同日0.2.1にバージョンアップ済み、
+  `../squadtp/build/libs/squadtp-0.2.1.jar`と一致させてある)
 - **ビルド**: `gradlew build`成功、警告のみ(エラーなし)
 - **Git**: `master`ブランチ、リモート`origin`(`git@github-okonomiyak:okonomiyak/squadtp-conquest.git`)にpush済み、作業ツリーはクリーン
 
@@ -130,15 +132,23 @@
   `availableScore`フィールドを追加し`PROTOCOL_VERSION` 10→11。`ConquestClientData`/
   `ClientPacketHandler`もあわせて更新。登録(`add`)・削除(`remove`)は引き続きコマンドのみ
   (GUIは`use`のみ対応)、拠点/分隊一覧と同じ5件超過時スクロール対応
-- **拠点からのリスポーン(簡易版)**(`spawnAtOwnedPointsEnabled`既定true、新規実装、
-  TODO.mdの「優先度高」項目の簡易実装): コンクエスト限定で、`teleportToRoleSpawn()`の
-  ビーコンチェックの次の優先度として追加。プレイヤーが最後に死亡した位置(`ScoreEvents.onDeath`から
-  `ConquestManager.recordDeathPosition`で記録、`Map<UUID, GlobalPos> lastDeathPositions`、
-  ラウンドスコープの一時状態でNBT非永続化)に一番近い、自チーム保有の拠点へ自動的にリスポーンする。
-  死亡位置未記録(ラウンド最初のリスポーン等)やその次元に保有拠点が無い場合は距離計算をスキップし
-  最初に見つかった保有拠点を使う(保有拠点自体が無ければ何もせず次の優先度=ブレイクスルー/
-  グローバルスポーンにフォールバック)。**選択UIは無い**(要望通り単純なon/offトグルのみ、
-  squadtpの`RespawnChoiceScreen`のような選択画面は今回のスコープ外、TODO.mdに追記済み)
+- **チームビーコン/拠点スポーンの選択UI化**(2026-08-06、squadtp本体に新規公開API追加): チーム
+  リスポーンビーコンと拠点スポーン(`spawnAtOwnedPointsEnabled`、コンクエスト限定)は、従来の
+  「自動・無選択でテレポート」から、squadtpの`RespawnChoiceScreen`(分隊のラリー/ビーコン/
+  メンバースポーンを選ぶ既存画面)で**プレイヤー自身が選ぶ**方式に置き換えた。
+  squadtp側に新規`uk.iwaservice.squadtp.api`パッケージ
+  (`RespawnChoiceProvider`/`RespawnChoiceEntry`/`RespawnChoiceRegistry`)を追加し、
+  `RespawnChoicePacket`に`external`エントリー一覧を追加(`PROTOCOL_VERSION` 1→2)、
+  `ServerEvents.onPlayerRespawn`の「分隊未所属なら即return」制約を緩和(外部プロバイダーの
+  選択肢は分隊未所属でも・squadtpの`RESPAWN_CHOICE`機能トグルに関係なく表示される)、
+  `/squad respawn external <providerId> <choiceId>`コマンドで選択を受け取る。
+  squadtp-conquest側は`ConquestRespawnChoiceProvider`(新規、`conquest`パッケージ)を実装して
+  `SquadTpConquest`コンストラクタで登録。`ConquestManager.teleportToRoleSpawn()`/`onRespawn()`
+  からビーコン/拠点への自動テレポート分岐を削除し、`teleportToTeamBeacon`/`teleportToPoint`を
+  プロバイダーの`onChosen`からのみ呼ぶ形にした。拠点スポーンは「死亡位置に一番近い1つを自動選択」
+  から「保有拠点をすべて個別の選択肢として列挙」に変更(`lastDeathPositions`関連コードは削除)。
+  `teleportToTeamBeacon`/`teleportToPoint`はプロバイダーからのみ呼ばれるためパッケージ内可視
+  (`private`から変更)にとどめた
 - スコアボード(右Alt)2ページ目: 累計スコア+K/D比率
 - HUD/GUIのチーム色を自分/敵視点から**チーム固定色**(A=青・B=赤)に変更
 - 管理用GUI(Lキー)・BF風HUD(常時表示)・adjustable config(`/conquest config set`)
@@ -243,12 +253,18 @@
 - 5件を超えるコールイン登録時、マウスホイールでスクロールできること
 - PROTOCOL_VERSION不一致(旧クライアントでの接続)が想定通り拒否されること
 
-**拠点からのリスポーン(簡易版)も実プレイ未検証(ビルド成功のみ)。** 次回確認が必要な点:
-- 複数拠点保有時、実際に死亡位置に一番近い拠点へリスポーンするか(離れた場所で死んで確認)
-- 拠点を1つも保有していないチームは、従来通りチーム固定スポーンに戻ること
-- `spawnAtOwnedPointsEnabled`をfalseにすると従来の固定スポーンに戻ること
-- チームリスポーンビーコンが有効な間は、そちらが優先されること(拠点保有中でも)
-- TDM・ブレイクスルーではこの機構が一切働かない(コンクエスト限定)ことの確認
+**チームビーコン/拠点スポーンの選択UI化も実プレイ未検証(ビルド成功+`runServer`読み込み確認のみ)。**
+次回確認が必要な点:
+- 死亡後、squadtpのリスポーン選択画面に「チームビーコン」「保有拠点名」が実際に選択肢として
+  表示されるか(分隊未所属のプレイヤーでも表示されること、squadtpの`RESPAWN_CHOICE`機能を
+  OFFにしても表示され続けることを含む)
+- 選択肢をクリックすると実際にその場所へテレポートするか
+- ビーコンが消滅していたり拠点の所有が変わっていたりした場合、選択時に
+  `squadtp.msg.respawn_expired`で失敗すること(クラッシュしないこと)
+- `spawnAtOwnedPointsEnabled`をfalseにすると拠点の選択肢自体が出なくなること
+- TDM・ブレイクスルーの防衛側respawnではこの機構が一切働かない(拠点スポーンはコンクエスト限定、
+  ビーコンは両モードで選択肢に出る想定)ことの確認
+- 分隊の既存選択肢(ラリー/ビーコン/メンバー)と同じ画面に共存して問題なく表示・操作できるか
 
 ## 環境の罠(再発防止・恒久ルール)
 
@@ -266,16 +282,26 @@
   (既存定数のordinalがズレる場合)は、バイト長が同じでも`NetworkHandler.PROTOCOL_VERSION`を
   上げること。現在値は`11`(ブレイクスルー実装で`8`→`9`、GUIセクター管理追加で`9`→`10`、
   コールインGUI追加で`callIns`/`availableScore`フィールドを`ConquestSyncPacket`に追加し`10`→`11`)。
-  上げ忘れると新旧クライアント/サーバー混在時に`IndexOutOfBoundsException`で原因不明の切断が起きる
+  上げ忘れると新旧クライアント/サーバー混在時に`IndexOutOfBoundsException`で原因不明の切断が起きる。
+  なお**squadtp本体**の`NetworkHandler.PROTOCOL_VERSION`は別物(こちらは`1`→`2`、
+  `RespawnChoicePacket`に`external`フィールドを追加したため)。2つのmodは別チャンネル
+  (それぞれ`squadtp:main`/`squadtpconquest:main`)なので互いのバージョン番号は独立
 - **サーバー多重起動**: `runServer`を起動したまま次の`runServer`を叩くとポート競合で失敗する。
   `Get-NetTCPConnection -LocalPort 25565`(または`Get-CimInstance Win32_Process -Filter "Name='java.exe'"`)
   で残留プロセスを確認してから起動すること
-- **squadtp本体は改造しない**: 公開API(`SquadManager`/`Squad`/`ReviveSystem`/`TeleportHelper`)
-  経由の読み取り専用利用のみ。squadtp側のコード・configに手を入れたことは一度もない
+- **squadtp本体の改造は原則禁止、例外は明示許可された範囲のみ**: 基本方針は変わらず、
+  公開API(`SquadManager`/`Squad`/`ReviveSystem`/`TeleportHelper`)経由の読み取り専用利用のみで
+  進めること。**2026-08-06にユーザーから明示的な許可**を得て、初めて例外的にsquadtp本体へ
+  変更を加えた(`uk.iwaservice.squadtp.api`パッケージの新設、`RespawnChoiceScreen`への
+  選択肢追加を第三者Modに許可する公開API)。この許可は「`RespawnChoiceScreen`に選択肢を
+  追加できるようにする」という**この目的に限定**されたものであり、squadtp本体への変更を
+  一般的に許可するものではない。今後squadtpへさらに手を入れる必要が生じた場合は、
+  改めてユーザーに確認すること
 
 ## 次にやること候補
 
-1. ブレイクスルーモードの実プレイテスト(2人以上、上記の未検証項目を中心に)
-2. TDMキル計上修正が実プレイで効いているかの確認(上記参照)
-3. TODO.mdの「優先度高」2件(拠点からのリスポーン選択・スポーン安全確認)
-4. TODO.mdの「未検証」項目全般(実プレイでの動作確認がまだ大半未実施)
+1. チームビーコン/拠点スポーンの選択UI化の実プレイテスト(上記「未検証」参照、最優先)
+2. ブレイクスルーモードの実プレイテスト(2人以上、上記の未検証項目を中心に)
+3. TDMキル計上修正が実プレイで効いているかの確認(上記参照)
+4. TODO.mdの「優先度高」(スポーン安全確認)
+5. TODO.mdの「未検証」項目全般(実プレイでの動作確認がまだ大半未実施)

@@ -62,7 +62,6 @@ public final class ScoreEvents {
             return;
         }
         manager.recordDeath(victim.getUUID());
-        manager.recordDeathPosition(victim);
         if (manager.getMode() == GameMode.BREAKTHROUGH) {
             manager.handleBreakthroughDeath(victim.getUUID());
         }

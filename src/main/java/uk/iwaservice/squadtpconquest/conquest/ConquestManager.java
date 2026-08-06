@@ -125,8 +125,6 @@ public class ConquestManager extends SavedData {
     private BlockPos boundaryPos2;
     /** Transient: continuous seconds each player has spent outside the boundary. */
     private final Map<UUID, Integer> boundaryOutsideSeconds = new HashMap<>();
-    /** Transient: where each player last died, for spawnAtOwnedPointsEnabled's "closest owned point" pick. */
-    private final Map<UUID, GlobalPos> lastDeathPositions = new HashMap<>();
 
     /**
      * Transient: original state of every block terrain destruction has modified this round,
@@ -454,11 +452,6 @@ public class ConquestManager extends SavedData {
         scoreOf(player).deaths++;
         lifetimeScoreOf(player).deaths++;
         setDirty();
-    }
-
-    /** Remembers where a player died, for {@link #tryTeleportToOwnedPoint}'s "closest owned point" pick. */
-    public void recordDeathPosition(ServerPlayer victim) {
-        lastDeathPositions.put(victim.getUUID(), GlobalPos.of(victim.level().dimension(), victim.blockPosition()));
     }
 
     public void recordAssist(UUID player) {
@@ -1194,7 +1187,6 @@ public class ConquestManager extends SavedData {
         boundaryOutsideSeconds.clear();
         sectorAreaGraceSecondsRemaining = 0;
         teamBeacons.clear();
-        lastDeathPositions.clear();
         if (mode == GameMode.BREAKTHROUGH) {
             activeSectorNumber = sectors.firstKey();
             attackerTickets = Config.BT_ATTACKER_TICKETS.get();
@@ -1257,19 +1249,12 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Teleports one player to their role's spawn: their team's active respawn beacon if any
-     * (see {@link #placeTeamBeacon}), else in conquest their team's closest owned capture point
-     * if spawnAtOwnedPointsEnabled (see {@link #tryTeleportToOwnedPoint}), else in breakthrough
-     * the active sector's attacker/defender spawn if set, else the global spawnA/B, else the
-     * world spawn.
+     * Teleports one player to their role's spawn: in breakthrough the active sector's
+     * attacker/defender spawn if set, else the global spawnA/B, else the world spawn. The team
+     * respawn beacon and (in conquest) owned capture points are offered as player-picked options
+     * via {@link ConquestRespawnChoiceProvider} instead, not placed here.
      */
     private void teleportToRoleSpawn(ServerPlayer player, Team team) {
-        if (tryTeleportToBeacon(player, team)) {
-            return;
-        }
-        if (mode == GameMode.CONQUEST && Config.SPAWN_AT_OWNED_POINTS_ENABLED.get() && tryTeleportToOwnedPoint(player, team)) {
-            return;
-        }
         MinecraftServer server = player.server;
         Sector sector = mode == GameMode.BREAKTHROUGH ? currentSector() : null;
         ResourceKey<Level> dim = null;
@@ -1337,8 +1322,12 @@ public class ConquestManager extends SavedData {
         return beacon == null ? null : beacon.pos;
     }
 
-    /** Teleports the player to their team's active respawn beacon, if any. False (no-op) if none is active. */
-    private boolean tryTeleportToBeacon(ServerPlayer player, Team team) {
+    /**
+     * Teleports the player to their team's active respawn beacon, if any. False (no-op) if none
+     * is active. Called from {@link ConquestRespawnChoiceProvider#onChosen} when the player picks
+     * the beacon option in squadtp's respawn chooser.
+     */
+    boolean teleportToTeamBeacon(ServerPlayer player, Team team) {
         TeamBeacon beacon = teamBeacons.get(team);
         if (beacon == null) {
             return false;
@@ -1354,34 +1343,16 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Teleports the player to whichever capture point their team owns is closest to where they
-     * last died (or, if no death position is known — e.g. their first spawn this round — the
-     * first owned point found). False (no-op) if the team owns no points.
+     * Teleports the player to a specific capture point. False (no-op) if its dimension isn't
+     * loaded. Called from {@link ConquestRespawnChoiceProvider#onChosen} when the player picks
+     * that point in squadtp's respawn chooser.
      */
-    private boolean tryTeleportToOwnedPoint(ServerPlayer player, Team team) {
-        GlobalPos deathPos = lastDeathPositions.get(player.getUUID());
-        CapturePoint best = null;
-        double bestDistSq = Double.MAX_VALUE;
-        for (CapturePoint point : points.values()) {
-            if (point.getOwner() != team) {
-                continue;
-            }
-            double distSq = (deathPos != null && deathPos.dimension().equals(point.getDimension()))
-                    ? point.getPos().distSqr(deathPos.pos())
-                    : 0;
-            if (best == null || distSq < bestDistSq) {
-                best = point;
-                bestDistSq = distSq;
-            }
-        }
-        if (best == null) {
-            return false;
-        }
-        ServerLevel level = player.server.getLevel(best.getDimension());
+    boolean teleportToPoint(ServerPlayer player, CapturePoint point) {
+        ServerLevel level = player.server.getLevel(point.getDimension());
         if (level == null) {
             return false;
         }
-        BlockPos safe = TeleportHelper.findSafeSpot(level, best.getPos());
+        BlockPos safe = TeleportHelper.findSafeSpot(level, point.getPos());
         player.teleportTo(level, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
                 Set.of(), player.getYRot(), player.getXRot());
         return true;
@@ -1752,12 +1723,10 @@ public class ConquestManager extends SavedData {
             }
         } else if (mode == GameMode.BREAKTHROUGH) {
             handleBreakthroughRespawn(player, team);
-            return;
         }
-        // Conquest and TDM don't otherwise teleport on respawn (only at round start); an active
-        // team beacon is the one exception. Breakthrough already checks this inside
-        // teleportToRoleSpawn via handleBreakthroughRespawn, so it returns above instead.
-        tryTeleportToBeacon(player, team);
+        // Conquest and TDM don't otherwise teleport on respawn (only at round start). The team
+        // beacon and (in conquest) owned points are offered as player choices via
+        // ConquestRespawnChoiceProvider instead of being placed automatically here.
     }
 
     /**
