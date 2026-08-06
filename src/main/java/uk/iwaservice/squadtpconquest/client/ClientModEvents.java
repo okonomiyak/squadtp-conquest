@@ -31,10 +31,19 @@ public final class ClientModEvents {
             GLFW.GLFW_KEY_RIGHT_ALT,
             "key.categories.squadtpconquest");
 
+    /** BF-style spot: marks whatever enemy is under the crosshair for the player's team. */
+    public static final KeyMapping SPOT = new KeyMapping(
+            "key.squadtpconquest.spot",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.MOUSE,
+            GLFW.GLFW_MOUSE_BUTTON_MIDDLE,
+            "key.categories.squadtpconquest");
+
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(OPEN_CONQUEST_SCREEN);
         event.register(OPEN_SCORE_SCREEN);
+        event.register(SPOT);
     }
 
     @SubscribeEvent

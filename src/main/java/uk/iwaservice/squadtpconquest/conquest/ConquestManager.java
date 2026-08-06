@@ -35,6 +35,7 @@ import uk.iwaservice.squadtpconquest.Config;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 import uk.iwaservice.squadtpconquest.network.NetworkHandler;
+import uk.iwaservice.squadtpconquest.network.SpotPacket;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -125,6 +126,8 @@ public class ConquestManager extends SavedData {
     private BlockPos boundaryPos2;
     /** Transient: continuous seconds each player has spent outside the boundary. */
     private final Map<UUID, Integer> boundaryOutsideSeconds = new HashMap<>();
+    /** Transient: tick count each player's spot key is next usable at (see {@link #spotPlayer}). */
+    private final Map<UUID, Integer> spotCooldownUntilTick = new HashMap<>();
 
     /**
      * Transient: original state of every block terrain destruction has modified this round,
@@ -409,6 +412,32 @@ public class ConquestManager extends SavedData {
             }
         }
         return count;
+    }
+
+    /**
+     * Marks {@code target}'s current position for {@code spotter}'s team (a one-time snapshot,
+     * not a live tracker — see {@link SpotPacket}), gated by a per-spotter cooldown. False if
+     * still on cooldown (no-op); the caller has already validated eligibility (round state, teams,
+     * alive, etc.) before calling this.
+     */
+    public boolean spotPlayer(MinecraftServer server, ServerPlayer spotter, ServerPlayer target) {
+        int now = server.getTickCount();
+        Integer readyAt = spotCooldownUntilTick.get(spotter.getUUID());
+        if (readyAt != null && now < readyAt) {
+            return false;
+        }
+        spotCooldownUntilTick.put(spotter.getUUID(), now + Config.SPOT_COOLDOWN_SECONDS.get() * 20);
+
+        SpotPacket packet = new SpotPacket(target.getUUID(), target.getGameProfile().getName(),
+                target.level().dimension().location(), target.blockPosition(),
+                Config.SPOT_DURATION_SECONDS.get() * 20);
+        Team spotterTeam = teamOf(spotter.getUUID());
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (teamOf(player.getUUID()) == spotterTeam) {
+                NetworkHandler.send(player, packet);
+            }
+        }
+        return true;
     }
 
     private int countOwned(Team team) {
@@ -1185,6 +1214,7 @@ public class ConquestManager extends SavedData {
         pendingAttackerRespawns.clear();
         zoneIntrusionSeconds.clear();
         boundaryOutsideSeconds.clear();
+        spotCooldownUntilTick.clear();
         sectorAreaGraceSecondsRemaining = 0;
         teamBeacons.clear();
         if (mode == GameMode.BREAKTHROUGH) {

@@ -13,7 +13,14 @@ import uk.iwaservice.squadtpconquest.client.ConquestClientData;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 
-/** Renders every capture point as a JourneyMap waypoint, colored by its current owner. */
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Renders every capture point as a JourneyMap waypoint, colored by its current owner, plus a
+ * temporary marker for each enemy currently spotted by the viewer's team (see
+ * {@link uk.iwaservice.squadtpconquest.network.SpotPacket}).
+ */
 public final class ConquestJmWaypointHandler {
 
     /** Removes every waypoint this mod has shown, without re-adding any. */
@@ -39,6 +46,13 @@ public final class ConquestJmWaypointHandler {
         for (ConquestSyncPacket.PointStatus point : ConquestClientData.getPoints()) {
             int color = point.owner().hudColor() & 0xFFFFFF;
             show(api, waypoint(point.name(), point.name(), point.dimension(), point.pos(), color));
+        }
+
+        // Spots are only ever sent for enemies, so the target's team is always our opponent's.
+        int spotColor = ConquestClientData.getYourTeam().opponent().hudColor() & 0xFFFFFF;
+        for (Map.Entry<UUID, ConquestClientData.SpotEntry> entry : ConquestClientData.getSpots().entrySet()) {
+            ConquestClientData.SpotEntry spot = entry.getValue();
+            show(api, waypoint("spot_" + entry.getKey(), spot.name(), spot.dimension(), spot.pos(), spotColor));
         }
     }
 

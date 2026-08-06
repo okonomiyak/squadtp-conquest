@@ -8,6 +8,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.commands.Commands;
@@ -138,6 +139,9 @@ public final class ConquestCommand {
                                         .then(Commands.argument("team", StringArgumentType.word())
                                                 .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
                                                 .executes(ConquestCommand::teamAssign)))))
+                .then(Commands.literal("spot")
+                        .then(Commands.argument("target", EntityArgument.player())
+                                .executes(ConquestCommand::spot)))
                 .then(Commands.literal("point")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -316,6 +320,27 @@ public final class ConquestCommand {
         ctx.getSource().sendSuccess(() ->
                 Component.translatable("conquest.msg.team_joined", team.display()), false);
         return 1;
+    }
+
+    /**
+     * Marks an enemy's position for the spotter's team (see {@link ConquestManager#spotPlayer}).
+     * Triggered by the client's spot key after its own line-of-sight/team raycast, so failures
+     * here are silent (0, no chat message) rather than user-facing errors — the client has
+     * already filtered out anything a legitimate press wouldn't send.
+     */
+    private static int spot(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer spotter = ctx.getSource().getPlayerOrException();
+        ServerPlayer target = EntityArgument.getPlayer(ctx, "target");
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        if (manager.getState() != RoundState.IN_PROGRESS) {
+            return 0;
+        }
+        Team spotterTeam = manager.teamOf(spotter.getUUID());
+        Team targetTeam = manager.teamOf(target.getUUID());
+        if (!spotterTeam.isCombatant() || !targetTeam.isCombatant() || spotterTeam == targetTeam || !target.isAlive()) {
+            return 0;
+        }
+        return manager.spotPlayer(ctx.getSource().getServer(), spotter, target) ? 1 : 0;
     }
 
     private static int setMode(CommandContext<CommandSourceStack> ctx) {

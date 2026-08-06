@@ -23,6 +23,9 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue BOUNDARY_KILL_SECONDS;
     public static final ForgeConfigSpec.IntValue TEAM_BEACON_LIFETIME_SECONDS;
     public static final ForgeConfigSpec.BooleanValue SPAWN_AT_OWNED_POINTS_ENABLED;
+    public static final ForgeConfigSpec.IntValue SPOT_RANGE_BLOCKS;
+    public static final ForgeConfigSpec.IntValue SPOT_DURATION_SECONDS;
+    public static final ForgeConfigSpec.IntValue SPOT_COOLDOWN_SECONDS;
     public static final ForgeConfigSpec.IntValue ASSIST_WINDOW_SECONDS;
     public static final ForgeConfigSpec.IntValue SCORE_PER_KILL;
     public static final ForgeConfigSpec.IntValue SCORE_PER_ASSIST;
@@ -108,6 +111,17 @@ public final class Config {
                         "spawn if the team owns none), instead of always the fixed global spawn. A team",
                         "beacon (see teamBeaconLifetimeSeconds) still takes priority over this when active.")
                 .define("spawnAtOwnedPointsEnabled", true);
+        SPOT_RANGE_BLOCKS = b
+                .comment("Max distance (blocks) the spot key can mark an enemy at. Blocked by line of sight",
+                        "(walls stop it short of this).")
+                .defineInRange("spotRangeBlocks", 100, 10, 300);
+        SPOT_DURATION_SECONDS = b
+                .comment("Seconds a spotted enemy's position stays visible to the spotter's team (JourneyMap",
+                        "waypoint). The mark is a one-time snapshot of where they were, not a live tracker.")
+                .defineInRange("spotDurationSeconds", 8, 1, 60);
+        SPOT_COOLDOWN_SECONDS = b
+                .comment("Seconds a player must wait between uses of the spot key.")
+                .defineInRange("spotCooldownSeconds", 2, 0, 30);
         b.pop();
 
         b.push("scoreboard");

@@ -17,7 +17,7 @@ public final class NetworkHandler {
     // Bump whenever a packet's wire format changes (field added/removed/reordered).
     // A mismatch then fails the connection handshake with a clear message instead
     // of silently decoding a malformed packet and crashing the client mid-game.
-    private static final String PROTOCOL_VERSION = "12";
+    private static final String PROTOCOL_VERSION = "13";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(SquadTpConquest.MODID, "main"),
@@ -36,6 +36,11 @@ public final class NetworkHandler {
                 .decoder(ConquestScoreboardPacket::decode)
                 .consumerMainThread(ConquestScoreboardPacket::handle)
                 .add();
+        CHANNEL.messageBuilder(SpotPacket.class, 2, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SpotPacket::encode)
+                .decoder(SpotPacket::decode)
+                .consumerMainThread(SpotPacket::handle)
+                .add();
     }
 
     public static void send(ServerPlayer player, ConquestSyncPacket packet) {
@@ -43,6 +48,10 @@ public final class NetworkHandler {
     }
 
     public static void send(ServerPlayer player, ConquestScoreboardPacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    public static void send(ServerPlayer player, SpotPacket packet) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
 

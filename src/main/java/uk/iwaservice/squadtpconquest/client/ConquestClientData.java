@@ -1,5 +1,7 @@
 package uk.iwaservice.squadtpconquest.client;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.conquest.Team;
@@ -7,10 +9,18 @@ import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 
 import javax.annotation.Nullable;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /** Client-side mirror of the conquest round, fed exclusively by S2C packets. */
 public final class ConquestClientData {
+
+    /** A spotted enemy's last known position (see {@link uk.iwaservice.squadtpconquest.network.SpotPacket}). */
+    public record SpotEntry(String name, ResourceLocation dimension, BlockPos pos, long expiryGameTime) {}
+
+    private static final Map<UUID, SpotEntry> spots = new HashMap<>();
 
     private static List<ConquestSyncPacket.PointStatus> points = List.of();
     private static int ticketsA;
@@ -87,6 +97,25 @@ public final class ConquestClientData {
             }
         }
         return null;
+    }
+
+    public static synchronized void addSpot(UUID target, String name, ResourceLocation dimension, BlockPos pos,
+                                            long expiryGameTime) {
+        spots.put(target, new SpotEntry(name, dimension, pos, expiryGameTime));
+    }
+
+    /** Drops expired spots. Returns true if anything was removed, so the caller knows to redraw. */
+    public static synchronized boolean pruneExpiredSpots(long currentGameTime) {
+        return spots.entrySet().removeIf(e -> e.getValue().expiryGameTime() <= currentGameTime);
+    }
+
+    public static synchronized Map<UUID, SpotEntry> getSpots() {
+        return Map.copyOf(spots);
+    }
+
+    /** Called on logout: spot expiry is measured in absolute world time, meaningless across sessions/servers. */
+    public static synchronized void clearSpots() {
+        spots.clear();
     }
 
     public static synchronized int getTicketsA() {

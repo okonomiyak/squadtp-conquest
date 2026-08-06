@@ -9,12 +9,13 @@
 ダウン状態からの蘇生を可能にする再利用可能な道具(クールダウンは既定45秒→ユーザーフィードバックで
 5秒に短縮済み)。squadtp-conquest側はこの2件目に対応するコード変更は無く(squadtp本体だけで完結する
 機能のため)、依存バージョンの追従のみ。さらにsquadtp-conquest単体の変更として、拠点スポーン選択肢
-から係争中/被占領中の拠点を除外し、拠点をJourneyMapのウェイポイントとして表示する機能を追加した。
-詳細は下記および**README.md**参照。
+から係争中/被占領中の拠点を除外し、拠点をJourneyMapのウェイポイントとして表示する機能、そして
+それを土台にした**索敵マーキング(スポット)**(BFのスポット機能: クロスヘアの先の敵をキーで
+マークし、一定時間自チームのJourneyMapに表示)を追加した。詳細は下記および**README.md**参照。
 
 ## 現在の状態
 
-- **バージョン**: `mod_version=0.2.2`(JourneyMap連携での`PROTOCOL_VERSION` 11→12に伴うバンプ。
+- **バージョン**: `mod_version=0.2.3`(索敵マーキングでの`PROTOCOL_VERSION` 12→13に伴うバンプ。
   **コードを含む変更のため、稼働中サーバー/クライアントは新jarでの再起動が必要**
   ——AEDクールダウンのような設定ファイルのみのホットパッチでは反映されない)
 - **ライセンス**: GPL-3.0(`LICENSE`ファイルあり)
@@ -182,11 +183,37 @@
   間だけ表示、チーム色(`Team.hudColor()`のアルファを落として使用)で保有チームを表現。
   ログアウト時は`ClientEvents.onLoggingOut`から`JourneyMapCompat.clear()`(古いデータに基づいて
   再表示してしまわないよう、`refresh()`とは別に「無条件で全消し」だけを行う専用メソッドを用意)
+- **索敵マーキング(スポット)**(2026-08-06新規実装、squadtp-conquest単体、squadtp本体は無改造):
+  新規キー`key.squadtpconquest.spot`(既定マウス中央ボタン)を押すと、クライアント側で視点から
+  `spotRangeBlocks`(既定100)先までブロックレイキャスト(`Level.clip`)+バニラの
+  `ProjectileUtil.getEntityHitResult`でエンティティレイキャストを行い、遮蔽物より手前で命中した
+  敵プレイヤーだけを対象にする(壁越し索敵は不可)。命中したら`/conquest spot <対象>`を送信
+  (初めて`EntityArgument.player()`を使用、既存コマンド群の`StringArgumentType.word()`名前指定とは
+  異なる)。サーバー側`ConquestManager.spotPlayer`は`spotCooldownSeconds`(既定2)の
+  クールダウン管理のみ行い、対象位置のスナップショットを新規`SpotPacket`(S2C)でスポッター
+  チーム全員に送る(`PROTOCOL_VERSION` 12→13)。継続追従は無く、`spotDurationSeconds`(既定8)後に
+  クライアント側のゲーム内時刻比較で自動的に消える(サーバーからの明示的な解除パケットは無い、
+  `ConquestClientData.pruneExpiredSpots`を`ClientEvents.onClientTick`で毎tick呼ぶだけ)。
+  表示は上記の拠点ウェイポイント基盤をそのまま流用(`ConquestJmWaypointHandler.refresh()`に
+  スポット一覧を追加しただけ)、スポット対象は常に敵チームなので`ConquestClientData.getYourTeam()
+  .opponent().hudColor()`で色付け。画面上の頭上マーカー(BF本編のような3D→2D投影)は今回のスコープ外
+  (squadtp本体の分隊メンバー位置共有もJourneyMapのみで完結しており、同じ方針を踏襲)
 - スコアボード(右Alt)2ページ目: 累計スコア+K/D比率
 - HUD/GUIのチーム色を自分/敵視点から**チーム固定色**(A=青・B=赤)に変更
 - 管理用GUI(Lキー)・BF風HUD(常時表示)・adjustable config(`/conquest config set`)
 
 ## ⚠️ 既知の問題・積み残し
+
+**索敵マーキング(スポット)も実プレイ未検証(ビルド成功のみ)。** 次回確認が必要な点:
+- 敵を見て中央マウスボタン(既定)を押すと実際に`/conquest spot`が飛ぶか、味方のJourneyMapに
+  スポット位置が表示されるか
+- 壁越しでは反応しないこと(ブロック遮蔽の判定が効いているか)
+- `spotDurationSeconds`後に自動的にウェイポイントが消えるか
+- `spotCooldownSeconds`中に連打しても再送されないか(サーバー側で無視されるだけで、クライアントは
+  投げっぱなしなのでスパム自体は防げていない点に注意 — 実害は無いはずだが通信量は見ておきたい)
+- 味方・スペクテイター・ダウン中のプレイヤーを誤って対象にしないか
+- キーバインドがコンフィグ画面で正しく表示・再割り当てできるか(マウス中央ボタンが他の操作と
+  衝突しないか)
 
 **拠点のJourneyMapウェイポイント表示も実プレイ未検証(ビルド成功のみ、JourneyMap実機確認は未実施)。**
 次回確認が必要な点:
@@ -334,9 +361,10 @@
   Writeツール(BOM無し)を使うこと
 - **PROTOCOL_VERSIONの上げ忘れ**: パケットのフィールド追加・変更、または列挙型への新定数挿入
   (既存定数のordinalがズレる場合)は、バイト長が同じでも`NetworkHandler.PROTOCOL_VERSION`を
-  上げること。現在値は`12`(ブレイクスルー実装で`8`→`9`、GUIセクター管理追加で`9`→`10`、
+  上げること。現在値は`13`(ブレイクスルー実装で`8`→`9`、GUIセクター管理追加で`9`→`10`、
   コールインGUI追加で`callIns`/`availableScore`フィールドを`ConquestSyncPacket`に追加し`10`→`11`、
-  JourneyMap連携で`PointStatus`に`dimension`/`pos`を追加し`11`→`12`)。
+  JourneyMap連携で`PointStatus`に`dimension`/`pos`を追加し`11`→`12`、
+  索敵マーキングで新規`SpotPacket`を追加し`12`→`13`)。
   上げ忘れると新旧クライアント/サーバー混在時に`IndexOutOfBoundsException`で原因不明の切断が起きる。
   なお**squadtp本体**の`NetworkHandler.PROTOCOL_VERSION`は別物(こちらは`1`→`2`、
   `RespawnChoicePacket`に`external`フィールドを追加したため)。2つのmodは別チャンネル
@@ -356,9 +384,9 @@
 
 ## 次にやること候補
 
-1. チームビーコン/拠点スポーンの選択UI化、AED(分隊外蘇生)、拠点のJourneyMapウェイポイント表示の
-   実プレイテスト(上記「未検証」参照、最優先。稼働中サーバー/クライアントは新jarでの**再起動が
-   必要**な変更を含むので注意)
+1. チームビーコン/拠点スポーンの選択UI化、AED(分隊外蘇生)、拠点のJourneyMapウェイポイント表示、
+   索敵マーキング(スポット)の実プレイテスト(上記「未検証」参照、最優先。稼働中サーバー/
+   クライアントは新jarでの**再起動が必要**な変更を含むので注意)
 2. ブレイクスルーモードの実プレイテスト(2人以上、上記の未検証項目を中心に)
 3. TDMキル計上修正が実プレイで効いているかの確認(上記参照)
 4. TODO.mdの「優先度高」(スポーン安全確認)

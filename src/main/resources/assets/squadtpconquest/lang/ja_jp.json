@@ -169,6 +169,7 @@
   "key.categories.squadtpconquest": "SquadTP Conquest",
   "key.squadtpconquest.open_conquest_screen": "コンクエスト画面を開く",
   "key.squadtpconquest.open_score_screen": "スコアボードを開く",
+  "key.squadtpconquest.spot": "敵をスポットする",
 
   "conquest.score.title": "コンクエスト",
   "conquest.score.sectors": "拠点保有 A:%s / B:%s",

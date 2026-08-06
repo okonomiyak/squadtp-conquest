@@ -15,6 +15,7 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 | コマンド | 説明 | 権限 |
 |---|---|---|
 | `/conquest team join <a\|b\|admin>` | チームA/Bに参加。同時にバニラチーム`conquest_a`/`conquest_b`にも自動参加(フレンドリーファイア無効・チーム色設定)。`admin`は観戦用の第3チームでOP限定 | - (`admin`のみOP) |
+| `/conquest spot <プレイヤー>` | 対象を[索敵マーキング](#索敵マーキングスポット)する。通常は専用キーで自動送信されるため手動実行の必要はない | - |
 | `/conquest team shuffle` | 管理人チーム以外のオンラインプレイヤーをランダムにA/Bへ均等に振り分け直す | OP |
 | `/conquest team assign <attacker\|defender> <a\|b>` | ブレイクスルーモードで、チームA/Bのどちらが攻撃側/防衛側かを設定。ラウンドが`WAITING`の時のみ変更可(既定は攻撃側=チームA) | OP |
 | `/conquest mode set <conquest\|tdm\|breakthrough>` | ゲームモードを切り替え。ラウンドが`WAITING`の時のみ変更可 | OP |
@@ -234,6 +235,16 @@ JourneyMapを導入している場合、ラウンド進行中(`IN_PROGRESS`)は�
 (ウェイポイント表示のオンオフ)に従う。ラウンドが`IN_PROGRESS`でなくなる、またはサーバーから
 ログアウトすると消える。編集・永続化はされない(サーバーからの同期のたびに全て作り直す)。
 
+## 索敵マーキング(スポット)
+
+キー(既定: マウス中央ボタン、`key.squadtpconquest.spot`)を押すと、その瞬間クロスヘアの先にいる
+敵プレイヤーを`spotRangeBlocks`(既定100)ブロック先まで索敵する。壁越しには反応しない
+(ブロック遮蔽をブロックレイキャストで判定)。命中すると自チーム全員に`/conquest spot`が飛び、
+[JourneyMapウェイポイント](#拠点のウェイポイント表示journeymap連携)としてその位置が
+`spotDurationSeconds`秒(既定8)だけ表示される(敵チーム色)。動く敵を継続追従はせず、
+スポットした瞬間の位置のスナップショットのみ。連打防止に`spotCooldownSeconds`秒(既定2)の
+クールダウンがある。JourneyMap未導入環境ではウェイポイントが出ないだけで、キー自体は害なく空振りする。
+
 ## ラウンドの流れ
 
 状態は `WAITING`(待機中) → `STARTING`(開始カウントダウン中) → `IN_PROGRESS`(進行中) →
@@ -332,6 +343,9 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 - `teamBeaconLifetimeSeconds`(既定30) — チームリスポーンビーコンが設置から自動消滅するまでの秒数
 - `spawnAtOwnedPointsEnabled`(既定true) — コンクエスト限定。有効な間、保有している拠点それぞれが
   squadtpのリスポーン選択画面に選択肢として表示される。falseで拠点スポーンの選択肢自体を出さない
+- `spotRangeBlocks`(既定100) — [索敵マーキング](#索敵マーキングスポット)キーが反応する最大距離
+- `spotDurationSeconds`(既定8) — スポットした敵の位置がJourneyMapに表示され続ける秒数
+- `spotCooldownSeconds`(既定2) — スポットキーの連打防止クールダウン秒数
 
 `scoreboard`セクション:
 - `assistWindowSeconds`(既定10)
@@ -355,10 +369,12 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 
 これらは`/conquest config set <key> <value>`でゲーム内から再起動なしに変更できる
 (TOMLにも自動で永続化される)。ただし対応しているのは元々の`conquest`/`scoreboard`セクションの
-数値・真偽値項目のみで、`breakthrough`・`homeZoneKillSeconds`・`boundaryKillSeconds`・
-`teamBeaconLifetimeSeconds`・`spawnAtOwnedPointsEnabled`・`terrainDestruction`セクションの
-項目(リスト・文字列型を含む)は`world/serverconfig/squadtpconquest-server.toml`の直接編集が必要
-(既存の制約で、今回追加した項目も同様の扱いにしている)。
+一部数値・真偽値項目のみ(`ConquestCommand.CONFIG_KEYS`に明示登録されたキーだけ)で、
+`breakthrough`・`homeZoneKillSeconds`・`boundaryKillSeconds`・`teamBeaconLifetimeSeconds`・
+`spawnAtOwnedPointsEnabled`・`spotRangeBlocks`・`spotDurationSeconds`・`spotCooldownSeconds`・
+`terrainDestruction`セクションの項目(リスト・文字列型を含む)は
+`world/serverconfig/squadtpconquest-server.toml`の直接編集が必要(既存の制約で、今回追加した
+項目も同様の扱いにしている)。
 
 キーバインドのデフォルト(Lキー・右Altキー)はクライアント側の設定でありサーバーconfigの対象外。
 

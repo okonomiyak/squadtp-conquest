@@ -169,6 +169,7 @@
   "key.categories.squadtpconquest": "SquadTP Conquest",
   "key.squadtpconquest.open_conquest_screen": "Open Conquest Screen",
   "key.squadtpconquest.open_score_screen": "Open Scoreboard",
+  "key.squadtpconquest.spot": "Spot Enemy",
 
   "conquest.score.title": "Conquest",
   "conquest.score.sectors": "Sectors A:%s / B:%s",
