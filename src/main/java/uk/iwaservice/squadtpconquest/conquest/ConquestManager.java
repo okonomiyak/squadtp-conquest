@@ -125,6 +125,8 @@ public class ConquestManager extends SavedData {
     private BlockPos boundaryPos2;
     /** Transient: continuous seconds each player has spent outside the boundary. */
     private final Map<UUID, Integer> boundaryOutsideSeconds = new HashMap<>();
+    /** Transient: where each player last died, for spawnAtOwnedPointsEnabled's "closest owned point" pick. */
+    private final Map<UUID, GlobalPos> lastDeathPositions = new HashMap<>();
 
     /**
      * Transient: original state of every block terrain destruction has modified this round,
@@ -452,6 +454,11 @@ public class ConquestManager extends SavedData {
         scoreOf(player).deaths++;
         lifetimeScoreOf(player).deaths++;
         setDirty();
+    }
+
+    /** Remembers where a player died, for {@link #tryTeleportToOwnedPoint}'s "closest owned point" pick. */
+    public void recordDeathPosition(ServerPlayer victim) {
+        lastDeathPositions.put(victim.getUUID(), GlobalPos.of(victim.level().dimension(), victim.blockPosition()));
     }
 
     public void recordAssist(UUID player) {
@@ -1187,6 +1194,7 @@ public class ConquestManager extends SavedData {
         boundaryOutsideSeconds.clear();
         sectorAreaGraceSecondsRemaining = 0;
         teamBeacons.clear();
+        lastDeathPositions.clear();
         if (mode == GameMode.BREAKTHROUGH) {
             activeSectorNumber = sectors.firstKey();
             attackerTickets = Config.BT_ATTACKER_TICKETS.get();
@@ -1250,11 +1258,16 @@ public class ConquestManager extends SavedData {
 
     /**
      * Teleports one player to their role's spawn: their team's active respawn beacon if any
-     * (see {@link #placeTeamBeacon}), else in breakthrough the active sector's attacker/defender
-     * spawn if set, else the global spawnA/B, else the world spawn.
+     * (see {@link #placeTeamBeacon}), else in conquest their team's closest owned capture point
+     * if spawnAtOwnedPointsEnabled (see {@link #tryTeleportToOwnedPoint}), else in breakthrough
+     * the active sector's attacker/defender spawn if set, else the global spawnA/B, else the
+     * world spawn.
      */
     private void teleportToRoleSpawn(ServerPlayer player, Team team) {
         if (tryTeleportToBeacon(player, team)) {
+            return;
+        }
+        if (mode == GameMode.CONQUEST && Config.SPAWN_AT_OWNED_POINTS_ENABLED.get() && tryTeleportToOwnedPoint(player, team)) {
             return;
         }
         MinecraftServer server = player.server;
@@ -1335,6 +1348,40 @@ public class ConquestManager extends SavedData {
             return false;
         }
         BlockPos safe = TeleportHelper.findSafeSpot(level, beacon.pos);
+        player.teleportTo(level, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
+                Set.of(), player.getYRot(), player.getXRot());
+        return true;
+    }
+
+    /**
+     * Teleports the player to whichever capture point their team owns is closest to where they
+     * last died (or, if no death position is known — e.g. their first spawn this round — the
+     * first owned point found). False (no-op) if the team owns no points.
+     */
+    private boolean tryTeleportToOwnedPoint(ServerPlayer player, Team team) {
+        GlobalPos deathPos = lastDeathPositions.get(player.getUUID());
+        CapturePoint best = null;
+        double bestDistSq = Double.MAX_VALUE;
+        for (CapturePoint point : points.values()) {
+            if (point.getOwner() != team) {
+                continue;
+            }
+            double distSq = (deathPos != null && deathPos.dimension().equals(point.getDimension()))
+                    ? point.getPos().distSqr(deathPos.pos())
+                    : 0;
+            if (best == null || distSq < bestDistSq) {
+                best = point;
+                bestDistSq = distSq;
+            }
+        }
+        if (best == null) {
+            return false;
+        }
+        ServerLevel level = player.server.getLevel(best.getDimension());
+        if (level == null) {
+            return false;
+        }
+        BlockPos safe = TeleportHelper.findSafeSpot(level, best.getPos());
         player.teleportTo(level, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
                 Set.of(), player.getYRot(), player.getXRot());
         return true;

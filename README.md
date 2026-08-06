@@ -238,7 +238,9 @@ WorldEditの選択ワンドやCreateの「Schematic and Quill」と同じ操作�
    (`減少量 = ticketBleedAmount × 保有数の差`、同数保有は膠着)
 6. リスポーンするたびに、そのプレイヤーの**自チームの**チケットを`ticketCostPerRespawn`だけ消費
    (BFのリインフォースメント方式。squadtpのダウン→蘇生失敗による死亡も含め、実際にリスポーンした
-   タイミングでのみ発生)
+   タイミングでのみ発生)。リスポーン先は[チームリスポーンビーコン](#チームリスポーンビーコン)が
+   あれば最優先、無ければ`spawnAtOwnedPointsEnabled`(既定true)が有効な限り死亡位置に一番近い
+   保有拠点、それも無ければ`/conquest spawn set`のチーム固定スポーン(未設定ならワールドスポーン)
 7. 以下のいずれかでラウンド終了(`ENDED`へ): チケット0、(config有効時)片方のチームのオンライン人数が0、
    制限時間到達(チケット差で判定、同数はドロー)
 8. `resultDisplaySeconds`後に自動で(または`/conquest reset`で手動で)`WAITING`へ戻る
@@ -314,6 +316,8 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 - `homeZoneKillSeconds`(既定10) — 自陣ゾーンに敵が連続滞在できる秒数。超えると処刑される
 - `boundaryKillSeconds`(既定10) — 戦場境界の外に連続でいられる秒数。超えると処刑される(境界未設定なら無効)
 - `teamBeaconLifetimeSeconds`(既定30) — チームリスポーンビーコンが設置から自動消滅するまでの秒数
+- `spawnAtOwnedPointsEnabled`(既定true) — コンクエスト限定。有効な間、死亡位置に一番近い保有拠点へ
+  リスポーンする(拠点未保有ならチーム固定スポーンにフォールバック)。falseで従来通り常に固定スポーン
 
 `scoreboard`セクション:
 - `assistWindowSeconds`(既定10)
@@ -338,7 +342,7 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 これらは`/conquest config set <key> <value>`でゲーム内から再起動なしに変更できる
 (TOMLにも自動で永続化される)。ただし対応しているのは元々の`conquest`/`scoreboard`セクションの
 数値・真偽値項目のみで、`breakthrough`・`homeZoneKillSeconds`・`boundaryKillSeconds`・
-`teamBeaconLifetimeSeconds`・`terrainDestruction`セクションの
+`teamBeaconLifetimeSeconds`・`spawnAtOwnedPointsEnabled`・`terrainDestruction`セクションの
 項目(リスト・文字列型を含む)は`world/serverconfig/squadtpconquest-server.toml`の直接編集が必要
 (既存の制約で、今回追加した項目も同様の扱いにしている)。
 

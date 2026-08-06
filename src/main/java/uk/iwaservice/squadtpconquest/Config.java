@@ -22,6 +22,7 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue HOME_ZONE_KILL_SECONDS;
     public static final ForgeConfigSpec.IntValue BOUNDARY_KILL_SECONDS;
     public static final ForgeConfigSpec.IntValue TEAM_BEACON_LIFETIME_SECONDS;
+    public static final ForgeConfigSpec.BooleanValue SPAWN_AT_OWNED_POINTS_ENABLED;
     public static final ForgeConfigSpec.IntValue ASSIST_WINDOW_SECONDS;
     public static final ForgeConfigSpec.IntValue SCORE_PER_KILL;
     public static final ForgeConfigSpec.IntValue SCORE_PER_ASSIST;
@@ -101,6 +102,12 @@ public final class Config {
                         "with no limit on how many times. Placing a new beacon for a team replaces that team's",
                         "existing one.")
                 .defineInRange("teamBeaconLifetimeSeconds", 30, 5, 600);
+        SPAWN_AT_OWNED_POINTS_ENABLED = b
+                .comment("Conquest only: if true, respawning teleports to whichever capture point the player's",
+                        "team owns that's closest to where they died (falls back to the usual global team",
+                        "spawn if the team owns none), instead of always the fixed global spawn. A team",
+                        "beacon (see teamBeaconLifetimeSeconds) still takes priority over this when active.")
+                .define("spawnAtOwnedPointsEnabled", true);
         b.pop();
 
         b.push("scoreboard");
