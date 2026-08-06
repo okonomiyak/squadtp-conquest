@@ -164,6 +164,11 @@ public final class ConquestCommand {
                                 .then(Commands.argument("team", StringArgumentType.word())
                                         .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
                                         .executes(ConquestCommand::setSpawn))))
+                .then(Commands.literal("gather")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("set").executes(ConquestCommand::setGatherPoint))
+                        .then(Commands.literal("remove").executes(ConquestCommand::removeGatherPoint))
+                        .then(Commands.literal("list").executes(ConquestCommand::gatherList)))
                 .then(Commands.literal("zone")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -590,6 +595,33 @@ public final class ConquestCommand {
                 .setSpawn(player.serverLevel(), team, player.blockPosition());
         ctx.getSource().sendSuccess(() ->
                 Component.translatable("conquest.msg.spawn_set", team.display()), true);
+        return 1;
+    }
+
+    private static int setGatherPoint(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        ConquestManager.get(ctx.getSource().getServer())
+                .setGatherPoint(player.serverLevel(), player.blockPosition());
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.gather_set"), true);
+        return 1;
+    }
+
+    private static int removeGatherPoint(CommandContext<CommandSourceStack> ctx) {
+        if (!ConquestManager.get(ctx.getSource().getServer()).removeGatherPoint()) {
+            return fail(ctx, Component.translatable("conquest.msg.no_gather_point"));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.gather_removed"), true);
+        return 1;
+    }
+
+    private static int gatherList(CommandContext<CommandSourceStack> ctx) {
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        BlockPos pos = manager.getGatherPos();
+        if (pos == null) {
+            return fail(ctx, Component.translatable("conquest.msg.no_gather_point"));
+        }
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.status.gather", pos.toShortString()), false);
         return 1;
     }
 

@@ -46,6 +46,9 @@
   "conquest.msg.boundary_removed": "戦場境界を削除した",
   "conquest.msg.no_boundary": "戦場境界が未設定です",
   "conquest.msg.boundary_warning": "⚠ 戦場から離れています! あと%s秒で処刑されます",
+  "conquest.msg.gather_set": "試合終了時の集合地点をここに設定した",
+  "conquest.msg.gather_removed": "試合終了時の集合地点を削除した",
+  "conquest.msg.no_gather_point": "集合地点が未設定です",
   "conquest.msg.unknown_item": "不明なアイテムです: %s",
   "conquest.msg.callin_added": "コールイン%sを追加した: %sスコア、%s個の%s",
   "conquest.msg.callin_removed": "コールイン%sを削除した",
@@ -128,6 +131,7 @@
   "conquest.status.zone": "%s: %s 〜 %s",
   "conquest.status.protectzone": "%s: %s 〜 %s",
   "conquest.status.boundary": "%s 〜 %s",
+  "conquest.status.gather": "集合地点: %s",
   "conquest.status.callin": "%s: %sスコア = %s個の%s",
 
   "conquest.gui.title": "コンクエスト",

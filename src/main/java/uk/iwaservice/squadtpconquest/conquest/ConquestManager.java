@@ -94,6 +94,12 @@ public class ConquestManager extends SavedData {
     @Nullable
     private BlockPos spawnBPos;
 
+    /** Where every combatant is teleported to when a round ends (see {@link #endRound}). Optional. */
+    @Nullable
+    private ResourceKey<Level> gatherDim;
+    @Nullable
+    private BlockPos gatherPos;
+
     /**
      * Team A's home zone: an axis-aligned box between two corners; enemies lingering inside are
      * executed. Both corners must be set (and share zoneADim) for the zone to be active.
@@ -765,6 +771,33 @@ public class ConquestManager extends SavedData {
             spawnBPos = pos.immutable();
         }
         setDirty();
+    }
+
+    public void setGatherPoint(ServerLevel level, BlockPos pos) {
+        gatherDim = level.dimension();
+        gatherPos = pos.immutable();
+        setDirty();
+    }
+
+    /** Clears the round-end gather point. False if none was set. */
+    public boolean removeGatherPoint() {
+        if (gatherDim == null && gatherPos == null) {
+            return false;
+        }
+        gatherDim = null;
+        gatherPos = null;
+        setDirty();
+        return true;
+    }
+
+    @Nullable
+    public ResourceKey<Level> getGatherDim() {
+        return gatherDim;
+    }
+
+    @Nullable
+    public BlockPos getGatherPos() {
+        return gatherPos;
     }
 
     // --- home zones (per-team territory; the opposing team is executed after lingering too long) ---
@@ -1737,11 +1770,30 @@ public class ConquestManager extends SavedData {
                     .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
         }
         broadcastTitle(server, title, subtitle);
+        teleportToGatherPoint(server);
 
         // No per-participant filtering is exposed by squadtp's public API, so
         // this clears downed/revive state server-wide rather than just for
         // this round's players.
         ReviveSystem.clear();
+    }
+
+    /** If a gather point is set, teleports every combatant there (no-op otherwise). */
+    private void teleportToGatherPoint(MinecraftServer server) {
+        if (gatherDim == null || gatherPos == null) {
+            return;
+        }
+        ServerLevel level = server.getLevel(gatherDim);
+        if (level == null) {
+            return;
+        }
+        BlockPos safe = TeleportHelper.findSafeSpot(level, gatherPos);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (teamOf(player.getUUID()).isCombatant()) {
+                player.teleportTo(level, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
+                        Set.of(), player.getYRot(), player.getXRot());
+            }
+        }
     }
 
     /**
@@ -1884,6 +1936,10 @@ public class ConquestManager extends SavedData {
             manager.spawnBDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("SpawnBDim")));
             manager.spawnBPos = NbtUtils.readBlockPos(tag.getCompound("SpawnBPos"));
         }
+        if (tag.contains("GatherDim")) {
+            manager.gatherDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("GatherDim")));
+            manager.gatherPos = NbtUtils.readBlockPos(tag.getCompound("GatherPos"));
+        }
         if (tag.contains("ZoneADim")) {
             manager.zoneADim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("ZoneADim")));
             if (tag.contains("ZoneAPos1")) {
@@ -1991,6 +2047,10 @@ public class ConquestManager extends SavedData {
         if (spawnADim != null && spawnAPos != null) {
             tag.putString("SpawnADim", spawnADim.location().toString());
             tag.put("SpawnAPos", NbtUtils.writeBlockPos(spawnAPos));
+        }
+        if (gatherDim != null && gatherPos != null) {
+            tag.putString("GatherDim", gatherDim.location().toString());
+            tag.put("GatherPos", NbtUtils.writeBlockPos(gatherPos));
         }
         if (spawnBDim != null && spawnBPos != null) {
             tag.putString("SpawnBDim", spawnBDim.location().toString());
