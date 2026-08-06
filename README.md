@@ -225,6 +225,15 @@ WorldEditの選択ワンドやCreateの「Schematic and Quill」と同じ操作�
 - この選択肢はsquadtp本体に追加した公開API(`RespawnChoiceProvider`)経由で提供されており、
   分隊未所属のプレイヤーにも表示される
 
+## 拠点のウェイポイント表示(JourneyMap連携)
+
+JourneyMapを導入している場合、ラウンド進行中(`IN_PROGRESS`)は全ての拠点がその時点の保有チーム色
+(A=青・B=赤・未占領=灰)のウェイポイントとして自動表示される。squadtpの`compat/journeymap`と
+同じソフト依存パターン(JourneyMap未導入でもクラッシュしない、`compileOnly`+ランタイム検出)を
+そのまま踏襲した独自実装で、squadtp本体は無改造。表示/非表示の切り替えはJourneyMap側の設定
+(ウェイポイント表示のオンオフ)に従う。ラウンドが`IN_PROGRESS`でなくなる、またはサーバーから
+ログアウトすると消える。編集・永続化はされない(サーバーからの同期のたびに全て作り直す)。
+
 ## ラウンドの流れ
 
 状態は `WAITING`(待機中) → `STARTING`(開始カウントダウン中) → `IN_PROGRESS`(進行中) →

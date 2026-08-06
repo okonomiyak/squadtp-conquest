@@ -2,6 +2,7 @@ package uk.iwaservice.squadtpconquest.client;
 
 import net.minecraft.client.Minecraft;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestScreen;
+import uk.iwaservice.squadtpconquest.compat.JourneyMapCompat;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 
@@ -14,6 +15,7 @@ public final class ClientPacketHandler {
                 msg.attackerTeam(), msg.sectorIndex(), msg.sectorCount(),
                 msg.attackerTickets(), msg.respawnWaveSecondsRemaining(),
                 msg.callIns(), msg.availableScore());
+        JourneyMapCompat.refresh();
         if (msg.openScreen()) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null && mc.screen == null) {

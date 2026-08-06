@@ -1,5 +1,6 @@
 package uk.iwaservice.squadtpconquest.network;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
@@ -33,7 +34,8 @@ public record ConquestSyncPacket(List<PointStatus> points,
      * {@code sectorNumber} is 0 outside breakthrough or for a point not assigned to any sector.
      */
     public record PointStatus(String name, int radius, Team owner, Team capturingTeam, double flagLevel,
-                               boolean contested, boolean inZone, boolean active, int sectorNumber) {}
+                               boolean contested, boolean inZone, boolean active, int sectorNumber,
+                               ResourceLocation dimension, BlockPos pos) {}
 
     /** One registered /conquest callin, for the player-facing GUI list (see availableScore). */
     public record CallInStatus(String name, int scoreCost, ResourceLocation itemId, int count) {}
@@ -50,6 +52,8 @@ public record ConquestSyncPacket(List<PointStatus> points,
             buf.writeBoolean(p.inZone());
             buf.writeBoolean(p.active());
             buf.writeVarInt(p.sectorNumber());
+            buf.writeResourceLocation(p.dimension());
+            buf.writeBlockPos(p.pos());
         }
         buf.writeVarInt(msg.ticketsA);
         buf.writeVarInt(msg.ticketsB);
@@ -80,7 +84,7 @@ public record ConquestSyncPacket(List<PointStatus> points,
         for (int i = 0; i < count; i++) {
             points.add(new PointStatus(buf.readUtf(), buf.readVarInt(), buf.readEnum(Team.class),
                     buf.readEnum(Team.class), buf.readDouble(), buf.readBoolean(), buf.readBoolean(), buf.readBoolean(),
-                    buf.readVarInt()));
+                    buf.readVarInt(), buf.readResourceLocation(), buf.readBlockPos()));
         }
         int ticketsA = buf.readVarInt();
         int ticketsB = buf.readVarInt();

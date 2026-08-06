@@ -2,18 +2,26 @@ package uk.iwaservice.squadtpconquest.client;
 
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import uk.iwaservice.squadtpconquest.SquadTpConquest;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestScoreScreen;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestScreen;
+import uk.iwaservice.squadtpconquest.compat.JourneyMapCompat;
 
 @Mod.EventBusSubscriber(modid = SquadTpConquest.MODID, value = Dist.CLIENT)
 public final class ClientEvents {
 
     /** Tracks whether the current scoreboard screen was opened by holding the key, for hold-to-open mode. */
     private static boolean scoreboardOpenedByHold;
+
+    /** Clears stale capture point waypoints so they don't linger after leaving the server. */
+    @SubscribeEvent
+    public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        JourneyMapCompat.clear();
+    }
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {

@@ -59,12 +59,29 @@ repositories {
         metadataSources { artifact() }
         content { includeModule('uk.iwaservice', 'squadtp') }
     }
+    // JourneyMap API (v1.x for MC 1.20.x)
+    maven {
+        name = 'JourneyMap'
+        url = 'https://jm.gserv.me/repository/maven-public/'
+    }
+    // Full JourneyMap mod for in-dev runtime testing
+    maven {
+        name = 'CurseMaven'
+        url = 'https://cursemaven.com'
+        content { includeGroup 'curse.maven' }
+    }
 }
 
 dependencies {
     // Reobfuscated (SRG) squadtp jar, remapped to named mappings for the dev
     // runtime by ModDevGradle. Loads as a real mod in runClient/runServer.
     modImplementation "uk.iwaservice:squadtp:${squadtp_version}"
+
+    // JourneyMap: compile-time only soft dependency, never shipped or required (see compat/journeymap).
+    compileOnly "info.journeymap:journeymap-api:${journeymap_api_version}"
+    // JourneyMap 1.20.1-5.10.3-forge, remapped SRG->named for the dev runtime only.
+    // Production jars must NOT go into run/mods: their mixins fail against named MC classes.
+    modRuntimeOnly 'curse.maven:journeymap-32274:5789363'
 }
 
 // Debug aid: print the resolved runtime classpath entries for squadtp.

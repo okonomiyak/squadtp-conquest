@@ -1782,7 +1782,8 @@ public class ConquestManager extends SavedData {
                     || (active != null && active.getPointNames().contains(point.getName()));
             statuses.add(new ConquestSyncPacket.PointStatus(point.getName(), point.getRadius(), point.getOwner(),
                     point.getCapturingTeam(), point.getFlagLevel(), occ.contested(),
-                    occ.inZone().contains(viewer.getUUID()), pointActive, sectorNumberOf(point.getName())));
+                    occ.inZone().contains(viewer.getUUID()), pointActive, sectorNumberOf(point.getName()),
+                    point.getDimension().location(), point.getPos()));
         }
         List<ConquestSyncPacket.CallInStatus> callInStatuses = new ArrayList<>();
         for (CallIn callIn : callIns.values()) {

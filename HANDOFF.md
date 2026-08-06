@@ -6,17 +6,21 @@
 「squadtp本体は改造しない」節参照): (1) チームビーコン/拠点スポーンをsquadtpの死亡後リスポーン
 選択画面(`RespawnChoiceScreen`)から選べる公開API(`RespawnChoiceProvider`)を追加、
 (2) **AED**アイテム(squadtp側、squadtp-conquestからは未使用): 分隊外・分隊未所属のプレイヤーでも
-ダウン状態からの蘇生を可能にする再利用可能な道具。squadtp-conquest側はこの2件目に対応する
-コード変更は無く(squadtp本体だけで完結する機能のため)、依存バージョンの追従のみ。
+ダウン状態からの蘇生を可能にする再利用可能な道具(クールダウンは既定45秒→ユーザーフィードバックで
+5秒に短縮済み)。squadtp-conquest側はこの2件目に対応するコード変更は無く(squadtp本体だけで完結する
+機能のため)、依存バージョンの追従のみ。さらにsquadtp-conquest単体の変更として、拠点スポーン選択肢
+から係争中/被占領中の拠点を除外し、拠点をJourneyMapのウェイポイントとして表示する機能を追加した。
 詳細は下記および**README.md**参照。
 
 ## 現在の状態
 
-- **バージョン**: `mod_version=0.2.1`
+- **バージョン**: `mod_version=0.2.2`(JourneyMap連携での`PROTOCOL_VERSION` 11→12に伴うバンプ。
+  **コードを含む変更のため、稼働中サーバー/クライアントは新jarでの再起動が必要**
+  ——AEDクールダウンのような設定ファイルのみのホットパッチでは反映されない)
 - **ライセンス**: GPL-3.0(`LICENSE`ファイルあり)
-- **squadtp依存**: `gradle.properties`の`squadtp_version=0.2.2`(squadtp本体も同日0.2.2にバージョンアップ済み、
-  `../squadtp/build/libs/squadtp-0.2.2.jar`と一致させてある。AEDアイテム追加のためのバージョンアップで、
-  squadtp-conquest側のコード変更は無い)
+- **squadtp依存**: `gradle.properties`の`squadtp_version=0.2.3`(squadtp本体も同日0.2.3にバージョンアップ済み、
+  `../squadtp/build/libs/squadtp-0.2.3.jar`と一致させてある。AEDクールダウン既定値短縮のための
+  バージョンアップで、squadtp-conquest側のコード変更は無い)
 - **ビルド**: `gradlew build`成功、警告のみ(エラーなし)
 - **Git**: `master`ブランチ、リモート`origin`(`git@github-okonomiyak:okonomiyak/squadtp-conquest.git`)にpush済み、作業ツリーはクリーン
 
@@ -168,11 +172,31 @@
   (既存の`computeOccupancy`を再利用、その場で毎回再計算するのでtickのキャッシュ状態に依存しない)を
   `ConquestRespawnChoiceProvider`の`getChoices`(一覧に出す時点)と`onChosen`(選んだ瞬間の再検証、
   画面表示後に状況が変わっていた場合に備えて)の両方でチェック
+- **拠点のJourneyMapウェイポイント表示**(2026-08-06新規実装、squadtp-conquest単体、squadtp本体は
+  無改造): squadtpの`compat/journeymap`と同じソフト依存パターン(`compileOnly`+`ModList.isLoaded`
+  実行時検出、`compat.journeymap`配下のJourneyMap型は`JourneyMapCompat`のガード内でしか参照しない
+  のでJourneyMap未導入でも安全)を独自実装として複製。`ConquestSyncPacket.PointStatus`に`dimension`/
+  `pos`フィールドを追加(今までは座標を同期していなかった、`PROTOCOL_VERSION` 11→12)。
+  `ClientPacketHandler.handleSync`の同期のたびに`JourneyMapCompat.refresh()`で全ウェイポイントを
+  作り直す(squadtpと同じ「差分更新ではなく毎回全消し→全再生成」方式)。ラウンドが`IN_PROGRESS`の
+  間だけ表示、チーム色(`Team.hudColor()`のアルファを落として使用)で保有チームを表現。
+  ログアウト時は`ClientEvents.onLoggingOut`から`JourneyMapCompat.clear()`(古いデータに基づいて
+  再表示してしまわないよう、`refresh()`とは別に「無条件で全消し」だけを行う専用メソッドを用意)
 - スコアボード(右Alt)2ページ目: 累計スコア+K/D比率
 - HUD/GUIのチーム色を自分/敵視点から**チーム固定色**(A=青・B=赤)に変更
 - 管理用GUI(Lキー)・BF風HUD(常時表示)・adjustable config(`/conquest config set`)
 
 ## ⚠️ 既知の問題・積み残し
+
+**拠点のJourneyMapウェイポイント表示も実プレイ未検証(ビルド成功のみ、JourneyMap実機確認は未実施)。**
+次回確認が必要な点:
+- JourneyMap導入環境で実際に拠点がウェイポイントとして表示されるか、チーム色(保有チーム変更に
+  追従して色が変わるか)
+- ラウンドが`IN_PROGRESS`でなくなった時(結果表示・待機中)にウェイポイントが消えるか
+- サーバーからログアウトした時にウェイポイントが残らず消えるか
+- JourneyMap未導入環境でクラッシュ・エラーログが出ないこと(`compileOnly`+実行時検出が
+  squadtp側と同じパターンで機能しているかの確認)
+- `PROTOCOL_VERSION`を11→12に上げたので、旧クライアント/サーバー混在時に想定通り接続拒否されるか
 
 **squadtpのAED追加(分隊未所属もダウンするようになった)の副作用も実プレイ未検証。** 次回確認が必要な点:
 - コンクエストで分隊未所属のプレイヤーが致死ダメージを受けた際、即死せずダウン状態に入るか
@@ -331,9 +355,9 @@
 
 ## 次にやること候補
 
-1. チームビーコン/拠点スポーンの選択UI化、およびAED(分隊外蘇生)の実プレイテスト
-   (上記「未検証」参照、最優先。どちらもsquadtp本体側の変更で、squadtp-conquestは
-   ビルド成功のみ確認済み)
+1. チームビーコン/拠点スポーンの選択UI化、AED(分隊外蘇生)、拠点のJourneyMapウェイポイント表示の
+   実プレイテスト(上記「未検証」参照、最優先。稼働中サーバー/クライアントは新jarでの**再起動が
+   必要**な変更を含むので注意)
 2. ブレイクスルーモードの実プレイテスト(2人以上、上記の未検証項目を中心に)
 3. TDMキル計上修正が実プレイで効いているかの確認(上記参照)
 4. TODO.mdの「優先度高」(スポーン安全確認)
