@@ -334,8 +334,9 @@
   Writeツール(BOM無し)を使うこと
 - **PROTOCOL_VERSIONの上げ忘れ**: パケットのフィールド追加・変更、または列挙型への新定数挿入
   (既存定数のordinalがズレる場合)は、バイト長が同じでも`NetworkHandler.PROTOCOL_VERSION`を
-  上げること。現在値は`11`(ブレイクスルー実装で`8`→`9`、GUIセクター管理追加で`9`→`10`、
-  コールインGUI追加で`callIns`/`availableScore`フィールドを`ConquestSyncPacket`に追加し`10`→`11`)。
+  上げること。現在値は`12`(ブレイクスルー実装で`8`→`9`、GUIセクター管理追加で`9`→`10`、
+  コールインGUI追加で`callIns`/`availableScore`フィールドを`ConquestSyncPacket`に追加し`10`→`11`、
+  JourneyMap連携で`PointStatus`に`dimension`/`pos`を追加し`11`→`12`)。
   上げ忘れると新旧クライアント/サーバー混在時に`IndexOutOfBoundsException`で原因不明の切断が起きる。
   なお**squadtp本体**の`NetworkHandler.PROTOCOL_VERSION`は別物(こちらは`1`→`2`、
   `RespawnChoicePacket`に`external`フィールドを追加したため)。2つのmodは別チャンネル
