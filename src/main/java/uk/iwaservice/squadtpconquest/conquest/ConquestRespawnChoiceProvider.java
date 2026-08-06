@@ -44,7 +44,7 @@ public final class ConquestRespawnChoiceProvider implements RespawnChoiceProvide
         }
         if (manager.getMode() == GameMode.CONQUEST && Config.SPAWN_AT_OWNED_POINTS_ENABLED.get()) {
             for (CapturePoint point : manager.getPoints()) {
-                if (point.getOwner() == team) {
+                if (point.getOwner() == team && manager.isPointSpawnSafe(player.server, point)) {
                     choices.add(new RespawnChoiceEntry(POINT_PREFIX + point.getName(),
                             Component.literal(point.getName()), point.getDimension().location(), point.getPos()));
                 }
@@ -63,7 +63,8 @@ public final class ConquestRespawnChoiceProvider implements RespawnChoiceProvide
         if (choiceId.startsWith(POINT_PREFIX)) {
             String name = choiceId.substring(POINT_PREFIX.length());
             for (CapturePoint point : manager.getPoints()) {
-                if (point.getName().equals(name) && point.getOwner() == team) {
+                if (point.getName().equals(name) && point.getOwner() == team
+                        && manager.isPointSpawnSafe(player.server, point)) {
                     return manager.teleportToPoint(player, point);
                 }
             }

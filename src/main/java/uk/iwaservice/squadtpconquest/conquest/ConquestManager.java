@@ -1427,6 +1427,19 @@ public class ConquestManager extends SavedData {
     }
 
     /**
+     * False if the opposing team currently has anyone alive inside {@code point}'s capture
+     * radius — i.e. the point is contested (both teams present) or actively being torn down by
+     * the enemy alone. Used to keep contested/threatened points off the respawn choice list (see
+     * {@link ConquestRespawnChoiceProvider}); has nothing to do with capture progress itself.
+     */
+    public boolean isPointSpawnSafe(MinecraftServer server, CapturePoint point) {
+        PointOccupancy occ = computeOccupancy(server, point);
+        Team enemy = point.getOwner().opponent();
+        int enemyCount = enemy == Team.A ? occ.countA() : occ.countB();
+        return enemyCount == 0;
+    }
+
+    /**
      * Runs one point's capture tick: occupancy, flag advance/neutralize/capture, flag-pole
      * recolor. Shared by conquest (every point) and breakthrough (only the active sector's
      * points). Null if the point's dimension isn't loaded.
