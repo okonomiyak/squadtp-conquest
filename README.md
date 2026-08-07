@@ -45,6 +45,9 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 | `/conquest protectzone add <名前> [<x1 y1 z1> <x2 y2 z2>]` | 2点の座標を対角線とする直方体を**破壊禁止ゾーン**として登録(複数登録可)。座標省略時はゾーンワンドの選択範囲を使用。ラウンド中の地形破壊(下記)がこの範囲内のブロックを一切変更しない | OP |
 | `/conquest protectzone remove <名前>` | 破壊禁止ゾーンを削除 | OP |
 | `/conquest protectzone list` | 登録済みの破壊禁止ゾーン一覧を表示 | - |
+| `/conquest protectblock add <ブロックID>` | 指定したブロック**種類**を破壊禁止に追加(例: `minecraft:diamond_block`)。config既定の`indestructibleBlocks`に追加する形で、再起動やTOML編集は不要 | OP |
+| `/conquest protectblock remove <ブロックID>` | ゲーム内で追加した破壊禁止ブロックを解除(config既定のものはここでは解除できない) | OP |
+| `/conquest protectblock list` | config既定+ゲーム内追加、両方の破壊禁止ブロック一覧を表示 | - |
 | `/conquest boundary set [<x1 y1 z1> <x2 y2 z2>]` | 2点の座標を対角線とする直方体を**戦場境界**として設定(チーム別ではなく全体で1つ)。座標省略時はゾーンワンドの選択範囲を使用。生存中の全プレイヤーが対象で、境界の外に`boundaryKillSeconds`秒連続でいると処刑される(自陣ゾーンの内外を逆にした判定)。ラウンド進行中のみ判定 | OP |
 | `/conquest boundary corner1 set` / `/conquest boundary corner2 set` | 実行者の足元を境界の角1/角2に設定(両方設定されて初めて境界が有効になる) | OP |
 | `/conquest boundary remove` | 戦場境界を削除 | OP |
@@ -183,9 +186,13 @@ BF風のクレーターに差し替える。爆心に近いブロックはair、
 に変わる。アイテムドロップは発生しない。1回の爆発で処理するブロック数は`maxBlocksPerExplosion`
 (既定200、爆心に近い順)で頭打ちにし、それを超えた分はバニラの通常処理に委ねる(サーバー負荷対策)。
 
-**破壊されないブロックの指定は2通り**:
+**破壊されないブロックの指定は3通り**:
 - `indestructibleBlocks`(config): ブロックの種類(レジストリ名)で常に除外。既定で
-  `minecraft:bedrock`・チェスト類・`squadtpconquest:conquest_flag`などを含む
+  `minecraft:bedrock`・チェスト類・`squadtpconquest:conquest_flag`などを含む。TOML直接編集が必要
+- `/conquest protectblock add|remove|list <ブロックID>`: 上記configリストに、ゲーム内から
+  追加/削除できるブロック種類のリスト(NBT永続化、ラウンドをまたいで保持)。`list`はconfig既定分と
+  ゲーム内追加分を両方まとめて表示する。config既定のブロックはこのコマンドでは解除できない
+  (常にconfig側の一覧に残る、設計上の区別)
 - `/conquest protectzone add|remove|list`: 2点座標の直方体エリアを破壊禁止として登録(自陣ゾーンと
   同じ2点指定方式、複数登録可)。管理用GUIには未対応(コマンドのみ)。自陣ゾーンと同じワイヤーフレーム
   パーティクル(白系)で常時可視化される

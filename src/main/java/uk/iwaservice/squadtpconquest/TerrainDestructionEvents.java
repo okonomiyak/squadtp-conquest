@@ -25,9 +25,11 @@ import java.util.Set;
 /**
  * Turns explosions (TNT, creepers, any other mod's) that happen while a conquest round is
  * IN_PROGRESS into a simple crater instead of vanilla's clean block removal: blocks near the
- * blast center become air, an outer ring becomes rubble, and both indestructibleBlocks (by
- * block type) and protect zones (by area) are left untouched entirely. Outside an active round,
- * or with terrainDestructionEnabled off, explosions behave exactly like vanilla.
+ * blast center become air, an outer ring becomes rubble, and both indestructible block types
+ * (see {@link ConquestManager#isIndestructible}, config default plus {@code /conquest protectblock}
+ * additions) and protect zones (by area, {@code /conquest protectzone}) are left untouched
+ * entirely. Outside an active round, or with terrainDestructionEnabled off, explosions behave
+ * exactly like vanilla.
  */
 public final class TerrainDestructionEvents {
 
@@ -60,7 +62,6 @@ public final class TerrainDestructionEvents {
         double maxDistance = Math.sqrt(distanceSq(toHandle.get(cap - 1), center));
         double ringRatio = Config.CRATER_RUBBLE_RING_RATIO.get();
         BlockState rubbleState = resolveBlock(Config.CRATER_RUBBLE_BLOCK.get()).defaultBlockState();
-        List<? extends String> indestructible = Config.INDESTRUCTIBLE_BLOCKS.get();
 
         Set<BlockPos> handled = new HashSet<>();
         for (BlockPos pos : toHandle) {
@@ -68,7 +69,7 @@ public final class TerrainDestructionEvents {
             if (current.isAir()) {
                 continue;
             }
-            if (indestructible.contains(blockId(current)) || manager.isProtected(dim, pos)) {
+            if (manager.isIndestructible(current) || manager.isProtected(dim, pos)) {
                 handled.add(pos);
                 continue;
             }
@@ -88,11 +89,6 @@ public final class TerrainDestructionEvents {
         double dy = pos.getY() + 0.5 - center.y;
         double dz = pos.getZ() + 0.5 - center.z;
         return dx * dx + dy * dy + dz * dz;
-    }
-
-    private static String blockId(BlockState state) {
-        ResourceLocation key = ForgeRegistries.BLOCKS.getKey(state.getBlock());
-        return key == null ? "" : key.toString();
     }
 
     /** Falls back to air (i.e. no rubble ring, crater is all-air) if craterRubbleBlock is misconfigured. */

@@ -7,6 +7,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
@@ -45,6 +46,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -67,6 +69,8 @@ public class ConquestManager extends SavedData {
     private final LinkedHashMap<String, MapPreset> presets = new LinkedHashMap<>();
     /** Named boxes in which terrain destruction never modifies blocks; any number may exist. */
     private final LinkedHashMap<String, ProtectZone> protectZones = new LinkedHashMap<>();
+    /** Block registry names terrain destruction never destroys, in addition to Config.INDESTRUCTIBLE_BLOCKS. */
+    private final LinkedHashSet<String> protectedBlocks = new LinkedHashSet<>();
     /** Named scorestreak-style rewards (score cost -> item), keyed by name. */
     private final LinkedHashMap<String, CallIn> callIns = new LinkedHashMap<>();
     /** Player UUID -> assigned team (players absent from the map are NEUTRAL). */
@@ -1108,6 +1112,41 @@ public class ConquestManager extends SavedData {
     }
 
     /**
+     * True if terrain destruction must never destroy this block type, whether from the
+     * {@code indestructibleBlocks} config default or added in-game via {@link #addProtectedBlock}.
+     */
+    public boolean isIndestructible(BlockState state) {
+        ResourceLocation key = ForgeRegistries.BLOCKS.getKey(state.getBlock());
+        if (key == null) {
+            return false;
+        }
+        String id = key.toString();
+        return Config.INDESTRUCTIBLE_BLOCKS.get().contains(id) || protectedBlocks.contains(id);
+    }
+
+    /** Adds a block type to the in-game indestructible list. False if already present (config or in-game). */
+    public boolean addProtectedBlock(String blockId) {
+        if (Config.INDESTRUCTIBLE_BLOCKS.get().contains(blockId) || !protectedBlocks.add(blockId)) {
+            return false;
+        }
+        setDirty();
+        return true;
+    }
+
+    /** Removes a block type from the in-game indestructible list. False if it wasn't there (config-only blocks can't be removed this way). */
+    public boolean removeProtectedBlock(String blockId) {
+        if (!protectedBlocks.remove(blockId)) {
+            return false;
+        }
+        setDirty();
+        return true;
+    }
+
+    public Collection<String> getProtectedBlocks() {
+        return protectedBlocks;
+    }
+
+    /**
      * Records a block's pre-destruction state the first time terrain destruction touches it this
      * round; later explosions at the same position leave the recorded original alone, so
      * restoration always recovers the real pre-round terrain rather than whatever a previous
@@ -2003,6 +2042,10 @@ public class ConquestManager extends SavedData {
             ProtectZone zone = ProtectZone.load(protectZoneList.getCompound(i));
             manager.protectZones.put(zone.getName(), zone);
         }
+        ListTag protectedBlockList = tag.getList("ProtectedBlocks", Tag.TAG_STRING);
+        for (int i = 0; i < protectedBlockList.size(); i++) {
+            manager.protectedBlocks.add(protectedBlockList.getString(i));
+        }
         ListTag callInList = tag.getList("CallIns", Tag.TAG_COMPOUND);
         for (int i = 0; i < callInList.size(); i++) {
             CallIn callIn = CallIn.load(callInList.getCompound(i));
@@ -2121,6 +2164,11 @@ public class ConquestManager extends SavedData {
             protectZoneList.add(zone.save());
         }
         tag.put("ProtectZones", protectZoneList);
+        ListTag protectedBlockList = new ListTag();
+        for (String id : protectedBlocks) {
+            protectedBlockList.add(StringTag.valueOf(id));
+        }
+        tag.put("ProtectedBlocks", protectedBlockList);
         ListTag callInList = new ListTag();
         for (CallIn callIn : callIns.values()) {
             callInList.add(callIn.save());

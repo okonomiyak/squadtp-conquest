@@ -13,7 +13,8 @@
 それを土台にした**索敵マーキング(スポット)**(BFのスポット機能: クロスヘアの先の敵をキーで
 マークし、一定時間自チームのJourneyMapに表示)を追加した。本日(2026-08-07)は続けて
 **試合終了時の集合**(`/conquest gather set`で設定した1箇所へ、ラウンド終了時に全参加者が
-テレポート)を追加。詳細は下記および**README.md**参照。
+テレポート)、および**破壊禁止ブロックのゲーム内管理**(`/conquest protectblock add|remove|list`、
+TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追加。詳細は下記および**README.md**参照。
 
 ## 現在の状態
 
@@ -208,11 +209,29 @@
   同じ安全地点探索ヘルパーを再利用)。未設定なら何もしない(後方互換、既存のラウンド終了挙動は
   無変更)。ネットワークパケットの変更は無い(サーバー側のみで完結する機能のため
   `PROTOCOL_VERSION`は据え置き)
+- **破壊禁止ブロックのゲーム内管理**(2026-08-07新規実装): `/conquest protectblock add|remove|list`で、
+  地形破壊が壊さないブロック種類を、TOML編集無しでゲーム内から追加/削除できるようにした。
+  既存の`indestructibleBlocks`(config)はそのまま「常時有効な既定リスト」として残し、
+  新規`ConquestManager.protectedBlocks`(`LinkedHashSet<String>`、NBT永続化、`ProtectZones`と
+  同じ並びに追加)が追加分を保持。両者は`ConquestManager.isIndestructible(BlockState)`で
+  ORされる(configにあるものはこのコマンドでは解除できない設計 — 意図的な非対称性)。
+  `TerrainDestructionEvents`側は`Config.INDESTRUCTIBLE_BLOCKS.get().contains(...)`の直接参照を
+  `manager.isIndestructible(current)`呼び出しに置き換えただけ。ブロックIDは
+  `ResourceLocationArgument`+`ForgeRegistries.BLOCKS.containsKey`で検証(コールインのアイテムID
+  検証と同じパターン)
 - スコアボード(右Alt)2ページ目: 累計スコア+K/D比率
 - HUD/GUIのチーム色を自分/敵視点から**チーム固定色**(A=青・B=赤)に変更
 - 管理用GUI(Lキー)・BF風HUD(常時表示)・adjustable config(`/conquest config set`)
 
 ## ⚠️ 既知の問題・積み残し
+
+**破壊禁止ブロックのゲーム内管理も実プレイ未検証(ビルド成功のみ)。** 次回確認が必要な点:
+- `/conquest protectblock add <ブロックID>`で追加したブロックが実際に爆発で壊れなくなるか
+- `/conquest protectblock remove`でconfig既定のブロック(`minecraft:bedrock`等)を指定すると
+  ちゃんと拒否される(解除できない)か
+- `/conquest protectblock list`がconfig分・ゲーム内追加分を両方正しく表示するか
+- 存在しないブロックIDを指定した時に`conquest.msg.unknown_block`で弾かれるか
+- サーバー再起動後もゲーム内追加分がNBTから復元されるか
 
 **試合終了時の集合も実プレイ未検証(ビルド成功のみ)。** 次回確認が必要な点:
 - `/conquest gather set`で設定後、実際にラウンド終了の瞬間チームA/B全員がその場所へ飛ぶか
@@ -403,8 +422,9 @@
 ## 次にやること候補
 
 1. チームビーコン/拠点スポーンの選択UI化、AED(分隊外蘇生)、拠点のJourneyMapウェイポイント表示、
-   索敵マーキング(スポット)、試合終了時の集合の実プレイテスト(上記「未検証」参照、最優先。
-   稼働中サーバー/クライアントは新jarでの**再起動が必要**な変更を含むので注意)
+   索敵マーキング(スポット)、試合終了時の集合、破壊禁止ブロックのゲーム内管理の実プレイテスト
+   (上記「未検証」参照、最優先。稼働中サーバー/クライアントは新jarでの**再起動が必要**な変更を
+   含むので注意)
 2. ブレイクスルーモードの実プレイテスト(2人以上、上記の未検証項目を中心に)
 3. TDMキル計上修正が実プレイで効いているかの確認(上記参照)
 4. TODO.mdの「優先度高」(スポーン安全確認)

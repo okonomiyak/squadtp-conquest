@@ -206,6 +206,15 @@ public final class ConquestCommand {
                                         .suggests(PROTECT_ZONE_NAMES)
                                         .executes(ConquestCommand::protectZoneRemove)))
                         .then(Commands.literal("list").executes(ConquestCommand::protectZoneList)))
+                .then(Commands.literal("protectblock")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("add")
+                                .then(Commands.argument("block", ResourceLocationArgument.id())
+                                        .executes(ConquestCommand::protectBlockAdd)))
+                        .then(Commands.literal("remove")
+                                .then(Commands.argument("block", ResourceLocationArgument.id())
+                                        .executes(ConquestCommand::protectBlockRemove)))
+                        .then(Commands.literal("list").executes(ConquestCommand::protectBlockList)))
                 .then(Commands.literal("boundary")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -862,6 +871,43 @@ public final class ConquestCommand {
         for (ProtectZone zone : manager.getProtectZones()) {
             msg.append("\n").append(Component.translatable("conquest.status.protectzone",
                     zone.getName(), zone.getMin().toShortString(), zone.getMax().toShortString()));
+        }
+        MutableComponent result = msg;
+        ctx.getSource().sendSuccess(() -> result, false);
+        return 1;
+    }
+
+    private static int protectBlockAdd(CommandContext<CommandSourceStack> ctx) {
+        ResourceLocation blockId = ResourceLocationArgument.getId(ctx, "block");
+        if (!ForgeRegistries.BLOCKS.containsKey(blockId)) {
+            return fail(ctx, Component.translatable("conquest.msg.unknown_block", blockId.toString()));
+        }
+        if (!ConquestManager.get(ctx.getSource().getServer()).addProtectedBlock(blockId.toString())) {
+            return fail(ctx, Component.translatable("conquest.msg.protectblock_already", blockId.toString()));
+        }
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.protectblock_added", blockId.toString()), true);
+        return 1;
+    }
+
+    private static int protectBlockRemove(CommandContext<CommandSourceStack> ctx) {
+        ResourceLocation blockId = ResourceLocationArgument.getId(ctx, "block");
+        if (!ConquestManager.get(ctx.getSource().getServer()).removeProtectedBlock(blockId.toString())) {
+            return fail(ctx, Component.translatable("conquest.msg.protectblock_not_found", blockId.toString()));
+        }
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.protectblock_removed", blockId.toString()), true);
+        return 1;
+    }
+
+    private static int protectBlockList(CommandContext<CommandSourceStack> ctx) {
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        MutableComponent msg = Component.translatable("conquest.msg.protectblock_list_header").withStyle(ChatFormatting.GOLD);
+        for (String id : Config.INDESTRUCTIBLE_BLOCKS.get()) {
+            msg.append("\n").append(Component.translatable("conquest.status.protectblock_config", id));
+        }
+        for (String id : manager.getProtectedBlocks()) {
+            msg.append("\n").append(Component.translatable("conquest.status.protectblock_custom", id));
         }
         MutableComponent result = msg;
         ctx.getSource().sendSuccess(() -> result, false);
