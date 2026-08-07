@@ -649,9 +649,10 @@ public class ConquestManager extends SavedData {
     /**
      * Sets max health to {@code maxHealth} (config) for combatants, or back to vanilla default
      * otherwise, and heals to the new max. Called on team join (only when the team actually
-     * changes, so repeatedly rejoining the same team can't be used to spam-heal) and again for
+     * changes, so repeatedly rejoining the same team can't be used to spam-heal), again for
      * every combatant at round start (so it always reflects the current config, even for players
-     * who joined their team before the config was last changed).
+     * who joined their team before the config was last changed), and on every respawn (since a
+     * respawned player entity otherwise resets to vanilla's default max health).
      */
     private static void applyMaxHealth(ServerPlayer player, Team team) {
         AttributeInstance attribute = player.getAttribute(Attributes.MAX_HEALTH);
@@ -1905,6 +1906,7 @@ public class ConquestManager extends SavedData {
         if (!team.isCombatant()) {
             return;
         }
+        applyMaxHealth(player, team);
         if (mode == GameMode.CONQUEST) {
             int cost = Config.TICKET_COST_PER_RESPAWN.get();
             if (cost > 0) {
