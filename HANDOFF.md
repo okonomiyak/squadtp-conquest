@@ -18,7 +18,9 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 バグを機に、地形復元を差分追跡から**`StructureTemplate`による戦場境界の丸ごとスナップショット
 /復元方式**へ全面置き換え。さらに**最大HPのconfig化**(`maxHealth`、銃Modとのバランス調整用)、
 および**破壊禁止ブロック/エリアを通常のブロック破壊からも保護**(従来は爆発からしか
-保護していなかったギャップをユーザー指摘で発見・解消)も追加。詳細は下記および**README.md**参照。
+保護していなかったギャップをユーザー指摘で発見・解消)も追加。さらに、SuperbWarfareのRPGに関する
+ユーザー報告を機に、`maxBlocksPerExplosion`の上限を超えた影響ブロックが破壊禁止判定自体を
+すり抜けてしまうバグも発見・修正した。詳細は下記および**README.md**参照。
 
 ## 現在の状態
 
@@ -260,6 +262,29 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## ⚠️ 既知の問題・積み残し
 
+**地形破壊: `maxBlocksPerExplosion`の上限を超えた分は破壊禁止判定自体をすり抜けるバグ → 対処済み
+(2026-08-07)。**
+- 報告: ユーザーから「SuperbWarfareのRPGなどの破壊でも破壊しないようにして」と依頼。squadtp本体でも
+  squadtp-conquestでもなく、SuperbWarfare側のキャッシュ済みjar(`com.atsuishio.superbwarfare.tools.
+  CustomExplosion`、`net.minecraft.world.level.Explosion`を継承)をバイトコード解析
+  (`javap -p -c -constants`)して原因調査。`ForgeEventFactory.onExplosionDetonate`は正しく
+  呼ばれており(`explode()`内)、`ExplosionEvent.Detonate.getAffectedBlocks()`は
+  `Explosion.getToBlow()`への生参照(コピーではない)であることも確認できたため、
+  `TerrainDestructionEvents`側の`affected.removeIf(...)`によるミューテーションは理論上
+  `finalizeExplosion()`(`getToBlow()`を読み直す実装)にも反映されるはず——という所までは
+  問題なかった。実際の原因は別にあった: 旧実装は`maxBlocksPerExplosion`(既定200、爆心に近い順)で
+  影響ブロックを先に絞り込んでから破壊禁止チェックをしていたため、**上限を超えた分は
+  破壊禁止チェック自体が一切実行されずバニラの通常破壊に素通りしていた**。TNT(バニラ既定半径4、
+  影響ブロック数が200を超えにくい)では顕在化しにくく、SuperbWarfareのRPG(TNTよりずっと広い範囲に
+  影響が及ぶ)で初めて実害が出たと考えられる
+- 対処: 破壊禁止判定(`isIndestructible`/`isProtected`)を影響ブロック全体に対して**上限とは無関係に
+  先に**適用し(`affected.removeIf(...)`で保護対象を`toBlow`から完全除去)、その後で
+  クレーター化(air/ガレキ化、`setBlock`を伴う本当にコストのかかる部分)だけを
+  `maxBlocksPerExplosion`で頭打ちにするよう順序を入れ替えた。爆発のサイズに関わらず
+  保護は必ず効くようになった
+- **未検証**: 実プレイでSuperbWarfareのRPGが実際に破壊禁止ブロック/エリアを壊さなくなったかの確認は
+  まだ行われていない
+
 **破壊禁止ブロック/エリアの通常破壊からの保護も実プレイ未検証(ビルド成功のみ)。** 次回確認が必要な点:
 - サバイバルモードで、破壊禁止ブロック(`indestructibleBlocks`/`/conquest protectblock`追加分)・
   破壊禁止エリア(`/conquest protectzone`)内のブロックが実際に壊せなくなっているか
@@ -498,8 +523,9 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 1. チームビーコン/拠点スポーンの選択UI化、AED(分隊外蘇生)、拠点のJourneyMapウェイポイント表示、
    索敵マーキング(スポット)、試合終了時の集合、破壊禁止ブロックのゲーム内管理、地形の
-   スナップショット復元、最大HPのconfig化、破壊禁止ブロック/エリアの通常破壊からの保護の
-   実プレイテスト(上記「未検証」参照、最優先。稼働中サーバー/クライアントは新jarでの
+   スナップショット復元、最大HPのconfig化、破壊禁止ブロック/エリアの通常破壊からの保護、
+   SuperbWarfare RPG等の大きい爆発での破壊禁止判定の実プレイテスト(上記「未検証」参照、最優先。
+   稼働中サーバー/クライアントは新jarでの
    **再起動が必要**な変更を含むので注意)
 2. ブレイクスルーモードの実プレイテスト(2人以上、上記の未検証項目を中心に)
 3. TDMキル計上修正が実プレイで効いているかの確認(上記参照)

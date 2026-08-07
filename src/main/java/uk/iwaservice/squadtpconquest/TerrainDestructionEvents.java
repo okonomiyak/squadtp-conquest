@@ -31,6 +31,12 @@ import java.util.Set;
  * {@code /conquest protectzone}) are left untouched entirely. Outside those two round states, or
  * with terrainDestructionEnabled off, explosions behave exactly like vanilla.
  *
+ * <p>Protection is checked against every affected block before {@code maxBlocksPerExplosion}
+ * even applies (that cap only limits how many blocks get shaped into crater/rubble, for
+ * performance) — otherwise a big enough explosion (a modded weapon with a wider radius than TNT,
+ * say) could reach a protected block simply by having more affected positions than we bother
+ * cratering, since anything left unhandled falls straight through to vanilla destruction.
+ *
  * <p>Restoration is handled separately and unconditionally by
  * {@link ConquestManager#restoreTerrainSnapshot}, which pastes back a whole-region snapshot of
  * the battlefield boundary taken at round start — so damage from any source (not just what this
@@ -54,15 +60,28 @@ public final class TerrainDestructionEvents {
         if (affected.isEmpty()) {
             return;
         }
+        ResourceKey<Level> dim = level.dimension();
+
+        // Protection applies to every affected position unconditionally, before the crater-shaping
+        // cap below even comes into play — otherwise a single large explosion (a big TNT chain, or
+        // a modded weapon with a bigger radius than maxBlocksPerExplosion covers) could reach a
+        // protected block/zone simply by having more affected blocks than we bother shaping into
+        // craters, since anything left unhandled here falls straight through to vanilla destruction.
+        affected.removeIf(pos -> {
+            BlockState current = level.getBlockState(pos);
+            return !current.isAir() && (manager.isIndestructible(current) || manager.isProtected(dim, pos));
+        });
+        if (affected.isEmpty()) {
+            return;
+        }
 
         Vec3 center = event.getExplosion().getPosition();
-        ResourceKey<Level> dim = level.dimension();
         List<BlockPos> byDistance = new ArrayList<>(affected);
         byDistance.sort(Comparator.comparingDouble(pos -> distanceSq(pos, center)));
 
         // Closest-first cap: any remainder past it is left in `affected` for vanilla's own
         // (unmodified) explosion handling, so a huge explosion degrades gracefully rather than
-        // stalling the server tick.
+        // stalling the server tick. Everything here is already known unprotected (filtered above).
         int cap = Math.min(byDistance.size(), Config.MAX_BLOCKS_PER_EXPLOSION.get());
         List<BlockPos> toHandle = byDistance.subList(0, cap);
         double maxDistance = Math.sqrt(distanceSq(toHandle.get(cap - 1), center));
@@ -75,17 +94,13 @@ public final class TerrainDestructionEvents {
             if (current.isAir()) {
                 continue;
             }
-            if (manager.isIndestructible(current) || manager.isProtected(dim, pos)) {
-                handled.add(pos);
-                continue;
-            }
             double normalizedDistance = maxDistance <= 0 ? 0 : Math.sqrt(distanceSq(pos, center)) / maxDistance;
             BlockState replacement = normalizedDistance >= (1.0 - ringRatio) ? rubbleState : Blocks.AIR.defaultBlockState();
             level.setBlock(pos, replacement, 3);
             handled.add(pos);
         }
-        // Every position we handled ourselves (destroyed, or left alone as protected) is removed
-        // from the event's list so vanilla neither destroys it nor drops items for it.
+        // Every position we craterized is removed from the event's list so vanilla doesn't also
+        // destroy it (which would drop items and undo the crater/rubble shape).
         affected.removeIf(handled::contains);
     }
 
