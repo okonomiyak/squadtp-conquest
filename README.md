@@ -179,8 +179,9 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 
 ## 地形破壊(BF風クレーター)
 
-ラウンドが`IN_PROGRESS`の間に起きた爆発(バニラTNT・クリーパー・他Mod由来のものも含む、
-`ExplosionEvent.Detonate`をフックして拾う)を、バニラの単純なブロック除去ではなく
+ラウンドが`STARTING`(開始カウントダウン中)または`IN_PROGRESS`の間に起きた爆発(バニラTNT・
+クリーパー・他Mod由来のものも含む、`ExplosionEvent.Detonate`をフックして拾う)を、
+バニラの単純なブロック除去ではなく
 BF風のクレーターに差し替える。爆心に近いブロックはair、外周(`craterRubbleRingRatio`、
 既定で影響ブロックのうち爆心から遠い側25%)は`craterRubbleBlock`(既定`minecraft:coarse_dirt`)
 に変わる。アイテムドロップは発生しない。1回の爆発で処理するブロック数は`maxBlocksPerExplosion`

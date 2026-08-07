@@ -173,8 +173,8 @@ public final class Config {
         b.push("terrainDestruction");
         TERRAIN_DESTRUCTION_ENABLED = b
                 .comment("If true, explosions (TNT, creepers, and any other mod's explosions) that happen while",
-                        "a round is IN_PROGRESS carve a crater instead of vanilla's block removal, and the",
-                        "damage is restored the next time /conquest start runs.")
+                        "a round is STARTING (countdown) or IN_PROGRESS carve a crater instead of vanilla's block",
+                        "removal, and the damage is restored the next time /conquest start runs.")
                 .define("terrainDestructionEnabled", true);
         INDESTRUCTIBLE_BLOCKS = b
                 .comment("Block registry names that are never destroyed by conquest terrain destruction,",

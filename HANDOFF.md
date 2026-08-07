@@ -225,6 +225,21 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## ⚠️ 既知の問題・積み残し
 
+**地形破壊: STARTING中(開始カウントダウン中)の爆発が復元されないバグ → 対処済み(2026-08-07)。**
+- 報告: 実プレイでユーザーが「破壊した地形が戻らない」と報告。原因調査の結果、
+  `TerrainDestructionEvents.onDetonate`が`RoundState.IN_PROGRESS`の時しか介入しておらず、
+  `STARTING`(`/conquest start`直後の「Get Ready!」カウントダウン中)に起きた爆発は完全にバニラの
+  ままだったことが判明(クレーター化されない=`recordDestroyedBlock`も呼ばれない=
+  復元対象として記録されない=永久にそのまま)。ユーザーは「サーバー再起動していないのに
+  `/conquest start`しても戻らない」と報告し、さらに聞き取りで「STARTING中に壊した」ことが
+  判明して特定できた
+- 対処: ガード条件を`STARTING`も含むように拡張(`state != STARTING && state != IN_PROGRESS`
+  なら素通し)。`Config.java`の`terrainDestructionEnabled`コメント、README.mdの説明文も
+  「`IN_PROGRESS`の間」→「`STARTING`または`IN_PROGRESS`の間」に修正
+- **重要: この修正は今後の爆発にのみ効く。ユーザーが実際にテストで壊してしまった地形(バニラの
+  ままクレーター化されず記録もされていない)は遡って直せない**(記録が存在しないため)。
+  手動での地形修復(WorldEdit等)が必要である旨を伝達済み
+
 **破壊禁止ブロックのゲーム内管理も実プレイ未検証(ビルド成功のみ)。** 次回確認が必要な点:
 - `/conquest protectblock add <ブロックID>`で追加したブロックが実際に爆発で壊れなくなるか
 - `/conquest protectblock remove`でconfig既定のブロック(`minecraft:bedrock`等)を指定すると

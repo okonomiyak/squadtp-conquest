@@ -24,12 +24,14 @@ import java.util.Set;
 
 /**
  * Turns explosions (TNT, creepers, any other mod's) that happen while a conquest round is
- * IN_PROGRESS into a simple crater instead of vanilla's clean block removal: blocks near the
- * blast center become air, an outer ring becomes rubble, and both indestructible block types
- * (see {@link ConquestManager#isIndestructible}, config default plus {@code /conquest protectblock}
- * additions) and protect zones (by area, {@code /conquest protectzone}) are left untouched
- * entirely. Outside an active round, or with terrainDestructionEnabled off, explosions behave
- * exactly like vanilla.
+ * STARTING (the "Get Ready!" countdown) or IN_PROGRESS into a simple crater instead of vanilla's
+ * clean block removal: blocks near the blast center become air, an outer ring becomes rubble,
+ * and both indestructible block types (see {@link ConquestManager#isIndestructible}, config
+ * default plus {@code /conquest protectblock} additions) and protect zones (by area,
+ * {@code /conquest protectzone}) are left untouched entirely. Outside those two round states, or
+ * with terrainDestructionEnabled off, explosions behave exactly like vanilla — and, critically,
+ * are NOT tracked for restoration, since {@link ConquestManager#recordDestroyedBlock} is only
+ * ever called from here (WAITING/ENDED-state explosions are permanent, by design).
  */
 public final class TerrainDestructionEvents {
 
@@ -40,7 +42,8 @@ public final class TerrainDestructionEvents {
         }
         MinecraftServer server = level.getServer();
         ConquestManager manager = ConquestManager.get(server);
-        if (manager.getState() != RoundState.IN_PROGRESS) {
+        RoundState state = manager.getState();
+        if (state != RoundState.STARTING && state != RoundState.IN_PROGRESS) {
             return;
         }
 
