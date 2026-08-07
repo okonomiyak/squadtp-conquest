@@ -2,7 +2,7 @@ package uk.iwaservice.squadtpconquest.conquest;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.GlobalPos;
+import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -23,6 +23,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
@@ -140,12 +142,17 @@ public class ConquestManager extends SavedData {
     private final Map<UUID, Integer> spotCooldownUntilTick = new HashMap<>();
 
     /**
-     * Transient: original state of every block terrain destruction has modified this round,
-     * keyed by its first-seen state (repeat explosions at the same spot don't overwrite it).
-     * Restored and cleared at the start of the next round rather than persisted, matching
-     * pendingAttackerRespawns/trackedDowned's round-scoped, not-saved-to-NBT treatment.
+     * Transient: a whole-region snapshot of the battlefield boundary (see {@link #getBoundaryMin})
+     * taken at round start and pasted back at round end, so terrain always resets regardless of
+     * what damaged it (not saved to NBT — a round-scoped snapshot has no meaning across restarts).
+     * Null whenever no boundary is set, or no round has captured one yet.
      */
-    private final Map<GlobalPos, BlockState> destroyedBlocks = new LinkedHashMap<>();
+    @Nullable
+    private StructureTemplate terrainSnapshot;
+    @Nullable
+    private ResourceKey<Level> terrainSnapshotDim;
+    @Nullable
+    private BlockPos terrainSnapshotOrigin;
 
     /** Transient: seconds since the last ticket bleed. */
     private int bleedCounter;
@@ -1147,23 +1154,48 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Records a block's pre-destruction state the first time terrain destruction touches it this
-     * round; later explosions at the same position leave the recorded original alone, so
-     * restoration always recovers the real pre-round terrain rather than whatever a previous
-     * explosion left behind.
+     * Takes a whole-region snapshot of the battlefield boundary for later restoration by
+     * {@link #restoreTerrainSnapshot}. No-op (leaves {@link #terrainSnapshot} null) if terrain
+     * destruction is disabled or no boundary is set — automatic terrain reset is opt-in via
+     * {@code /conquest boundary set}.
      */
-    public void recordDestroyedBlock(ResourceKey<Level> dim, BlockPos pos, BlockState original) {
-        destroyedBlocks.putIfAbsent(GlobalPos.of(dim, pos), original);
+    private void captureTerrainSnapshot(MinecraftServer server) {
+        terrainSnapshot = null;
+        terrainSnapshotDim = null;
+        terrainSnapshotOrigin = null;
+        if (!Config.TERRAIN_DESTRUCTION_ENABLED.get() || boundaryDim == null) {
+            return;
+        }
+        BlockPos min = getBoundaryMin();
+        BlockPos max = getBoundaryMax();
+        if (min == null || max == null) {
+            return;
+        }
+        ServerLevel level = server.getLevel(boundaryDim);
+        if (level == null) {
+            return;
+        }
+        Vec3i size = new Vec3i(max.getX() - min.getX() + 1, max.getY() - min.getY() + 1, max.getZ() - min.getZ() + 1);
+        StructureTemplate template = new StructureTemplate();
+        template.fillFromWorld(level, min, size, false, null);
+        terrainSnapshot = template;
+        terrainSnapshotDim = boundaryDim;
+        terrainSnapshotOrigin = min.immutable();
     }
 
-    /** Puts back every block terrain destruction has modified since the last round start. */
-    private void restoreDestroyedBlocks(MinecraftServer server) {
-        for (Map.Entry<GlobalPos, BlockState> entry : destroyedBlocks.entrySet()) {
-            ServerLevel level = server.getLevel(entry.getKey().dimension());
-            if (level != null) {
-                level.setBlock(entry.getKey().pos(), entry.getValue(), 3);
-            }
+    /** Pastes back the snapshot taken by {@link #captureTerrainSnapshot}, if any, undoing all terrain changes since. */
+    private void restoreTerrainSnapshot(MinecraftServer server) {
+        if (terrainSnapshot == null || terrainSnapshotDim == null || terrainSnapshotOrigin == null) {
+            return;
         }
+        ServerLevel level = server.getLevel(terrainSnapshotDim);
+        if (level != null) {
+            terrainSnapshot.placeInWorld(level, terrainSnapshotOrigin, terrainSnapshotOrigin,
+                    new StructurePlaceSettings().setIgnoreEntities(true).setKnownShape(true), level.getRandom(), 3);
+        }
+        terrainSnapshot = null;
+        terrainSnapshotDim = null;
+        terrainSnapshotOrigin = null;
     }
 
     // --- map presets (named, reusable point/spawn/mode layouts) ---
@@ -1263,8 +1295,7 @@ public class ConquestManager extends SavedData {
             return StartResult.TEAM_B_EMPTY;
         }
 
-        restoreDestroyedBlocks(server);
-        destroyedBlocks.clear();
+        captureTerrainSnapshot(server);
 
         if (mode == GameMode.CONQUEST || mode == GameMode.BREAKTHROUGH) {
             for (CapturePoint point : points.values()) {
@@ -1810,6 +1841,7 @@ public class ConquestManager extends SavedData {
         }
         broadcastTitle(server, title, subtitle);
         teleportToGatherPoint(server);
+        restoreTerrainSnapshot(server);
 
         // No per-participant filtering is exposed by squadtp's public API, so
         // this clears downed/revive state server-wide rather than just for

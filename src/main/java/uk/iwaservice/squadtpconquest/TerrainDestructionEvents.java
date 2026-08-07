@@ -29,9 +29,12 @@ import java.util.Set;
  * and both indestructible block types (see {@link ConquestManager#isIndestructible}, config
  * default plus {@code /conquest protectblock} additions) and protect zones (by area,
  * {@code /conquest protectzone}) are left untouched entirely. Outside those two round states, or
- * with terrainDestructionEnabled off, explosions behave exactly like vanilla — and, critically,
- * are NOT tracked for restoration, since {@link ConquestManager#recordDestroyedBlock} is only
- * ever called from here (WAITING/ENDED-state explosions are permanent, by design).
+ * with terrainDestructionEnabled off, explosions behave exactly like vanilla.
+ *
+ * <p>Restoration is handled separately and unconditionally by
+ * {@link ConquestManager#restoreTerrainSnapshot}, which pastes back a whole-region snapshot of
+ * the battlefield boundary taken at round start — so damage from any source (not just what this
+ * class craters) resets as long as a boundary is set, regardless of what happens here.
  */
 public final class TerrainDestructionEvents {
 
@@ -76,7 +79,6 @@ public final class TerrainDestructionEvents {
                 handled.add(pos);
                 continue;
             }
-            manager.recordDestroyedBlock(dim, pos, current);
             double normalizedDistance = maxDistance <= 0 ? 0 : Math.sqrt(distanceSq(pos, center)) / maxDistance;
             BlockState replacement = normalizedDistance >= (1.0 - ringRatio) ? rubbleState : Blocks.AIR.defaultBlockState();
             level.setBlock(pos, replacement, 3);
