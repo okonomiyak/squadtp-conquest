@@ -81,3 +81,5 @@ devlog/READMEの「既知の制約」と重複する項目は載せていない
   ラウンド状態に関係なく常時有効か
 - SuperbWarfareのRPG等、`maxBlocksPerExplosion`を超える大きい爆発でも破壊禁止ブロック/エリアが
   実際に守られるようになったか(2026-08-07修正、判定順序のバグ対処)
+- `/conquest team join`で個別にチームを切り替えた後、元squadメンバー(現在は敵)をAEDで蘇生できなく
+  なったか(2026-08-08修正、`joinTeam`での`leaveSquadIfAny`追加によるバグ対処)

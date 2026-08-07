@@ -643,6 +643,24 @@ public class ConquestManager extends SavedData {
         syncVanillaTeam(player, team);
         if (previous != team) {
             applyMaxHealth(player, team);
+            leaveSquadIfAny(player);
+        }
+    }
+
+    /**
+     * Removes the player from their current squadtp squad, if any. squadtp's
+     * {@code requireSameTeam} only gates squad join/creation, not later conquest
+     * team switches, so without this a player who solo-switches conquest teams
+     * (e.g. {@code /conquest team join}, outside of {@link #shuffleTeams}) stays
+     * squadmates with their old team — letting AED revives and other squad
+     * features (teleport, etc.) cross the team boundary.
+     */
+    private static void leaveSquadIfAny(ServerPlayer player) {
+        MinecraftServer server = player.server;
+        SquadManager squadManager = SquadManager.get(server);
+        Squad squad = squadManager.getSquadOf(player.getUUID());
+        if (squad != null) {
+            squadManager.removeMember(server, squad, player.getUUID());
         }
     }
 

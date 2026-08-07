@@ -365,6 +365,24 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
   squadtp側と同じパターンで機能しているかの確認)
 - `PROTOCOL_VERSION`を11→12に上げたので、旧クライアント/サーバー混在時に想定通り接続拒否されるか
 
+**AEDが敵チームのプレイヤーも蘇生できてしまうバグ → 対処済み(2026-08-08)。**
+- 報告: ユーザーから「AEDが敵でも蘇生できてしまう」と報告。
+- 根本原因: squadtp本体の蘇生許可判定(`ReviveSystem.handleInteract`)はコンクエストのチームを
+  一切知らず、蘇生者が対象の**squadtp squadのメンバーかどうか**だけを見る
+  (`allowNonSquadRevive`既定false、`requireSameTeam`既定trueでsquad参加自体は同一バニラチーム
+  限定)。ただし`requireSameTeam`はsquad**参加/作成時**にしか効かず、参加後にコンクエストの
+  チームだけ変わってもsquad側は追従しない。`ConquestManager.shuffleTeams`はチーム一括入れ替え時に
+  `disbandSquadsOf`で対象プレイヤー全員のsquadを解散してから再編成しているが、個別の
+  `/conquest team join`(→`joinTeam`)経由のチーム変更ではsquadに一切触れていなかった。そのため、
+  同じsquadでチームAにいた2人のうち片方だけ`/conquest team join b`でチームBへ移ると、squadtp上は
+  依然として同じsquadのままなので、コンクエスト上は敵同士になった後もAEDで蘇生し合えてしまっていた
+- 対処: `ConquestManager.joinTeam`にチームが実際に変わった時だけ呼ばれる新規`leaveSquadIfAny(player)`
+  を追加し、`SquadManager.removeMember`(squadtpの公開API)でそのプレイヤーだけを現在のsquadから
+  離脱させるようにした(squad全体を解散する`disbandSquadsOf`と違い、残りのメンバーには影響しない)。
+  squadtp本体は無改造のまま
+- **未検証**: 実プレイで、チームを個別に切り替えた後にAEDで元squadメンバー(現在は敵)を蘇生
+  できなくなったか、蘇生失敗メッセージ(`squadtp.msg.revive_not_allowed`)が出るかの確認が必要
+
 **squadtpのAED追加(分隊未所属もダウンするようになった)の副作用も実プレイ未検証。** 次回確認が必要な点:
 - コンクエストで分隊未所属のプレイヤーが致死ダメージを受けた際、即死せずダウン状態に入るか
 - ダウン中は`/conquest`のリスポーン/チケット消費が(実際の死亡まで)発生しないため、
