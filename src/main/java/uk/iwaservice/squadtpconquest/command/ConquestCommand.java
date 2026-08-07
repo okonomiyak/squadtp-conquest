@@ -63,6 +63,7 @@ public final class ConquestCommand {
         CONFIG_KEYS.put("endOnTeamEmpty", boolEntry(Config.END_ON_TEAM_EMPTY));
         CONFIG_KEYS.put("autoResetAfterResult", boolEntry(Config.AUTO_RESET_AFTER_RESULT));
         CONFIG_KEYS.put("ticketCostPerRespawn", intEntry(Config.TICKET_COST_PER_RESPAWN));
+        CONFIG_KEYS.put("maxHealth", doubleEntry(Config.MAX_HEALTH));
         CONFIG_KEYS.put("startCountdownSeconds", intEntry(Config.START_COUNTDOWN_SECONDS));
         CONFIG_KEYS.put("tdmKillLimit", intEntry(Config.TDM_KILL_LIMIT));
         CONFIG_KEYS.put("assistWindowSeconds", intEntry(Config.ASSIST_WINDOW_SECONDS));

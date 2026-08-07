@@ -18,6 +18,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -636,9 +638,29 @@ public class ConquestManager extends SavedData {
      * conquest side, and so team-colored nameplates/glow come for free.
      */
     public void joinTeam(ServerPlayer player, Team team) {
-        playerTeams.put(player.getUUID(), team);
+        Team previous = playerTeams.put(player.getUUID(), team);
         setDirty();
         syncVanillaTeam(player, team);
+        if (previous != team) {
+            applyMaxHealth(player, team);
+        }
+    }
+
+    /**
+     * Sets max health to {@code maxHealth} (config) for combatants, or back to vanilla default
+     * otherwise, and heals to the new max. Called on team join (only when the team actually
+     * changes, so repeatedly rejoining the same team can't be used to spam-heal) and again for
+     * every combatant at round start (so it always reflects the current config, even for players
+     * who joined their team before the config was last changed).
+     */
+    private static void applyMaxHealth(ServerPlayer player, Team team) {
+        AttributeInstance attribute = player.getAttribute(Attributes.MAX_HEALTH);
+        if (attribute == null) {
+            return;
+        }
+        double target = team.isCombatant() ? Config.MAX_HEALTH.get() : Attributes.MAX_HEALTH.getDefaultValue();
+        attribute.setBaseValue(target);
+        player.setHealth((float) target);
     }
 
     /**
@@ -1377,6 +1399,7 @@ public class ConquestManager extends SavedData {
             if (!team.isCombatant()) {
                 continue;
             }
+            applyMaxHealth(player, team);
             teleportToRoleSpawn(player, team);
         }
     }

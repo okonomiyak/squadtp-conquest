@@ -17,6 +17,7 @@ public final class Config {
     public static final ForgeConfigSpec.BooleanValue END_ON_TEAM_EMPTY;
     public static final ForgeConfigSpec.BooleanValue AUTO_RESET_AFTER_RESULT;
     public static final ForgeConfigSpec.IntValue TICKET_COST_PER_RESPAWN;
+    public static final ForgeConfigSpec.DoubleValue MAX_HEALTH;
     public static final ForgeConfigSpec.IntValue START_COUNTDOWN_SECONDS;
     public static final ForgeConfigSpec.IntValue TDM_KILL_LIMIT;
     public static final ForgeConfigSpec.IntValue HOME_ZONE_KILL_SECONDS;
@@ -80,6 +81,11 @@ public final class Config {
         TICKET_COST_PER_RESPAWN = b
                 .comment("Tickets removed from a player's own team each time they respawn. 0 disables this.")
                 .defineInRange("ticketCostPerRespawn", 1, 0, 100);
+        MAX_HEALTH = b
+                .comment("Max health for players on a combatant team (A/B), applied on /conquest team join and",
+                        "at round start. Vanilla default is 20.0 (10 hearts); raise this to rebalance time-to-kill",
+                        "against weapon mods (TACZ, SuperbWarfare) that assume a different HP scale.")
+                .defineInRange("maxHealth", 20.0, 1.0, 1024.0);
         START_COUNTDOWN_SECONDS = b
                 .comment("Seconds of countdown shown as a title after /conquest start before the round actually",
                         "begins (points/tickets are already reset and teams already teleported during it).",

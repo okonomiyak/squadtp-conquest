@@ -364,6 +364,9 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 - `endOnTeamEmpty`(既定false) — 片方のチームのオンライン人数が0になったら即終了するか
 - `autoResetAfterResult`(既定true) — falseなら`/conquest reset`必須
 - `ticketCostPerRespawn`(既定1) — リスポーンごとに自チームのチケットから消費する数。0で無効(TDMでは無効)
+- `maxHealth`(既定20.0、バニラと同じ) — チームA/Bに所属中の最大HP。`/conquest team join`時と
+  ラウンド開始時に反映(その都度フルヒールもされる)。管理人チームに移るとバニラの20に戻る。
+  銃Mod(TACZ・SuperbWarfare等)のダメージ量に合わせたTTK調整用
 - `startCountdownSeconds`(既定5) — `/conquest start`後のカウントダウン秒数。0で即開始
 - `tdmKillLimit`(既定50) — TDMモードでチームが勝利するのに必要なキル数。0で無効(制限時間頼み)
 - `homeZoneKillSeconds`(既定10) — 自陣ゾーンに敵が連続滞在できる秒数。超えると処刑される
