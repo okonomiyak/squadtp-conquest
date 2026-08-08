@@ -93,9 +93,11 @@ devlog/READMEの「既知の制約」と重複する項目は載せていない
 - `/conquest team join <team> <プレイヤー>`: OP以外が末尾のプレイヤー引数付きで実行しようとした際に
   権限エラーになるか(タブ補完にも出ないはず)。対象プレイヤーに参加通知のアクションバーが出るか
   (2026-08-08新規実装)
-- プリセットのゾーン保存/復元: 自陣ゾーンA/B・戦場境界・破壊禁止ゾーンを設定した状態で
-  `/conquest preset save`→(すべて`/conquest zone|boundary|protectzone remove`で消してから)
-  `/conquest preset load`し、元通りに復元されるか(2026-08-08新規実装)
+- プリセットのゾーン/破壊禁止ブロック保存/復元: 自陣ゾーンA/B・戦場境界・破壊禁止ゾーン・
+  `/conquest protectblock add`で追加したブロックを設定した状態で`/conquest preset save`→
+  (すべて`/conquest zone|boundary|protectzone remove`・`protectblock remove`で消してから)
+  `/conquest preset load`し、元通りに復元されるか。config既定の`indestructibleBlocks`は
+  プリセットに影響されず常に保護されたままか(2026-08-08新規実装)
 - 新規ワールドで`/conquest preset list`に既定で`Normal`(まっさらな状態のプリセット)が
   出るか、`load`すると拠点・スポーン・ゾーン・破壊禁止ゾーンが全部消えるか(2026-08-08新規実装、
   既存ワールドには遡って追加されない仕様なので新規ワールドで確認すること)

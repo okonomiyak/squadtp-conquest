@@ -198,7 +198,7 @@ public class ConquestManager extends SavedData {
     /** Fresh world only (see {@link #get}): seeds a built-in blank "Normal" preset to reset to. */
     public ConquestManager() {
         presets.put("Normal", new MapPreset("Normal", GameMode.CONQUEST, List.of(),
-                null, null, null, null, null, null, null, List.of()));
+                null, null, null, null, null, null, null, List.of(), List.of()));
     }
 
     // --- accessors ---
@@ -1268,8 +1268,8 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Snapshots the current points/spawns/mode/zones/boundary/protect zones as a named preset,
-     * overwriting any existing one of that name.
+     * Snapshots the current points/spawns/mode/zones/boundary/protect zones/protected block types
+     * as a named preset, overwriting any existing one of that name.
      */
     public void savePreset(String name) {
         List<MapPreset.PointLayout> layout = new ArrayList<>();
@@ -1283,7 +1283,8 @@ public class ConquestManager extends SavedData {
         MapPreset.ZoneBox boundaryBox = boundaryDim != null && boundaryPos1 != null && boundaryPos2 != null
                 ? new MapPreset.ZoneBox(boundaryDim, boundaryPos1, boundaryPos2) : null;
         presets.put(name, new MapPreset(name, mode, layout, spawnADim, spawnAPos, spawnBDim, spawnBPos,
-                zoneABox, zoneBBox, boundaryBox, new ArrayList<>(protectZones.values())));
+                zoneABox, zoneBBox, boundaryBox, new ArrayList<>(protectZones.values()),
+                new ArrayList<>(protectedBlocks)));
         setDirty();
     }
 
@@ -1341,6 +1342,8 @@ public class ConquestManager extends SavedData {
         for (ProtectZone zone : preset.getProtectZones()) {
             protectZones.put(zone.getName(), zone);
         }
+        protectedBlocks.clear();
+        protectedBlocks.addAll(preset.getProtectedBlocks());
 
         setDirty();
         return LoadPresetResult.OK;

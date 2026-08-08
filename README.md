@@ -27,8 +27,8 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 | `/conquest sector area remove <番号>` | セクターの戦闘エリアを削除(未設定に戻す。グローバルの`/conquest boundary`があればそちらにフォールバック) | OP |
 | `/conquest sector remove <番号>` | セクターと、それに属する全拠点を削除(旗ブロックも撤去) | OP |
 | `/conquest sector list` | 全セクターの番号・所属拠点一覧を表示 | - |
-| `/conquest preset save <名前>` | 現在の拠点配置・スポーン地点・自陣ゾーンA/B・戦場境界・破壊禁止ゾーン・ゲームモードを名前付きで保存(同名は上書き) | OP |
-| `/conquest preset load <名前>` | 保存済みプリセットを読み込み、現在の拠点・スポーン・自陣ゾーンA/B・戦場境界・破壊禁止ゾーン・モードを置き換える。ラウンドが`WAITING`の時のみ | OP |
+| `/conquest preset save <名前>` | 現在の拠点配置・スポーン地点・自陣ゾーンA/B・戦場境界・破壊禁止ゾーン・破壊禁止ブロック(ゲーム内追加分)・ゲームモードを名前付きで保存(同名は上書き) | OP |
+| `/conquest preset load <名前>` | 保存済みプリセットを読み込み、現在の拠点・スポーン・自陣ゾーンA/B・戦場境界・破壊禁止ゾーン・破壊禁止ブロック(ゲーム内追加分)・モードを置き換える。ラウンドが`WAITING`の時のみ | OP |
 | `/conquest preset remove <名前>` | プリセットを削除 | OP |
 | `/conquest preset list` | 保存済みプリセット一覧(拠点数・モード)を表示 | - |
 | `/conquest point set [半径]` | デフォルト拠点"Alpha"を実行者の足元に設置(半径省略時はconfig既定値)。旗ブロック(1×3)が自動生成される。TDMモードでは不要 | OP |
@@ -198,7 +198,9 @@ BF風のクレーターに差し替える。爆心に近いブロックはair、
 - `/conquest protectblock add|remove|list <ブロックID>`: 上記configリストに、ゲーム内から
   追加/削除できるブロック種類のリスト(NBT永続化、ラウンドをまたいで保持)。`list`はconfig既定分と
   ゲーム内追加分を両方まとめて表示する。config既定のブロックはこのコマンドでは解除できない
-  (常にconfig側の一覧に残る、設計上の区別)
+  (常にconfig側の一覧に残る、設計上の区別)。この**ゲーム内追加分のみ**
+  [マッププリセット](#コマンド)(`/conquest preset save|load`)にも保存/復元される
+  (config既定の`indestructibleBlocks`はTOML側の設定なのでプリセットの対象外)
 - `/conquest protectzone add|remove|list`: 2点座標の直方体エリアを破壊禁止として登録(自陣ゾーンと
   同じ2点指定方式、複数登録可)。管理用GUIには未対応(コマンドのみ)。自陣ゾーンと同じワイヤーフレーム
   パーティクル(白系)で常時可視化される

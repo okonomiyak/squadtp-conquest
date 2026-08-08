@@ -40,12 +40,15 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
-- **プリセットに各種ゾーンを含める+既定の"Normal"(まっさら)プリセット**(2026-08-08新規実装):
-  ユーザーから「Presetに各種ゾーンを含めるように、Presetに何もないまっさらな状態をNormalとして
-  登録しといて」と依頼。従来`MapPreset`は拠点配置・スポーンA/B・モードのみを保存しており、
-  自陣ゾーンA/B・戦場境界・破壊禁止ゾーンは対象外だった。`MapPreset`に新規`ZoneBox`レコード
-  (dim+corner1+corner2、home zone/boundaryで共通の3フィールド構成)と`List<ProtectZone>`
-  (`ProtectZone`は既存の`save()`/`load()`をそのまま流用)を追加し、
+- **プリセットに各種ゾーン+破壊禁止ブロックを含める+既定の"Normal"(まっさら)プリセット**
+  (2026-08-08新規実装): ユーザーから「Presetに各種ゾーンを含めるように、Presetに何もない
+  まっさらな状態をNormalとして登録しといて」、続けて「破壊禁止ブロックも記憶して」と依頼。
+  従来`MapPreset`は拠点配置・スポーンA/B・モードのみを保存しており、自陣ゾーンA/B・戦場境界・
+  破壊禁止ゾーン・ゲーム内追加の破壊禁止ブロックは対象外だった。`MapPreset`に新規`ZoneBox`
+  レコード(dim+corner1+corner2、home zone/boundaryで共通の3フィールド構成)と
+  `List<ProtectZone>`(`ProtectZone`は既存の`save()`/`load()`をそのまま流用)、
+  `List<String>`(`/conquest protectblock add`でのゲーム内追加分のみ——config既定の
+  `indestructibleBlocks`はTOML側の設定なのでプリセット対象外)を追加し、
   `ConquestManager.savePreset`/`loadPreset`もこれらを保存・復元するよう拡張。
   加えて、`ConquestManager`の無引数コンストラクタ(`SavedData.computeIfAbsent`が**新規ワールドの
   初回作成時のみ**呼ぶ、`ConquestManager::new`)で、拠点・スポーン・ゾーンが全て未設定の
