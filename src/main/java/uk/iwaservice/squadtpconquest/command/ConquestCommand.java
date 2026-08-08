@@ -129,7 +129,10 @@ public final class ConquestCommand {
                         .then(Commands.literal("join")
                                 .then(Commands.argument("team", StringArgumentType.word())
                                         .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b", "admin"}, b))
-                                        .executes(ConquestCommand::joinTeam)))
+                                        .executes(ConquestCommand::joinTeam)
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .requires(src -> src.hasPermission(2))
+                                                .executes(ConquestCommand::joinTeamOther))))
                         .then(Commands.literal("shuffle")
                                 .requires(src -> src.hasPermission(2))
                                 .executes(ConquestCommand::shuffleTeams))
@@ -335,6 +338,20 @@ public final class ConquestCommand {
         ConquestManager.get(ctx.getSource().getServer()).joinTeam(player, team);
         ctx.getSource().sendSuccess(() ->
                 Component.translatable("conquest.msg.team_joined", team.display()), false);
+        return 1;
+    }
+
+    /** OP-only: assigns another player to a team, e.g. to fix someone AFK at the team-select screen. */
+    private static int joinTeamOther(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+        Team team = Team.byKey(StringArgumentType.getString(ctx, "team"));
+        if (team == null) {
+            return fail(ctx, Component.translatable("conquest.msg.unknown_team"));
+        }
+        ConquestManager.get(ctx.getSource().getServer()).joinTeam(target, team);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.team_joined_other", target.getName(), team.display()), true);
+        target.displayClientMessage(Component.translatable("conquest.msg.team_joined", team.display()), true);
         return 1;
     }
 

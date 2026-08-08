@@ -40,6 +40,14 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **`/conquest team join <team> <プレイヤー>`**(2026-08-08新規実装): ユーザーから「teamを他人でも
+  加入させられるように」と依頼。従来の`/conquest team join <team>`(実行者自身のみが対象、
+  `ctx.getSource().getPlayerOrException()`)に、末尾に`player`引数(`EntityArgument.player()`)を
+  追加した形の別ルートを新設し、OP限定(`.requires(hasPermission(2))`)で他プレイヤーを指定
+  チームへ参加させられるようにした。内部の`ConquestManager.joinTeam`自体は無変更(元々
+  `ServerPlayer`を受け取るだけで実行者かどうかを問わない実装だった)。対象プレイヤーにも
+  アクションバーで参加を通知する(`conquest.msg.team_joined`を`target.displayClientMessage`で送信)。
+  実行者向けの成功メッセージは新規`conquest.msg.team_joined_other`
 - **`/conquest boundary restore`**(2026-08-08新規実装): ユーザーから「Conquestで途中中断しても
   地形が巻き戻されるコマンドを作成して」と依頼。`/conquest stop`は仕様として自動復元をスキップする
   (停止直後の被害状況確認用、`endRound`とは別経路——README参照)ため、そのままでは`stop`後は
