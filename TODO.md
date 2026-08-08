@@ -81,6 +81,8 @@ devlog/READMEの「既知の制約」と重複する項目は載せていない
   ラウンド状態に関係なく常時有効か
 - SuperbWarfareのRPG等、`maxBlocksPerExplosion`を超える大きい爆発でも破壊禁止ブロック/エリアが
   実際に守られるようになったか(2026-08-07修正、判定順序のバグ対処)
+- TNTの誘爆: ラウンド進行中、TNT複数個をまとめて設置して1つを起爆し、隣接TNTが連鎖的に誘爆する
+  (クレーター化されても)か(2026-08-08修正、`wasExploded`呼び出し漏れの対処)
 - `/conquest team join`で個別にチームを切り替えた後、元squadメンバー(現在は敵)をAEDで蘇生できなく
   なったか(2026-08-08修正、`joinTeam`での`leaveSquadIfAny`追加によるバグ対処)
 - 死亡後のsquadtpリスポーン選択画面に「チームスポーン」が表示され、`/conquest spawn set`の位置へ

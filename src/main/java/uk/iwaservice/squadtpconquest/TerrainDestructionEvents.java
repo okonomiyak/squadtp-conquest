@@ -41,6 +41,10 @@ import java.util.Set;
  * {@link ConquestManager#restoreTerrainSnapshot}, which pastes back a whole-region snapshot of
  * the battlefield boundary taken at round start — so damage from any source (not just what this
  * class craters) resets as long as a boundary is set, regardless of what happens here.
+ *
+ * <p>Every craterized block still gets {@link Block#wasExploded} called on it (same hook vanilla's
+ * own explosion finalization uses), so TNT caught in the blast still primes and chain-detonates —
+ * this class replaces how a block disappears, not the vanilla per-block explosion reaction.
  */
 public final class TerrainDestructionEvents {
 
@@ -94,6 +98,10 @@ public final class TerrainDestructionEvents {
             if (current.isAir()) {
                 continue;
             }
+            // Same hook vanilla's own explosion finalization calls on every destroyed block before
+            // clearing it (a no-op for most blocks, but this is what makes caught-in-the-blast TNT
+            // prime and chain-detonate — skipping it silently breaks TNT chain reactions).
+            current.getBlock().wasExploded(level, pos, event.getExplosion());
             double normalizedDistance = maxDistance <= 0 ? 0 : Math.sqrt(distanceSq(pos, center)) / maxDistance;
             BlockState replacement = normalizedDistance >= (1.0 - ringRatio) ? rubbleState : Blocks.AIR.defaultBlockState();
             level.setBlock(pos, replacement, 3);
