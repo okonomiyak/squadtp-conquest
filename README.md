@@ -27,8 +27,8 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 | `/conquest sector area remove <番号>` | セクターの戦闘エリアを削除(未設定に戻す。グローバルの`/conquest boundary`があればそちらにフォールバック) | OP |
 | `/conquest sector remove <番号>` | セクターと、それに属する全拠点を削除(旗ブロックも撤去) | OP |
 | `/conquest sector list` | 全セクターの番号・所属拠点一覧を表示 | - |
-| `/conquest preset save <名前>` | 現在の拠点配置・スポーン地点・ゲームモードを名前付きで保存(同名は上書き) | OP |
-| `/conquest preset load <名前>` | 保存済みプリセットを読み込み、現在の拠点・スポーン・モードを置き換える。ラウンドが`WAITING`の時のみ | OP |
+| `/conquest preset save <名前>` | 現在の拠点配置・スポーン地点・自陣ゾーンA/B・戦場境界・破壊禁止ゾーン・ゲームモードを名前付きで保存(同名は上書き) | OP |
+| `/conquest preset load <名前>` | 保存済みプリセットを読み込み、現在の拠点・スポーン・自陣ゾーンA/B・戦場境界・破壊禁止ゾーン・モードを置き換える。ラウンドが`WAITING`の時のみ | OP |
 | `/conquest preset remove <名前>` | プリセットを削除 | OP |
 | `/conquest preset list` | 保存済みプリセット一覧(拠点数・モード)を表示 | - |
 | `/conquest point set [半径]` | デフォルト拠点"Alpha"を実行者の足元に設置(半径省略時はconfig既定値)。旗ブロック(1×3)が自動生成される。TDMモードでは不要 | OP |

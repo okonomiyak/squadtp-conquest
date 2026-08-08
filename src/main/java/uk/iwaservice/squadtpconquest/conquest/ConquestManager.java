@@ -195,7 +195,10 @@ public class ConquestManager extends SavedData {
                 .computeIfAbsent(ConquestManager::load, ConquestManager::new, DATA_NAME);
     }
 
+    /** Fresh world only (see {@link #get}): seeds a built-in blank "Normal" preset to reset to. */
     public ConquestManager() {
+        presets.put("Normal", new MapPreset("Normal", GameMode.CONQUEST, List.of(),
+                null, null, null, null, null, null, null, List.of()));
     }
 
     // --- accessors ---
@@ -1264,13 +1267,23 @@ public class ConquestManager extends SavedData {
         return presets.get(name);
     }
 
-    /** Snapshots the current points/spawns/mode as a named preset, overwriting any existing one of that name. */
+    /**
+     * Snapshots the current points/spawns/mode/zones/boundary/protect zones as a named preset,
+     * overwriting any existing one of that name.
+     */
     public void savePreset(String name) {
         List<MapPreset.PointLayout> layout = new ArrayList<>();
         for (CapturePoint point : points.values()) {
             layout.add(new MapPreset.PointLayout(point.getName(), point.getDimension(), point.getPos(), point.getRadius()));
         }
-        presets.put(name, new MapPreset(name, mode, layout, spawnADim, spawnAPos, spawnBDim, spawnBPos));
+        MapPreset.ZoneBox zoneABox = zoneADim != null && zoneAPos1 != null && zoneAPos2 != null
+                ? new MapPreset.ZoneBox(zoneADim, zoneAPos1, zoneAPos2) : null;
+        MapPreset.ZoneBox zoneBBox = zoneBDim != null && zoneBPos1 != null && zoneBPos2 != null
+                ? new MapPreset.ZoneBox(zoneBDim, zoneBPos1, zoneBPos2) : null;
+        MapPreset.ZoneBox boundaryBox = boundaryDim != null && boundaryPos1 != null && boundaryPos2 != null
+                ? new MapPreset.ZoneBox(boundaryDim, boundaryPos1, boundaryPos2) : null;
+        presets.put(name, new MapPreset(name, mode, layout, spawnADim, spawnAPos, spawnBDim, spawnBPos,
+                zoneABox, zoneBBox, boundaryBox, new ArrayList<>(protectZones.values())));
         setDirty();
     }
 
@@ -1278,9 +1291,10 @@ public class ConquestManager extends SavedData {
     public enum LoadPresetResult { OK, NOT_FOUND, ROUND_ACTIVE }
 
     /**
-     * Replaces the live points/spawns/mode with a saved preset. Rejected while a round is
-     * running or showing a result, same rule as {@link #setMode}. Rebuilds flag poles for
-     * every point (clearing the previous ones first) in whichever dimensions are loaded.
+     * Replaces the live points/spawns/mode/zones/boundary/protect zones with a saved preset.
+     * Rejected while a round is running or showing a result, same rule as {@link #setMode}.
+     * Rebuilds flag poles for every point (clearing the previous ones first) in whichever
+     * dimensions are loaded.
      */
     public LoadPresetResult loadPreset(MinecraftServer server, String name) {
         MapPreset preset = presets.get(name);
@@ -1310,6 +1324,24 @@ public class ConquestManager extends SavedData {
         spawnBDim = preset.getSpawnBDim();
         spawnBPos = preset.getSpawnBPos();
         mode = preset.getMode();
+
+        MapPreset.ZoneBox zoneABox = preset.getZoneA();
+        zoneADim = zoneABox != null ? zoneABox.dimension() : null;
+        zoneAPos1 = zoneABox != null ? zoneABox.pos1() : null;
+        zoneAPos2 = zoneABox != null ? zoneABox.pos2() : null;
+        MapPreset.ZoneBox zoneBBox = preset.getZoneB();
+        zoneBDim = zoneBBox != null ? zoneBBox.dimension() : null;
+        zoneBPos1 = zoneBBox != null ? zoneBBox.pos1() : null;
+        zoneBPos2 = zoneBBox != null ? zoneBBox.pos2() : null;
+        MapPreset.ZoneBox boundaryBox = preset.getBoundary();
+        boundaryDim = boundaryBox != null ? boundaryBox.dimension() : null;
+        boundaryPos1 = boundaryBox != null ? boundaryBox.pos1() : null;
+        boundaryPos2 = boundaryBox != null ? boundaryBox.pos2() : null;
+        protectZones.clear();
+        for (ProtectZone zone : preset.getProtectZones()) {
+            protectZones.put(zone.getName(), zone);
+        }
+
         setDirty();
         return LoadPresetResult.OK;
     }

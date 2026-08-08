@@ -40,6 +40,20 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **プリセットに各種ゾーンを含める+既定の"Normal"(まっさら)プリセット**(2026-08-08新規実装):
+  ユーザーから「Presetに各種ゾーンを含めるように、Presetに何もないまっさらな状態をNormalとして
+  登録しといて」と依頼。従来`MapPreset`は拠点配置・スポーンA/B・モードのみを保存しており、
+  自陣ゾーンA/B・戦場境界・破壊禁止ゾーンは対象外だった。`MapPreset`に新規`ZoneBox`レコード
+  (dim+corner1+corner2、home zone/boundaryで共通の3フィールド構成)と`List<ProtectZone>`
+  (`ProtectZone`は既存の`save()`/`load()`をそのまま流用)を追加し、
+  `ConquestManager.savePreset`/`loadPreset`もこれらを保存・復元するよう拡張。
+  加えて、`ConquestManager`の無引数コンストラクタ(`SavedData.computeIfAbsent`が**新規ワールドの
+  初回作成時のみ**呼ぶ、`ConquestManager::new`)で、拠点・スポーン・ゾーンが全て未設定の
+  ブランクな`MapPreset`を`"Normal"`という名前で`presets`に登録するようにした。既存ワールド
+  (このプロジェクトのテスト用ワールド含む)には遡って追加されない点に注意
+  ——`/conquest preset save Normal`を全部クリアした状態で一度手動実行すれば同じものが作れる。
+  `get(server)`側では再注入していないので、`/conquest preset remove Normal`で消せば消えたまま
+  (毎tick呼ばれる`get()`内で復活させると削除不能になるため、あえて初回作成時のみに限定)
 - **`/conquest team join <team> <プレイヤー>`**(2026-08-08新規実装): ユーザーから「teamを他人でも
   加入させられるように」と依頼。従来の`/conquest team join <team>`(実行者自身のみが対象、
   `ctx.getSource().getPlayerOrException()`)に、末尾に`player`引数(`EntityArgument.player()`)を
