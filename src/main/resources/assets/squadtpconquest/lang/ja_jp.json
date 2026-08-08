@@ -148,6 +148,7 @@
   "conquest.gui.tab_sectors": "セクター",
   "conquest.gui.radius": "半径",
   "conquest.gui.place_point": "拠点をここに設置",
+  "conquest.gui.respawn_choice_team_spawn": "チームスポーン",
   "conquest.gui.respawn_choice_beacon": "チームビーコン",
   "conquest.gui.place_spawn_a": "Aスポーンをここに設定",
   "conquest.gui.place_spawn_b": "Bスポーンをここに設定",

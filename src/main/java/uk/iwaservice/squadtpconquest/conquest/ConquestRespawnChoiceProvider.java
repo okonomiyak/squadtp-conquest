@@ -10,12 +10,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Offers the team respawn beacon and (in conquest, if enabled) each owned capture point as
- * player-picked options in squadtp's respawn chooser, instead of squadtp-conquest silently
- * picking one automatically.
+ * Offers the team's configured spawn ({@code /conquest spawn set}), the team respawn beacon,
+ * and (in conquest, if enabled) each owned capture point as player-picked options in squadtp's
+ * respawn chooser, instead of squadtp-conquest silently picking one automatically.
  */
 public final class ConquestRespawnChoiceProvider implements RespawnChoiceProvider {
 
+    private static final String TEAM_SPAWN_CHOICE = "team_spawn";
     private static final String BEACON_CHOICE = "beacon";
     private static final String POINT_PREFIX = "point_";
 
@@ -36,6 +37,12 @@ public final class ConquestRespawnChoiceProvider implements RespawnChoiceProvide
         }
 
         List<RespawnChoiceEntry> choices = new ArrayList<>();
+        ConquestManager.RoleSpawn roleSpawn = manager.resolveRoleSpawn(team);
+        if (roleSpawn.isSet()) {
+            choices.add(new RespawnChoiceEntry(TEAM_SPAWN_CHOICE,
+                    Component.translatable("conquest.gui.respawn_choice_team_spawn"),
+                    roleSpawn.dim().location(), roleSpawn.pos()));
+        }
         var beaconDim = manager.getTeamBeaconDim(team);
         var beaconPos = manager.getTeamBeaconPos(team);
         if (beaconDim != null && beaconPos != null) {
@@ -57,6 +64,13 @@ public final class ConquestRespawnChoiceProvider implements RespawnChoiceProvide
     public boolean onChosen(ServerPlayer player, String choiceId) {
         ConquestManager manager = ConquestManager.get(player.server);
         Team team = manager.teamOf(player.getUUID());
+        if (choiceId.equals(TEAM_SPAWN_CHOICE)) {
+            if (!manager.resolveRoleSpawn(team).isSet()) {
+                return false;
+            }
+            manager.teleportToRoleSpawn(player, team);
+            return true;
+        }
         if (choiceId.equals(BEACON_CHOICE)) {
             return manager.teleportToTeamBeacon(player, team);
         }

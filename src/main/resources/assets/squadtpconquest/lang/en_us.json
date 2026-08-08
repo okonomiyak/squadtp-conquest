@@ -148,6 +148,7 @@
   "conquest.gui.tab_sectors": "Sectors",
   "conquest.gui.radius": "Radius",
   "conquest.gui.place_point": "Place Point Here",
+  "conquest.gui.respawn_choice_team_spawn": "Team Spawn",
   "conquest.gui.respawn_choice_beacon": "Team Beacon",
   "conquest.gui.place_spawn_a": "Set A Spawn Here",
   "conquest.gui.place_spawn_b": "Set B Spawn Here",

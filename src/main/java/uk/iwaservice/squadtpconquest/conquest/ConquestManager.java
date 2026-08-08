@@ -1423,30 +1423,37 @@ public class ConquestManager extends SavedData {
         }
     }
 
-    /**
-     * Teleports one player to their role's spawn: in breakthrough the active sector's
-     * attacker/defender spawn if set, else the global spawnA/B, else the world spawn. The team
-     * respawn beacon and (in conquest) owned capture points are offered as player-picked options
-     * via {@link ConquestRespawnChoiceProvider} instead, not placed here.
-     */
-    private void teleportToRoleSpawn(ServerPlayer player, Team team) {
-        MinecraftServer server = player.server;
+    /** A team's configured role spawn, before the world-spawn fallback used at actual teleport time. */
+    record RoleSpawn(ResourceKey<Level> dim, BlockPos pos) {
+        boolean isSet() {
+            return dim != null && pos != null;
+        }
+    }
+
+    /** In breakthrough, the active sector's attacker/defender spawn if set; else the global spawnA/B. */
+    RoleSpawn resolveRoleSpawn(Team team) {
         Sector sector = mode == GameMode.BREAKTHROUGH ? currentSector() : null;
-        ResourceKey<Level> dim = null;
-        BlockPos pos = null;
         if (sector != null) {
-            if (team == attackerTeam) {
-                dim = sector.getAttackerSpawnDim();
-                pos = sector.getAttackerSpawnPos();
-            } else {
-                dim = sector.getDefenderSpawnDim();
-                pos = sector.getDefenderSpawnPos();
+            RoleSpawn sectorSpawn = team == attackerTeam
+                    ? new RoleSpawn(sector.getAttackerSpawnDim(), sector.getAttackerSpawnPos())
+                    : new RoleSpawn(sector.getDefenderSpawnDim(), sector.getDefenderSpawnPos());
+            if (sectorSpawn.isSet()) {
+                return sectorSpawn;
             }
         }
-        if (pos == null) {
-            dim = team == Team.A ? spawnADim : spawnBDim;
-            pos = team == Team.A ? spawnAPos : spawnBPos;
-        }
+        return team == Team.A ? new RoleSpawn(spawnADim, spawnAPos) : new RoleSpawn(spawnBDim, spawnBPos);
+    }
+
+    /**
+     * Teleports one player to their role's spawn ({@link #resolveRoleSpawn}), or the world spawn
+     * if unset. Used both at round start and as the "team spawn" respawn choice offered via
+     * {@link ConquestRespawnChoiceProvider}.
+     */
+    void teleportToRoleSpawn(ServerPlayer player, Team team) {
+        MinecraftServer server = player.server;
+        RoleSpawn roleSpawn = resolveRoleSpawn(team);
+        ResourceKey<Level> dim = roleSpawn.dim();
+        BlockPos pos = roleSpawn.pos();
         ServerLevel targetLevel;
         if (dim == null || pos == null) {
             targetLevel = server.overworld();

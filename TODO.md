@@ -83,3 +83,5 @@ devlog/READMEの「既知の制約」と重複する項目は載せていない
   実際に守られるようになったか(2026-08-07修正、判定順序のバグ対処)
 - `/conquest team join`で個別にチームを切り替えた後、元squadメンバー(現在は敵)をAEDで蘇生できなく
   なったか(2026-08-08修正、`joinTeam`での`leaveSquadIfAny`追加によるバグ対処)
+- 死亡後のsquadtpリスポーン選択画面に「チームスポーン」が表示され、`/conquest spawn set`の位置へ
+  実際にテレポートするか(2026-08-08修正、`ConquestRespawnChoiceProvider`への選択肢追加)
