@@ -1,6 +1,7 @@
 package uk.iwaservice.squadtpconquest;
 
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.SnowballItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
@@ -31,6 +32,14 @@ public final class ModRegistry {
     /** Deployable team-shared temporary respawn point; obtained via /give or a /conquest callin. */
     public static final RegistryObject<Item> TEAM_BEACON = ITEMS.register("team_beacon",
             () -> new TeamBeaconItem(new Item.Properties()));
+
+    /**
+     * Throws and breaks the block it hits (see {@link MikanEvents}), subject to the same
+     * indestructible/protected checks as ordinary breaking. Plain vanilla SnowballItem/Snowball
+     * under the hood, identified in the impact handler by its item; obtained via /give only.
+     */
+    public static final RegistryObject<Item> MIKAN = ITEMS.register("mikan",
+            () -> new SnowballItem(new Item.Properties()));
 
     public static void register(IEventBus modBus) {
         BLOCKS.register(modBus);

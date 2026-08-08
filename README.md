@@ -206,6 +206,12 @@ BF風のクレーターに差し替える。爆心に近いブロックはair、
 (意図的な管理者用の抜け道)。この保護はラウンドの進行状況や`terrainDestructionEnabled`に関係なく
 常時有効(旗ブロック等のマップ構成要素を守る目的のため、爆発によるクレーター生成とは別の関心事として扱う)。
 
+**みかん**(`squadtpconquest:mikan`、`/give`でのみ入手、クリエイティブタブ非掲載): 投げると当たった
+ブロックを1つ破壊するアイテム。中身はバニラの`SnowballItem`をそのまま登録しただけ(見た目はりんごの
+テクスチャを流用)で、着弾検知はForgeの`ProjectileImpactEvent`をフックし、投げた雪玉がみかんかどうかを
+`Snowball.getItem()`で判定している(`MikanEvents`)。破壊可否の判定は上記3通りの破壊禁止判定
+(`isIndestructible`/`isProtected`)をそのまま流用しており、破壊禁止ブロック/エリアはみかんでも壊せない。
+
 **地形の自動復元は`/conquest boundary set`(戦場境界)で範囲を設定した場合のみ働く**。
 `/conquest start`のたびにその境界の直方体全体をまるごとスナップショット(バニラの構造物ブロックと
 同じ`StructureTemplate`の仕組みを利用)し、ラウンド終了(`endRound`、勝敗タイトル表示・集合地点への

@@ -85,3 +85,5 @@ devlog/READMEの「既知の制約」と重複する項目は載せていない
   なったか(2026-08-08修正、`joinTeam`での`leaveSquadIfAny`追加によるバグ対処)
 - 死亡後のsquadtpリスポーン選択画面に「チームスポーン」が表示され、`/conquest spawn set`の位置へ
   実際にテレポートするか(2026-08-08修正、`ConquestRespawnChoiceProvider`への選択肢追加)
+- みかん(`squadtpconquest:mikan`): 投げて当たったブロックが実際に破壊されるか、破壊禁止ブロック/
+  エリアには効かないままか(2026-08-08新規実装)

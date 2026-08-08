@@ -29,6 +29,7 @@ public class SquadTpConquest {
         MinecraftForge.EVENT_BUS.register(TerrainDestructionEvents.class);
         MinecraftForge.EVENT_BUS.register(ZoneWandEvents.class);
         MinecraftForge.EVENT_BUS.register(BlockProtectionEvents.class);
+        MinecraftForge.EVENT_BUS.register(MikanEvents.class);
         RespawnChoiceRegistry.register(new ConquestRespawnChoiceProvider());
     }
 
