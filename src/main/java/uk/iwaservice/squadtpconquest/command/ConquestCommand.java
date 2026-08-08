@@ -228,7 +228,8 @@ public final class ConquestCommand {
                         .then(Commands.literal("corner2")
                                 .then(Commands.literal("set").executes(ctx -> setBoundaryCorner(ctx, false))))
                         .then(Commands.literal("remove").executes(ConquestCommand::removeBoundary))
-                        .then(Commands.literal("list").executes(ConquestCommand::boundaryList)))
+                        .then(Commands.literal("list").executes(ConquestCommand::boundaryList))
+                        .then(Commands.literal("restore").executes(ConquestCommand::boundaryRestore)))
                 .then(Commands.literal("callin")
                         .then(Commands.literal("add")
                                 .requires(src -> src.hasPermission(2))
@@ -755,6 +756,15 @@ public final class ConquestCommand {
             return fail(ctx, Component.translatable("conquest.msg.no_boundary"));
         }
         ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.boundary_removed"), true);
+        return 1;
+    }
+
+    /** Manually restores the current terrain snapshot, e.g. after a mid-round {@code /conquest stop}. */
+    private static int boundaryRestore(CommandContext<CommandSourceStack> ctx) {
+        if (!ConquestManager.get(ctx.getSource().getServer()).restoreTerrain(ctx.getSource().getServer())) {
+            return fail(ctx, Component.translatable("conquest.msg.no_terrain_snapshot"));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.terrain_restored"), true);
         return 1;
     }
 

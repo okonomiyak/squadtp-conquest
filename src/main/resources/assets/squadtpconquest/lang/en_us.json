@@ -45,6 +45,8 @@
   "conquest.msg.boundary_corner2_set": "Boundary corner 2 set here",
   "conquest.msg.boundary_removed": "Battlefield boundary removed",
   "conquest.msg.no_boundary": "No battlefield boundary set",
+  "conquest.msg.terrain_restored": "Terrain restored from snapshot",
+  "conquest.msg.no_terrain_snapshot": "No terrain snapshot to restore",
   "conquest.msg.boundary_warning": "⚠ Leaving the battlefield! %ss until elimination",
   "conquest.msg.gather_set": "Round-end gather point set here",
   "conquest.msg.gather_removed": "Round-end gather point removed",

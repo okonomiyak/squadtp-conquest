@@ -45,6 +45,8 @@
   "conquest.msg.boundary_corner2_set": "境界の角2をここに設定した",
   "conquest.msg.boundary_removed": "戦場境界を削除した",
   "conquest.msg.no_boundary": "戦場境界が未設定です",
+  "conquest.msg.terrain_restored": "地形をスナップショットから復元した",
+  "conquest.msg.no_terrain_snapshot": "復元できる地形スナップショットがありません",
   "conquest.msg.boundary_warning": "⚠ 戦場から離れています! あと%s秒で処刑されます",
   "conquest.msg.gather_set": "試合終了時の集合地点をここに設定した",
   "conquest.msg.gather_removed": "試合終了時の集合地点を削除した",

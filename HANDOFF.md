@@ -40,6 +40,15 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **`/conquest boundary restore`**(2026-08-08新規実装): ユーザーから「Conquestで途中中断しても
+  地形が巻き戻されるコマンドを作成して」と依頼。`/conquest stop`は仕様として自動復元をスキップする
+  (停止直後の被害状況確認用、`endRound`とは別経路——README参照)ため、そのままでは`stop`後は
+  誰かが手動で戦場境界を直さない限り地形が壊れたままだった。既存の`restoreTerrainSnapshot`
+  (`endRound`専用のprivateメソッド)を`ConquestManager.restoreTerrain(server)`として公開し、
+  スナップショットが無ければ`false`を返す形に。新規コマンドはこれを呼ぶだけの薄いラッパー
+  (`ConquestCommand.boundaryRestore`)。既存の地形スナップショット/復元の仕組み
+  (`captureTerrainSnapshot`/`terrainSnapshot`フィールド、`/conquest start`時に撮影・
+  `endRound`か本コマンドで消費)をそのまま流用しており、新規ロジックはゼロ
 - **みかん**(`squadtpconquest:mikan`、2026-08-08新規実装): ユーザーから「みかんを投げてブロックを
   破壊できるようにして、破壊できない/できるブロックの仕組みを流用して」と依頼。投げると着弾した
   ブロックを1つ破壊するアイテム。実体はバニラの`SnowballItem`をそのまま`mikan`として登録しただけ

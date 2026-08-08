@@ -87,3 +87,6 @@ devlog/READMEの「既知の制約」と重複する項目は載せていない
   実際にテレポートするか(2026-08-08修正、`ConquestRespawnChoiceProvider`への選択肢追加)
 - みかん(`squadtpconquest:mikan`): 投げて当たったブロックが実際に破壊されるか、破壊禁止ブロック/
   エリアには効かないままか(2026-08-08新規実装)
+- `/conquest boundary restore`: `/conquest start`→地形破壊→`/conquest stop`の後に実行して、
+  実際に地形が元に戻るか。スナップショットが無い状態(境界未設定・`endRound`後)で失敗メッセージが
+  出るか(2026-08-08新規実装)

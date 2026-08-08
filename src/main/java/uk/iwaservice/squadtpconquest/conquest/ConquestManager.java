@@ -1224,6 +1224,20 @@ public class ConquestManager extends SavedData {
         terrainSnapshotOrigin = min.immutable();
     }
 
+    /**
+     * Manually pastes back the current terrain snapshot, e.g. after {@code /conquest stop} — which,
+     * unlike {@link #endRound}, deliberately skips the automatic restore so admins can inspect the
+     * damage first. Returns false if no snapshot is held (never captured this round, boundary unset,
+     * or already consumed by a prior restore/round end).
+     */
+    public boolean restoreTerrain(MinecraftServer server) {
+        if (terrainSnapshot == null) {
+            return false;
+        }
+        restoreTerrainSnapshot(server);
+        return true;
+    }
+
     /** Pastes back the snapshot taken by {@link #captureTerrainSnapshot}, if any, undoing all terrain changes since. */
     private void restoreTerrainSnapshot(MinecraftServer server) {
         if (terrainSnapshot == null || terrainSnapshotDim == null || terrainSnapshotOrigin == null) {
