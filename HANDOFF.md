@@ -40,19 +40,31 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
-- **スポット/拠点ウェイポイントが「見えない・意味がない」 → 原因判明、squadtp-conquest側のバグでは
-  なかった(2026-08-09)。** ユーザーから「waypointがない」「スポットが出来ない」と連続で報告。
-  調査の結果、まず拠点のJourneyMapウェイポイント自体は正常に表示されていることが判明(JourneyMap
-  連携自体は生きている)。続けてスポット機能のコード(キー→コマンド送信→クールダウン→
-  `SpotPacket`配信→クライアント保存→JourneyMapウェイポイント表示)を一通り追ったが実装上の
-  バグは見当たらず、最終的にユーザーから「そもそも敵の位置がスポット無しでも地図から見える」との
-  追加情報で判明: **これはバニラMinecraft自体の仕様**(`EntityType.PLAYER`の
-  `clientTrackingRange`、既定でおよそ512ブロック相当を全クライアントに配信)であり、
-  `server.properties`の`entity-broadcast-range-percentage`(既定100)を絞らない限り、
-  spot機能を実装してもしなくても敵は常時JourneyMapに映ってしまう。squadtp-conquest側のコードは
-  無変更(バグではない)。このプロジェクトの`run-server/server.properties`は`20`に変更済み
-  (ただし`run-server/`はgit管理外)。詳細・推奨値の根拠はREADMEの「索敵マーキング(スポット)」
-  節に追記した
+- **敵プレイヤーがスポットしなくてもJourneyMapに常時見えてしまう問題 → 対処済み(2026-08-09)。**
+  ユーザーから「waypointがない」「スポットが出来ない」と連続で報告。調査の結果、拠点の
+  JourneyMapウェイポイント自体は正常表示、スポット機能のコード(キー→コマンド送信→クールダウン
+  →`SpotPacket`配信→クライアント保存→JourneyMapウェイポイント表示)も実装上のバグは無く、
+  最終的にユーザーから「そもそも敵の位置がスポット無しでも地図から見える」との情報で問題を特定。
+  最初は`server.properties`の`entity-broadcast-range-percentage`(バニラの`EntityType.PLAYER`
+  トラッキング範囲、既定でおよそ512ブロック相当を全クライアントに配信する設定)を絞る対処を試みたが
+  (この設定は今も`run-server/server.properties`で`20`のまま、ただし`run-server/`はgit管理外)、
+  **これでは至近距離の敵まで隠すことは原理的にできない**(近くにいる相手を隠すと戦闘自体が
+  成立しなくなるため、バニラは近距離のエンティティは必ずトラッキングする)ため効果なしとの報告。
+  さらにユーザーから「クライアント設定で敵表示のon/offができると困る(自分でJourneyMapの
+  レーダー設定を切り替えて回避されてしまう)」という重要な制約が判明し、サーバー/ネットワーク層
+  ではなく**JourneyMap本体のレーダー描画そのものをMod側で強制的に抑制する**方針に転換。
+  JourneyMap APIの`journeymap.client.api.event.forge.EntityRadarUpdateEvent`
+  (Cancelable、レーダー描画直前に1エンティティずつ発火)を新規`ConquestJmRadarEvents`でフックし、
+  `WrappedEntity.getEntityLivingRef()`から実体を取り出してバニラのスコアボードチームが自分と異なる
+  プレイヤーを`WrappedEntity.setDisable(true)`でレーダー描画対象から除外する。JourneyMap本体の
+  「Radar」オンオフ設定とは別レイヤーでMod側コードが強制するため、プレイヤー自身の
+  クライアント設定変更では回避できない。登録は`ConquestJmPlugin.initialize()`
+  (JourneyMap自身がプラグインをロードする時にしか呼ばれない、確実にJourneyMap導入時のみの
+  フック)から`MinecraftForge.EVENT_BUS.register(ConquestJmRadarEvents.class)`。既存の
+  スポットWaypoint表示(`ConquestJmWaypointHandler`)とは別系統のAPI(Radar vs Waypoint)なので、
+  スポットされた敵は従来通りWaypointで見える。詳細はREADMEの「索敵マーキング(スポット)」節参照。
+  **未検証**: 実プレイでJourneyMapのレーダーから敵チームが実際に消えるか、味方は従来通り映るか、
+  スポット時のWaypoint表示に影響が無いか
 - **TNTの誘爆が起きないバグ → 対処済み(2026-08-08)。** ユーザーから「TNTの誘爆が発生してくれない」
   と報告。原因: `TerrainDestructionEvents`はBF風クレーター化のため、爆風で影響を受けたブロックを
   バニラの`Explosion.finalizeExplosion()`(ドロップ処理+`Block#wasExploded`呼び出しを経て

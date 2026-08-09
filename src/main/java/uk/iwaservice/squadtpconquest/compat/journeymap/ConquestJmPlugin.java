@@ -4,6 +4,7 @@ import journeymap.client.api.ClientPlugin;
 import journeymap.client.api.IClientAPI;
 import journeymap.client.api.IClientPlugin;
 import journeymap.client.api.event.ClientEvent;
+import net.minecraftforge.common.MinecraftForge;
 import uk.iwaservice.squadtpconquest.SquadTpConquest;
 
 import javax.annotation.Nullable;
@@ -22,6 +23,7 @@ public class ConquestJmPlugin implements IClientPlugin {
     public void initialize(IClientAPI jmClientApi) {
         api = jmClientApi;
         SquadTpConquest.LOGGER.info("JourneyMap integration initialized");
+        MinecraftForge.EVENT_BUS.register(ConquestJmRadarEvents.class);
         ConquestJmWaypointHandler.refresh();
     }
 
