@@ -287,6 +287,15 @@ JourneyMapを導入している場合、ラウンド進行中(`IN_PROGRESS`)は�
 スポットした瞬間の位置のスナップショットのみ。連打防止に`spotCooldownSeconds`秒(既定2)の
 クールダウンがある。JourneyMap未導入環境ではウェイポイントが出ないだけで、キー自体は害なく空振りする。
 
+**サーバー設定の前提条件**: バニラはプレイヤーエンティティの位置情報を既定で非常に広い範囲
+(`EntityType.PLAYER`の`clientTrackingRange`、既定でおよそ512ブロック相当)まで全クライアントに
+配信するため、`server.properties`の`entity-broadcast-range-percentage`(既定100)を下げない限り、
+JourneyMap(や他の可視化Mod)には**スポットしなくても敵が常時表示されてしまい**、この機能が
+実質無意味になる。`spotRangeBlocks`(既定100)と釣り合う範囲まで絞る(例:
+`entity-broadcast-range-percentage=20`で約100ブロック相当)ことを推奨。この設定はプレイヤーに
+限らず全エンティティ種別の配信範囲に等しく効くため、Mob・アイテムドロップ等の描画距離も
+連動して短くなる点はトレードオフとして許容する
+
 ## ラウンドの流れ
 
 状態は `WAITING`(待機中) → `STARTING`(開始カウントダウン中) → `IN_PROGRESS`(進行中) →

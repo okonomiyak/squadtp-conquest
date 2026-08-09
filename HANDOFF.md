@@ -40,6 +40,19 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **スポット/拠点ウェイポイントが「見えない・意味がない」 → 原因判明、squadtp-conquest側のバグでは
+  なかった(2026-08-09)。** ユーザーから「waypointがない」「スポットが出来ない」と連続で報告。
+  調査の結果、まず拠点のJourneyMapウェイポイント自体は正常に表示されていることが判明(JourneyMap
+  連携自体は生きている)。続けてスポット機能のコード(キー→コマンド送信→クールダウン→
+  `SpotPacket`配信→クライアント保存→JourneyMapウェイポイント表示)を一通り追ったが実装上の
+  バグは見当たらず、最終的にユーザーから「そもそも敵の位置がスポット無しでも地図から見える」との
+  追加情報で判明: **これはバニラMinecraft自体の仕様**(`EntityType.PLAYER`の
+  `clientTrackingRange`、既定でおよそ512ブロック相当を全クライアントに配信)であり、
+  `server.properties`の`entity-broadcast-range-percentage`(既定100)を絞らない限り、
+  spot機能を実装してもしなくても敵は常時JourneyMapに映ってしまう。squadtp-conquest側のコードは
+  無変更(バグではない)。このプロジェクトの`run-server/server.properties`は`20`に変更済み
+  (ただし`run-server/`はgit管理外)。詳細・推奨値の根拠はREADMEの「索敵マーキング(スポット)」
+  節に追記した
 - **TNTの誘爆が起きないバグ → 対処済み(2026-08-08)。** ユーザーから「TNTの誘爆が発生してくれない」
   と報告。原因: `TerrainDestructionEvents`はBF風クレーター化のため、爆風で影響を受けたブロックを
   バニラの`Explosion.finalizeExplosion()`(ドロップ処理+`Block#wasExploded`呼び出しを経て
