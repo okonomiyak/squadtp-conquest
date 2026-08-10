@@ -220,11 +220,15 @@ BF風のクレーターに差し替える。爆心に近いブロックはair、
 (意図的な管理者用の抜け道)。この保護はラウンドの進行状況や`terrainDestructionEnabled`に関係なく
 常時有効(旗ブロック等のマップ構成要素を守る目的のため、爆発によるクレーター生成とは別の関心事として扱う)。
 
-**みかん**(`squadtpconquest:mikan`、`/give`でのみ入手、クリエイティブタブ非掲載): 投げると当たった
-ブロックを1つ破壊するアイテム。中身はバニラの`SnowballItem`をそのまま登録しただけ(見た目はりんごの
-テクスチャを流用)で、着弾検知はForgeの`ProjectileImpactEvent`をフックし、投げた雪玉がみかんかどうかを
-`Snowball.getItem()`で判定している(`MikanEvents`)。破壊可否の判定は上記3通りの破壊禁止判定
-(`isIndestructible`/`isProtected`)をそのまま流用しており、破壊禁止ブロック/エリアはみかんでも壊せない。
+**みかん**(`squadtpconquest:mikan`、`/give`でのみ入手、クリエイティブタブ非掲載): 通常の右クリックで
+投げると当たったブロックを1つ破壊するアイテム(見た目はりんごのテクスチャを流用)。中身はバニラの
+`SnowballItem`を継承した`MikanItem`で、着弾検知はForgeの`ProjectileImpactEvent`をフックし、投げた
+雪玉がみかんかどうかを`Snowball.getItem()`で判定している(`MikanEvents`)。破壊可否の判定は上記3通りの
+破壊禁止判定(`isIndestructible`/`isProtected`)をそのまま流用しており、破壊禁止ブロック/エリアは
+みかんでも壊せない。**しゃがみながら右クリックすると食べられる**が、食べると即死する
+(`player.damageSources().genericKill()`で処刑と同じ即死ダメージ、squadtpのダウン変換を回避して
+確実に死ぬ)。しゃがみ判定で「投げる」と「食べる」の2つの右クリック動作を切り替えている
+(`MikanItem.use`)。
 
 **地形の自動復元は`/conquest boundary set`(戦場境界)で範囲を設定した場合のみ働く**。
 `/conquest start`のたびにその境界の直方体全体をまるごとスナップショット(バニラの構造物ブロックと

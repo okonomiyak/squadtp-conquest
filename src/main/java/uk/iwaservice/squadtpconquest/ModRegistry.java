@@ -1,7 +1,6 @@
 package uk.iwaservice.squadtpconquest;
 
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.SnowballItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
@@ -10,6 +9,7 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import uk.iwaservice.squadtpconquest.block.ConquestFlagBlock;
+import uk.iwaservice.squadtpconquest.item.MikanItem;
 import uk.iwaservice.squadtpconquest.item.TeamBeaconItem;
 import uk.iwaservice.squadtpconquest.item.ZoneWandItem;
 
@@ -34,12 +34,12 @@ public final class ModRegistry {
             () -> new TeamBeaconItem(new Item.Properties()));
 
     /**
-     * Throws and breaks the block it hits (see {@link MikanEvents}), subject to the same
-     * indestructible/protected checks as ordinary breaking. Plain vanilla SnowballItem/Snowball
-     * under the hood, identified in the impact handler by its item; obtained via /give only.
+     * Right-click throws and breaks the block it hits (see {@link MikanEvents}), subject to the
+     * same indestructible/protected checks as ordinary breaking. Sneak + right-click eats it
+     * instead, which is always lethal (see {@link MikanItem}). Obtained via /give only.
      */
     public static final RegistryObject<Item> MIKAN = ITEMS.register("mikan",
-            () -> new SnowballItem(new Item.Properties()));
+            () -> new MikanItem(new Item.Properties()));
 
     public static void register(IEventBus modBus) {
         BLOCKS.register(modBus);

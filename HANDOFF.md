@@ -40,6 +40,22 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **みかんを食べると即死するように**(2026-08-10新規実装): ユーザーから「mandarinを食べたら死ぬ
+  アイテムにして」と依頼。当初みかん(`squadtpconquest:mikan`)は右クリックで投げてブロックを
+  破壊するだけのプレーンな`SnowballItem`登録だったため、`Item.use`はバニラの`SnowballItem.use`
+  (常に即座に投げる)で完全に上書きされており、そのままでは「食べる」動作(`startUsingItem`→
+  一定時間右クリック保持→`finishUsingItem`)を割り込ませる余地が無かった。新規`MikanItem`
+  (`SnowballItem`を継承)を作り、`use()`をオーバーライドして**しゃがみ判定で分岐**: しゃがみながら
+  右クリックなら`startUsingItem`を呼んで食べる動作を開始、それ以外は`super.use(...)`で従来通り
+  投げる(`MikanEvents`の着弾破壊ロジックは`Snowball.getItem()`でアイテムを判定しているだけなので
+  無変更で動作継続)。`getUseAnimation`は`EAT`、`getUseDuration`は32tick(バニラ食料と同程度)。
+  `finishUsingItem`で`player.hurt(damageSources().genericKill(), Float.MAX_VALUE)`を発生させて
+  即死させる——`genericKill()`はバニラの`bypasses_invulnerability`タグに含まれるため、
+  squadtpのダウン変換(`ReviveSystem`)を素通りして確実に本当の死亡になる(自陣ゾーン/戦場境界処刑
+  ・演習場のTNT誘爆修正と同じ、このプロジェクトで繰り返し使っているパターン)。`ModRegistry.MIKAN`
+  の登録を`new SnowballItem(...)`から`new MikanItem(...)`に変更。
+  **未検証**: 実プレイでしゃがみ+右クリックで食べるモーションが出て即死するか、しゃがまない通常の
+  右クリックは従来通り投げて着弾破壊するか
 - **観戦者チーム(`Team.SPECTATOR`)**(2026-08-10新規実装): 直前の「管理人チームでも試合HUDが
   見えるように」対応を受けて、ユーザーから「adminと同等なので別枠で観戦者を」と依頼
   (=試合を見る権利をOP限定の`admin`に混ぜず、誰でも参加できる別のチームとして独立させたい、
