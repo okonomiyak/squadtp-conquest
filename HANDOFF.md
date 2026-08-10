@@ -40,6 +40,11 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **みかんに専用テクスチャ**(2026-08-10): ユーザーが自作の16x16テクスチャ(`mandarin .png`)を提供。
+  それまでの「りんごのテクスチャを流用」(2026-08-08の初期実装時の暫定対応)を置き換え、
+  `assets/squadtpconquest/textures/item/mikan.png`として追加。`models/item/mikan.json`の
+  `layer0`を`minecraft:item/apple`から`squadtpconquest:item/mikan`に変更。このMod初の
+  専用アイテムテクスチャ(既存のzone_wand/team_beaconはバニラテクスチャ流用のまま)
 - **みかんを食べると即死するように**(2026-08-10新規実装): ユーザーから「mandarinを食べたら死ぬ
   アイテムにして」と依頼。当初みかん(`squadtpconquest:mikan`)は右クリックで投げてブロックを
   破壊するだけのプレーンな`SnowballItem`登録だったため、`Item.use`はバニラの`SnowballItem.use`
