@@ -156,6 +156,32 @@ public class ConquestManager extends SavedData {
     @Nullable
     private BlockPos terrainSnapshotOrigin;
 
+    /**
+     * The training range: a single axis-aligned box, independent of the match (round state,
+     * game mode, tickets). Anyone can join {@link Team#RANGE} to be teleported into it; both
+     * corners must be set (and share rangeDim) to be active.
+     */
+    @Nullable
+    private ResourceKey<Level> rangeDim;
+    @Nullable
+    private BlockPos rangePos1;
+    @Nullable
+    private BlockPos rangePos2;
+    /**
+     * Transient: the range's clean-state snapshot, taken by {@link #setRange} and pasted back
+     * every {@code rangeResetIntervalSeconds} (see {@link #tickRange}) — not saved to NBT, so a
+     * restart re-captures the (by-then already-in-use) area fresh on the next tick instead of
+     * silently never resetting again.
+     */
+    @Nullable
+    private StructureTemplate rangeSnapshot;
+    @Nullable
+    private ResourceKey<Level> rangeSnapshotDim;
+    @Nullable
+    private BlockPos rangeSnapshotOrigin;
+    /** Transient: seconds until the next automatic range reset. Not persisted. */
+    private int rangeResetSecondsRemaining = Config.RANGE_RESET_INTERVAL_SECONDS.get();
+
     /** Transient: seconds since the last ticket bleed. */
     private int bleedCounter;
     /** Seconds left in the pre-round countdown, ticked only while STARTING. Not persisted. */
@@ -647,6 +673,9 @@ public class ConquestManager extends SavedData {
         if (previous != team) {
             applyMaxHealth(player, team);
             leaveSquadIfAny(player);
+            if (team == Team.RANGE) {
+                teleportIntoRange(player);
+            }
         }
     }
 
@@ -686,7 +715,7 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Randomly splits every online player who isn't on the admin team into
+     * Randomly splits every online player who isn't on the admin or training-range team into
      * Team A / Team B as evenly as possible. Since a shuffle can freely split
      * up existing squads across the two new teams, every squad touched by it
      * is disbanded first and fresh same-team squads are formed afterward
@@ -696,7 +725,8 @@ public class ConquestManager extends SavedData {
     public int shuffleTeams(MinecraftServer server) {
         List<ServerPlayer> players = new ArrayList<>();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (teamOf(player.getUUID()) != Team.ADMIN) {
+            Team current = teamOf(player.getUUID());
+            if (current != Team.ADMIN && current != Team.RANGE) {
                 players.add(player);
             }
         }
@@ -778,7 +808,7 @@ public class ConquestManager extends SavedData {
 
     private static boolean isConquestTeam(PlayerTeam team) {
         return team.getName().equals(vanillaTeamName(Team.A)) || team.getName().equals(vanillaTeamName(Team.B))
-                || team.getName().equals(vanillaTeamName(Team.ADMIN));
+                || team.getName().equals(vanillaTeamName(Team.ADMIN)) || team.getName().equals(vanillaTeamName(Team.RANGE));
     }
 
     private static String vanillaTeamName(Team team) {
@@ -1069,6 +1099,186 @@ public class ConquestManager extends SavedData {
         BlockPos min = new BlockPos(Math.min(boundaryPos1.getX(), boundaryPos2.getX()), Math.min(boundaryPos1.getY(), boundaryPos2.getY()), Math.min(boundaryPos1.getZ(), boundaryPos2.getZ()));
         BlockPos max = new BlockPos(Math.max(boundaryPos1.getX(), boundaryPos2.getX()), Math.max(boundaryPos1.getY(), boundaryPos2.getY()), Math.max(boundaryPos1.getZ(), boundaryPos2.getZ()));
         return new BlockPos[]{min, max};
+    }
+
+    // --- training range (single global box; independent of round/match state) ---
+
+    /**
+     * Defines/relocates the training range as the box between two corners, and immediately
+     * captures its current contents as the clean state every automatic reset pastes back (see
+     * {@link #tickRange}).
+     */
+    public void setRange(ServerLevel level, BlockPos pos1, BlockPos pos2) {
+        rangeDim = level.dimension();
+        rangePos1 = pos1.immutable();
+        rangePos2 = pos2.immutable();
+        setDirty();
+        captureRangeSnapshot(level.getServer());
+    }
+
+    /**
+     * Sets one corner of the range to the given position, leaving the other corner untouched (the
+     * range only becomes active, and gets a fresh snapshot, once both are set). Switching
+     * dimension resets both corners first, same rule as the battlefield boundary's corner1/corner2.
+     */
+    public void setRangeCorner(ServerLevel level, boolean corner1, BlockPos pos) {
+        ResourceKey<Level> dim = level.dimension();
+        if (rangeDim != null && !rangeDim.equals(dim)) {
+            rangePos1 = null;
+            rangePos2 = null;
+        }
+        rangeDim = dim;
+        if (corner1) {
+            rangePos1 = pos.immutable();
+        } else {
+            rangePos2 = pos.immutable();
+        }
+        setDirty();
+        if (rangePos1 != null && rangePos2 != null) {
+            captureRangeSnapshot(level.getServer());
+        }
+    }
+
+    /** Clears the training range and its snapshot. False if neither corner was set. */
+    public boolean removeRange() {
+        if (rangePos1 == null && rangePos2 == null) {
+            return false;
+        }
+        rangeDim = null;
+        rangePos1 = null;
+        rangePos2 = null;
+        rangeSnapshot = null;
+        rangeSnapshotDim = null;
+        rangeSnapshotOrigin = null;
+        setDirty();
+        return true;
+    }
+
+    @Nullable
+    public ResourceKey<Level> getRangeDim() {
+        return rangeDim;
+    }
+
+    /** Lower corner of the range's box; null unless both corners are set. */
+    @Nullable
+    public BlockPos getRangeMin() {
+        BlockPos[] bounds = rangeBounds();
+        return bounds == null ? null : bounds[0];
+    }
+
+    /** Upper corner of the range's box; null unless both corners are set. */
+    @Nullable
+    public BlockPos getRangeMax() {
+        BlockPos[] bounds = rangeBounds();
+        return bounds == null ? null : bounds[1];
+    }
+
+    public int getRangeResetSecondsRemaining() {
+        return rangeResetSecondsRemaining;
+    }
+
+    @Nullable
+    private BlockPos[] rangeBounds() {
+        if (rangePos1 == null || rangePos2 == null) {
+            return null;
+        }
+        BlockPos min = new BlockPos(Math.min(rangePos1.getX(), rangePos2.getX()), Math.min(rangePos1.getY(), rangePos2.getY()), Math.min(rangePos1.getZ(), rangePos2.getZ()));
+        BlockPos max = new BlockPos(Math.max(rangePos1.getX(), rangePos2.getX()), Math.max(rangePos1.getY(), rangePos2.getY()), Math.max(rangePos1.getZ(), rangePos2.getZ()));
+        return new BlockPos[]{min, max};
+    }
+
+    /** Takes a whole-region snapshot of the current range area, for {@link #restoreRangeSnapshot} to paste back. */
+    private void captureRangeSnapshot(MinecraftServer server) {
+        BlockPos min = getRangeMin();
+        BlockPos max = getRangeMax();
+        if (rangeDim == null || min == null || max == null) {
+            return;
+        }
+        ServerLevel level = server.getLevel(rangeDim);
+        if (level == null) {
+            return;
+        }
+        Vec3i size = new Vec3i(max.getX() - min.getX() + 1, max.getY() - min.getY() + 1, max.getZ() - min.getZ() + 1);
+        StructureTemplate template = new StructureTemplate();
+        template.fillFromWorld(level, min, size, false, null);
+        rangeSnapshot = template;
+        rangeSnapshotDim = rangeDim;
+        rangeSnapshotOrigin = min.immutable();
+    }
+
+    /**
+     * Pastes back the range's clean-state snapshot and teleports/heals every online range-team
+     * player back into the area. False (no-op) if no snapshot is held — e.g. no range area set,
+     * or the snapshot was lost to a server restart (it isn't persisted; {@link #tickRange}
+     * re-captures one automatically once the area is set again).
+     */
+    private boolean restoreRangeSnapshot(MinecraftServer server) {
+        if (rangeSnapshot == null || rangeSnapshotDim == null || rangeSnapshotOrigin == null) {
+            return false;
+        }
+        ServerLevel level = server.getLevel(rangeSnapshotDim);
+        if (level != null) {
+            rangeSnapshot.placeInWorld(level, rangeSnapshotOrigin, rangeSnapshotOrigin,
+                    new StructurePlaceSettings().setIgnoreEntities(true).setKnownShape(true), level.getRandom(), 3);
+        }
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (teamOf(player.getUUID()) == Team.RANGE) {
+                teleportIntoRange(player);
+                player.setHealth(player.getMaxHealth());
+            }
+        }
+        return true;
+    }
+
+    /** OP escape hatch (`/conquest range reset`) to trigger the automatic reset immediately. */
+    public boolean resetRangeNow(MinecraftServer server) {
+        boolean reset = restoreRangeSnapshot(server);
+        if (reset) {
+            rangeResetSecondsRemaining = Config.RANGE_RESET_INTERVAL_SECONDS.get();
+        }
+        return reset;
+    }
+
+    /**
+     * Teleports a player to a safe spot in the middle of the training range. No-op if no range
+     * area is set.
+     */
+    void teleportIntoRange(ServerPlayer player) {
+        BlockPos min = getRangeMin();
+        BlockPos max = getRangeMax();
+        if (rangeDim == null || min == null || max == null) {
+            return;
+        }
+        ServerLevel level = player.server.getLevel(rangeDim);
+        if (level == null) {
+            return;
+        }
+        BlockPos center = new BlockPos((min.getX() + max.getX()) / 2, max.getY(), (min.getZ() + max.getZ()) / 2);
+        BlockPos safe = TeleportHelper.findSafeSpot(level, center);
+        player.teleportTo(level, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
+                Set.of(), player.getYRot(), player.getXRot());
+    }
+
+    /**
+     * Once per second, unconditionally (independent of round state — see {@link #tickSecond}):
+     * counts down to the next automatic range reset. Self-heals a missing snapshot (e.g. after a
+     * server restart, since it isn't persisted) by capturing one from the area's current state
+     * instead of restoring anything, so resets keep working without an admin re-running
+     * {@code /conquest range set}. No-op if no range area is set.
+     */
+    private void tickRange(MinecraftServer server) {
+        if (rangeDim == null || rangePos1 == null || rangePos2 == null) {
+            return;
+        }
+        if (rangeSnapshot == null) {
+            captureRangeSnapshot(server);
+            rangeResetSecondsRemaining = Config.RANGE_RESET_INTERVAL_SECONDS.get();
+            return;
+        }
+        if (--rangeResetSecondsRemaining <= 0) {
+            restoreRangeSnapshot(server);
+            rangeResetSecondsRemaining = Config.RANGE_RESET_INTERVAL_SECONDS.get();
+        }
     }
 
     /**
@@ -1812,6 +2022,8 @@ public class ConquestManager extends SavedData {
      * data at any time.
      */
     public void tickSecond(MinecraftServer server) {
+        tickRange(server);
+
         Map<String, PointOccupancy> occupancyByPoint = new HashMap<>();
 
         if (state == RoundState.STARTING) {
@@ -1970,9 +2182,14 @@ public class ConquestManager extends SavedData {
      * deaths cost reinforcements). TDM doesn't use this (its ticket counters instead count
      * kills upward toward the kill limit). Breakthrough handles respawn placement itself,
      * since it's asymmetric (wave-gated attackers, immediate defenders) — see
-     * {@link #handleBreakthroughRespawn}.
+     * {@link #handleBreakthroughRespawn}. The training range respawns back into its own area,
+     * independent of round state (unlike everything else below, gated on IN_PROGRESS).
      */
     public void onRespawn(ServerPlayer player) {
+        if (teamOf(player.getUUID()) == Team.RANGE) {
+            teleportIntoRange(player);
+            return;
+        }
         if (state != RoundState.IN_PROGRESS) {
             return;
         }
@@ -2137,6 +2354,15 @@ public class ConquestManager extends SavedData {
                 manager.boundaryPos2 = NbtUtils.readBlockPos(tag.getCompound("BoundaryPos2"));
             }
         }
+        if (tag.contains("RangeDim")) {
+            manager.rangeDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("RangeDim")));
+            if (tag.contains("RangePos1")) {
+                manager.rangePos1 = NbtUtils.readBlockPos(tag.getCompound("RangePos1"));
+            }
+            if (tag.contains("RangePos2")) {
+                manager.rangePos2 = NbtUtils.readBlockPos(tag.getCompound("RangePos2"));
+            }
+        }
         ListTag scoreList = tag.getList("Scores", Tag.TAG_COMPOUND);
         for (int i = 0; i < scoreList.size(); i++) {
             CompoundTag s = scoreList.getCompound(i);
@@ -2255,6 +2481,15 @@ public class ConquestManager extends SavedData {
             }
             if (boundaryPos2 != null) {
                 tag.put("BoundaryPos2", NbtUtils.writeBlockPos(boundaryPos2));
+            }
+        }
+        if (rangeDim != null) {
+            tag.putString("RangeDim", rangeDim.location().toString());
+            if (rangePos1 != null) {
+                tag.put("RangePos1", NbtUtils.writeBlockPos(rangePos1));
+            }
+            if (rangePos2 != null) {
+                tag.put("RangePos2", NbtUtils.writeBlockPos(rangePos2));
             }
         }
         ListTag scoreList = new ListTag();

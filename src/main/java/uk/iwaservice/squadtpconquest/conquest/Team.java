@@ -8,14 +8,16 @@ import net.minecraft.util.StringRepresentable;
 import javax.annotation.Nullable;
 
 /**
- * The two fighting teams, NEUTRAL (= no team / unowned point), and ADMIN
- * (a spectator side: joinable like A/B but excluded from capture occupancy,
- * ticket/respawn cost and kill/death/assist scoring).
+ * The two fighting teams, NEUTRAL (= no team / unowned point), ADMIN (a spectator side: joinable
+ * like A/B but excluded from capture occupancy, ticket/respawn cost and kill/death/assist scoring),
+ * and RANGE (the training range: same exclusions as ADMIN, open to anyone, tied to its own area
+ * instead of the match — see {@link ConquestManager#setRange}).
  */
 public enum Team implements StringRepresentable {
     A("a", ChatFormatting.BLUE),
     B("b", ChatFormatting.RED),
     ADMIN("admin", ChatFormatting.GOLD),
+    RANGE("range", ChatFormatting.GREEN),
     NEUTRAL("neutral", ChatFormatting.WHITE);
 
     private final String key;
@@ -44,6 +46,7 @@ public enum Team implements StringRepresentable {
             case A -> 0xFF3B6FE0;
             case B -> 0xFFE03B3B;
             case ADMIN -> 0xFFFFC83B;
+            case RANGE -> 0xFF3BE05E;
             case NEUTRAL -> 0xFF808080;
         };
     }

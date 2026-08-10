@@ -15,6 +15,7 @@ public final class CaptureZoneVisualizer {
     private static final Vector3f COLOR_A = new Vector3f(0.23f, 0.44f, 0.88f);
     private static final Vector3f COLOR_B = new Vector3f(0.88f, 0.23f, 0.23f);
     private static final Vector3f COLOR_NEUTRAL = new Vector3f(0.85f, 0.85f, 0.85f);
+    private static final Vector3f COLOR_RANGE = new Vector3f(0.23f, 0.88f, 0.37f);
 
     /** Vanilla clamps dust scale to [0.01, 4.0]; this is chunky without clipping. */
     private static final float PARTICLE_SCALE = 3.0f;
@@ -87,6 +88,7 @@ public final class CaptureZoneVisualizer {
         return switch (team) {
             case A -> COLOR_A;
             case B -> COLOR_B;
+            case RANGE -> COLOR_RANGE;
             // Capture points are never owned/contested by ADMIN, so this is
             // just a safe fallback rather than a real case.
             case NEUTRAL, ADMIN -> COLOR_NEUTRAL;

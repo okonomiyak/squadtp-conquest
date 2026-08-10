@@ -2,6 +2,7 @@
   "conquest.team.a": "チームA",
   "conquest.team.b": "チームB",
   "conquest.team.admin": "管理者",
+  "conquest.team.range": "演習場",
   "conquest.team.neutral": "中立",
 
   "conquest.mode.conquest": "コンクエスト",
@@ -46,6 +47,12 @@
   "conquest.msg.boundary_corner2_set": "境界の角2をここに設定した",
   "conquest.msg.boundary_removed": "戦場境界を削除した",
   "conquest.msg.no_boundary": "戦場境界が未設定です",
+  "conquest.msg.range_set": "演習場を設定した: %s 〜 %s",
+  "conquest.msg.range_corner1_set": "演習場の角1をここに設定した",
+  "conquest.msg.range_corner2_set": "演習場の角2をここに設定した",
+  "conquest.msg.range_removed": "演習場を削除した",
+  "conquest.msg.no_range": "演習場が未設定です",
+  "conquest.msg.range_reset": "演習場をリセットした",
   "conquest.msg.terrain_restored": "地形をスナップショットから復元した",
   "conquest.msg.no_terrain_snapshot": "復元できる地形スナップショットがありません",
   "conquest.msg.boundary_warning": "⚠ 戦場から離れています! あと%s秒で処刑されます",
@@ -142,6 +149,7 @@
   "conquest.status.protectblock_config": "%s (config、server.tomlの編集が必要)",
   "conquest.status.protectblock_custom": "%s (/conquest protectblockで追加)",
   "conquest.status.boundary": "%s 〜 %s",
+  "conquest.status.range": "%s 〜 %s(次のリセットまで%s秒)",
   "conquest.status.gather": "集合地点: %s",
   "conquest.status.callin": "%s: %sスコア = %s個の%s",
 

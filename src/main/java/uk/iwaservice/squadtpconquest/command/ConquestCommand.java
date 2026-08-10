@@ -128,7 +128,7 @@ public final class ConquestCommand {
                 .then(Commands.literal("team")
                         .then(Commands.literal("join")
                                 .then(Commands.argument("team", StringArgumentType.word())
-                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b", "admin"}, b))
+                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b", "admin", "range"}, b))
                                         .executes(ConquestCommand::joinTeam)
                                         .then(Commands.argument("player", EntityArgument.player())
                                                 .requires(src -> src.hasPermission(2))
@@ -233,6 +233,20 @@ public final class ConquestCommand {
                         .then(Commands.literal("remove").executes(ConquestCommand::removeBoundary))
                         .then(Commands.literal("list").executes(ConquestCommand::boundaryList))
                         .then(Commands.literal("restore").executes(ConquestCommand::boundaryRestore)))
+                .then(Commands.literal("range")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("set")
+                                .executes(ConquestCommand::setRangeFromWand)
+                                .then(Commands.argument("pos1", BlockPosArgument.blockPos())
+                                        .then(Commands.argument("pos2", BlockPosArgument.blockPos())
+                                                .executes(ConquestCommand::setRange))))
+                        .then(Commands.literal("corner1")
+                                .then(Commands.literal("set").executes(ctx -> setRangeCorner(ctx, true))))
+                        .then(Commands.literal("corner2")
+                                .then(Commands.literal("set").executes(ctx -> setRangeCorner(ctx, false))))
+                        .then(Commands.literal("remove").executes(ConquestCommand::removeRange))
+                        .then(Commands.literal("list").executes(ConquestCommand::rangeList))
+                        .then(Commands.literal("reset").executes(ConquestCommand::rangeReset)))
                 .then(Commands.literal("callin")
                         .then(Commands.literal("add")
                                 .requires(src -> src.hasPermission(2))
@@ -794,6 +808,71 @@ public final class ConquestCommand {
         }
         ctx.getSource().sendSuccess(() ->
                 Component.translatable("conquest.status.boundary", min.toShortString(), max.toShortString()), false);
+        return 1;
+    }
+
+    private static int setRange(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        BlockPos pos1 = BlockPosArgument.getBlockPos(ctx, "pos1");
+        BlockPos pos2 = BlockPosArgument.getBlockPos(ctx, "pos2");
+        ConquestManager.get(ctx.getSource().getServer())
+                .setRange(ctx.getSource().getLevel(), pos1, pos2);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.range_set",
+                        pos1.toShortString(), pos2.toShortString()), true);
+        return 1;
+    }
+
+    /** {@code /conquest range set} with no coordinates: uses the sender's zone wand selection instead. */
+    private static int setRangeFromWand(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        BlockPos[] selection = ZoneSelection.get(player);
+        if (selection == null) {
+            return fail(ctx, Component.translatable("conquest.msg.wand_no_selection"));
+        }
+        ConquestManager.get(ctx.getSource().getServer())
+                .setRange(player.serverLevel(), selection[0], selection[1]);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.range_set",
+                        selection[0].toShortString(), selection[1].toShortString()), true);
+        return 1;
+    }
+
+    private static int setRangeCorner(CommandContext<CommandSourceStack> ctx, boolean corner1) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        ConquestManager.get(ctx.getSource().getServer())
+                .setRangeCorner(player.serverLevel(), corner1, player.blockPosition());
+        ctx.getSource().sendSuccess(() -> Component.translatable(
+                corner1 ? "conquest.msg.range_corner1_set" : "conquest.msg.range_corner2_set"), true);
+        return 1;
+    }
+
+    private static int removeRange(CommandContext<CommandSourceStack> ctx) {
+        if (!ConquestManager.get(ctx.getSource().getServer()).removeRange()) {
+            return fail(ctx, Component.translatable("conquest.msg.no_range"));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.range_removed"), true);
+        return 1;
+    }
+
+    /** Manually triggers the training range's automatic reset (terrain restore + teleport/heal) right now. */
+    private static int rangeReset(CommandContext<CommandSourceStack> ctx) {
+        if (!ConquestManager.get(ctx.getSource().getServer()).resetRangeNow(ctx.getSource().getServer())) {
+            return fail(ctx, Component.translatable("conquest.msg.no_range"));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.range_reset"), true);
+        return 1;
+    }
+
+    private static int rangeList(CommandContext<CommandSourceStack> ctx) {
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        BlockPos min = manager.getRangeMin();
+        BlockPos max = manager.getRangeMax();
+        if (min == null || max == null) {
+            return fail(ctx, Component.translatable("conquest.msg.no_range"));
+        }
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.status.range", min.toShortString(), max.toShortString(),
+                        manager.getRangeResetSecondsRemaining()), false);
         return 1;
     }
 

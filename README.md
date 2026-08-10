@@ -14,8 +14,8 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 
 | コマンド | 説明 | 権限 |
 |---|---|---|
-| `/conquest team join <a\|b\|admin>` | チームA/Bに参加。同時にバニラチーム`conquest_a`/`conquest_b`にも自動参加(フレンドリーファイア無効・チーム色設定)。`admin`は観戦用の第3チームでOP限定 | - (`admin`のみOP) |
-| `/conquest team join <a\|b\|admin> <プレイヤー>` | 指定したプレイヤーをそのチームに参加させる(自分以外も指定可)。対象にも参加したことがアクションバーで通知される | OP |
+| `/conquest team join <a\|b\|admin\|range>` | チームA/Bに参加。同時にバニラチーム`conquest_a`/`conquest_b`にも自動参加(フレンドリーファイア無効・チーム色設定)。`admin`は観戦用の第3チームでOP限定。`range`は[演習場](#演習場)に参加(誰でも可、参加した瞬間エリア内へテレポート) | - (`admin`のみOP) |
+| `/conquest team join <a\|b\|admin\|range> <プレイヤー>` | 指定したプレイヤーをそのチームに参加させる(自分以外も指定可)。対象にも参加したことがアクションバーで通知される | OP |
 | `/conquest spot <プレイヤー>` | 対象を[索敵マーキング](#索敵マーキングスポット)する。通常は専用キーで自動送信されるため手動実行の必要はない | - |
 | `/conquest team shuffle` | 管理人チーム以外のオンラインプレイヤーをランダムにA/Bへ均等に振り分け直す | OP |
 | `/conquest team assign <attacker\|defender> <a\|b>` | ブレイクスルーモードで、チームA/Bのどちらが攻撃側/防衛側かを設定。ラウンドが`WAITING`の時のみ変更可(既定は攻撃側=チームA) | OP |
@@ -54,6 +54,11 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 | `/conquest boundary remove` | 戦場境界を削除 | OP |
 | `/conquest boundary list` | 設定済みの戦場境界(角1〜角2の座標)を表示 | - |
 | `/conquest boundary restore` | 現在保持している[地形スナップショット](#地形破壊bf風クレーター)を手動で復元。`/conquest stop`は自動復元しない(下記)ため、途中中断後に地形を戻したい時に使う。スナップショットが無ければ失敗 | OP |
+| `/conquest range set [<x1 y1 z1> <x2 y2 z2>]` | 2点の座標を対角線とする直方体を[**演習場**](#演習場)のエリアとして設定。座標省略時はゾーンワンドの選択範囲を使用。設定した瞬間、その状態がリセット時に復元される「きれいな状態」として撮影される | OP |
+| `/conquest range corner1 set` / `/conquest range corner2 set` | 実行者の足元を演習場エリアの角1/角2に設定(両方設定されて初めて有効になり、その時点でスナップショットが撮影される) | OP |
+| `/conquest range remove` | 演習場エリアとスナップショットを削除 | OP |
+| `/conquest range list` | 設定済みの演習場エリア(角1〜角2の座標)と次回自動リセットまでの残り秒数を表示 | - |
+| `/conquest range reset` | 演習場エリアを今すぐ手動リセット(地形復元+在室プレイヤーのテレポート・全回復)。通常は`rangeResetIntervalSeconds`(既定1800=30分)ごとに自動実行される | OP |
 | `/conquest callin add <名前> <必要スコア> <アイテムID> [個数]` | **コールイン**(スコアストリーク的な報酬)を登録。個数省略時は1個 | OP |
 | `/conquest callin remove <名前>` | コールインを削除 | OP |
 | `/conquest callin list` | 登録済みコールイン一覧(名前・必要スコア・アイテム)を表示 | - |
@@ -297,6 +302,25 @@ JourneyMapを導入している場合、ラウンド進行中(`IN_PROGRESS`)は�
 Waypoint経由で別途表示されるので、この非表示化と競合しない)。味方は対象外(squadtp本体の
 分隊メンバー位置共有と同じ扱い)
 
+## 演習場
+
+ラウンドの状態(`WAITING`/`STARTING`/`IN_PROGRESS`/`ENDED`)やゲームモードと完全に独立した、
+武器や動きを試すための専用エリア。`/conquest range set`(または`corner1 set`/`corner2 set`)で
+2点座標のエリアを設定すると、その時点の状態が「きれいな状態」としてスナップショットされる。
+誰でも`/conquest team join range`で参加でき(OP限定の`admin`とは異なる)、参加した瞬間エリア中央の
+安全な位置にテレポートされる。死亡してリスポーンした時もエリア内に戻る(ラウンドの状態に関係なく
+常時)。`rangeResetIntervalSeconds`(既定1800秒=30分)ごとに自動で地形がスナップショットの状態へ
+復元され、その時エリア内にいる`range`チームの全プレイヤーもエリア中央へテレポート+全回復される。
+`/conquest range reset`で今すぐ手動リセットも可能。`range`チームは自陣ゾーン処刑・戦場境界処刑・
+チケット・キル/デス集計など通常の対戦要素からは完全に除外される(`admin`と同じ扱い)。
+自動再編成の対象にもならない(`/conquest team shuffle`はA/B間のみ)。同じ`range`チーム同士は
+バニラチームのフレンドリーファイア無効設定によりお互いを攻撃できない。地形復元の仕組みは
+[BF風クレーター](#地形破壊bf風クレーター)の戦場境界スナップショットと同じ`StructureTemplate`
+方式だが、対象エリア・撮影/復元のタイミングは別管理(戦場境界はラウンド開始/終了、演習場は
+`/conquest range set`実行時+30分ごと)。スナップショットはNBTに永続化されないため、サーバー再起動で
+一度失われるが、次のtickで自動的にエリアの現状を撮り直して復元サイクルを再開する(手動での
+`/conquest range set`再実行は不要)。
+
 ## ラウンドの流れ
 
 状態は `WAITING`(待機中) → `STARTING`(開始カウントダウン中) → `IN_PROGRESS`(進行中) →
@@ -412,6 +436,8 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 - `spotRangeBlocks`(既定100) — [索敵マーキング](#索敵マーキングスポット)キーが反応する最大距離
 - `spotDurationSeconds`(既定8) — スポットした敵の位置がJourneyMapに表示され続ける秒数
 - `spotCooldownSeconds`(既定2) — スポットキーの連打防止クールダウン秒数
+- `rangeResetIntervalSeconds`(既定1800=30分) — [演習場](#演習場)の自動地形リセット間隔。
+  演習場エリア未設定なら無効
 
 `scoreboard`セクション:
 - `assistWindowSeconds`(既定10)
@@ -438,7 +464,7 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 一部数値・真偽値項目のみ(`ConquestCommand.CONFIG_KEYS`に明示登録されたキーだけ)で、
 `breakthrough`・`homeZoneKillSeconds`・`boundaryKillSeconds`・`teamBeaconLifetimeSeconds`・
 `spawnAtOwnedPointsEnabled`・`spotRangeBlocks`・`spotDurationSeconds`・`spotCooldownSeconds`・
-`terrainDestruction`セクションの項目(リスト・文字列型を含む)は
+`rangeResetIntervalSeconds`・`terrainDestruction`セクションの項目(リスト・文字列型を含む)は
 `world/serverconfig/squadtpconquest-server.toml`の直接編集が必要(既存の制約で、今回追加した
 項目も同様の扱いにしている)。
 

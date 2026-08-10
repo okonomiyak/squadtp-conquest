@@ -105,6 +105,15 @@ public final class ServerEvents {
                     }
                 }
             }
+            ResourceKey<Level> rangeDim = manager.getRangeDim();
+            BlockPos rangeMin = manager.getRangeMin();
+            BlockPos rangeMax = manager.getRangeMax();
+            if (rangeDim != null && rangeMin != null && rangeMax != null) {
+                ServerLevel level = server.getLevel(rangeDim);
+                if (level != null) {
+                    CaptureZoneVisualizer.renderBox(level, rangeMin, rangeMax, Team.RANGE);
+                }
+            }
         }
     }
 

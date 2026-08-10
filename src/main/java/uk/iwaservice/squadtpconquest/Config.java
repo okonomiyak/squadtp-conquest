@@ -39,6 +39,8 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue BT_SECTOR_AREA_TRANSITION_GRACE_SECONDS;
     public static final ForgeConfigSpec.IntValue BT_TICKETS_PER_SECTOR_CAPTURE;
 
+    public static final ForgeConfigSpec.IntValue RANGE_RESET_INTERVAL_SECONDS;
+
     public static final ForgeConfigSpec.BooleanValue TERRAIN_DESTRUCTION_ENABLED;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> INDESTRUCTIBLE_BLOCKS;
     public static final ForgeConfigSpec.ConfigValue<String> CRATER_RUBBLE_BLOCK;
@@ -174,6 +176,12 @@ public final class Config {
                         "sectorTimeExtensionOnCapture for that). 0 disables the bonus. Not awarded on the final",
                         "sector, since capturing it ends the round immediately.")
                 .defineInRange("ticketsPerSectorCapture", 10, 0, 100000);
+        RANGE_RESET_INTERVAL_SECONDS = b
+                .comment("Seconds between automatic terrain resets of the training range (/conquest range set),",
+                        "independent of round state — always ticking as long as the server is up. Also",
+                        "teleports/heals every online range-team player back into the area. No effect if no",
+                        "range area is set.")
+                .defineInRange("rangeResetIntervalSeconds", 1800, 60, 86400);
         b.pop();
 
         b.push("terrainDestruction");

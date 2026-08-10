@@ -2,6 +2,7 @@
   "conquest.team.a": "Team A",
   "conquest.team.b": "Team B",
   "conquest.team.admin": "Admin",
+  "conquest.team.range": "Training Range",
   "conquest.team.neutral": "Neutral",
 
   "conquest.mode.conquest": "Conquest",
@@ -46,6 +47,12 @@
   "conquest.msg.boundary_corner2_set": "Boundary corner 2 set here",
   "conquest.msg.boundary_removed": "Battlefield boundary removed",
   "conquest.msg.no_boundary": "No battlefield boundary set",
+  "conquest.msg.range_set": "Training range set: %s to %s",
+  "conquest.msg.range_corner1_set": "Range corner 1 set here",
+  "conquest.msg.range_corner2_set": "Range corner 2 set here",
+  "conquest.msg.range_removed": "Training range removed",
+  "conquest.msg.no_range": "No training range set",
+  "conquest.msg.range_reset": "Training range reset",
   "conquest.msg.terrain_restored": "Terrain restored from snapshot",
   "conquest.msg.no_terrain_snapshot": "No terrain snapshot to restore",
   "conquest.msg.boundary_warning": "⚠ Leaving the battlefield! %ss until elimination",
@@ -142,6 +149,7 @@
   "conquest.status.protectblock_config": "%s (config, edit server.toml to change)",
   "conquest.status.protectblock_custom": "%s (added via /conquest protectblock)",
   "conquest.status.boundary": "%s to %s",
+  "conquest.status.range": "%s to %s (next reset in %ss)",
   "conquest.status.gather": "Gather point: %s",
   "conquest.status.callin": "%s: %s score = %sx %s",
 
