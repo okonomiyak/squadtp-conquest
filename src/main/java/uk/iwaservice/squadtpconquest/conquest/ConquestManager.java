@@ -676,6 +676,11 @@ public class ConquestManager extends SavedData {
             if (team == Team.RANGE) {
                 teleportIntoRange(player);
             }
+            if (team == Team.SPECTATOR) {
+                player.setGameMode(GameType.SPECTATOR);
+            } else if (previous == Team.SPECTATOR) {
+                player.setGameMode(GameType.SURVIVAL);
+            }
         }
     }
 
@@ -715,8 +720,8 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Randomly splits every online player who isn't on the admin or training-range team into
-     * Team A / Team B as evenly as possible. Since a shuffle can freely split
+     * Randomly splits every online player who isn't on the admin, training-range or spectator
+     * team into Team A / Team B as evenly as possible. Since a shuffle can freely split
      * up existing squads across the two new teams, every squad touched by it
      * is disbanded first and fresh same-team squads are formed afterward
      * (chunked to squadtp's maxSquadSize) so nobody needs to manually reform.
@@ -726,7 +731,7 @@ public class ConquestManager extends SavedData {
         List<ServerPlayer> players = new ArrayList<>();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             Team current = teamOf(player.getUUID());
-            if (current != Team.ADMIN && current != Team.RANGE) {
+            if (current != Team.ADMIN && current != Team.RANGE && current != Team.SPECTATOR) {
                 players.add(player);
             }
         }
@@ -808,7 +813,8 @@ public class ConquestManager extends SavedData {
 
     private static boolean isConquestTeam(PlayerTeam team) {
         return team.getName().equals(vanillaTeamName(Team.A)) || team.getName().equals(vanillaTeamName(Team.B))
-                || team.getName().equals(vanillaTeamName(Team.ADMIN)) || team.getName().equals(vanillaTeamName(Team.RANGE));
+                || team.getName().equals(vanillaTeamName(Team.ADMIN)) || team.getName().equals(vanillaTeamName(Team.RANGE))
+                || team.getName().equals(vanillaTeamName(Team.SPECTATOR));
     }
 
     private static String vanillaTeamName(Team team) {

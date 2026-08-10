@@ -89,9 +89,9 @@ public final class CaptureZoneVisualizer {
             case A -> COLOR_A;
             case B -> COLOR_B;
             case RANGE -> COLOR_RANGE;
-            // Capture points are never owned/contested by ADMIN, so this is
+            // Capture points are never owned/contested by ADMIN or SPECTATOR, so this is
             // just a safe fallback rather than a real case.
-            case NEUTRAL, ADMIN -> COLOR_NEUTRAL;
+            case NEUTRAL, ADMIN, SPECTATOR -> COLOR_NEUTRAL;
         };
     }
 

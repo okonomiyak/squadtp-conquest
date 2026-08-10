@@ -18,8 +18,8 @@ import java.util.List;
  * ticket ratio) plus a row of capture point icons below it, one per capture point. Colors are fixed
  * per team (Team A always this blue, Team B always this red — see {@link Team#hudColor()}) rather
  * than self/enemy-relative. Only visible during an active round once the viewer has joined a team;
- * the admin team can see it too (Team A fixed on the left, spectating), so an OP can watch the
- * match without joining a side.
+ * the admin and spectator teams can see it too (Team A fixed on the left, spectating), so anyone
+ * can watch the match without joining a side.
  */
 public class ConquestHudOverlay implements IGuiOverlay {
 
@@ -43,7 +43,7 @@ public class ConquestHudOverlay implements IGuiOverlay {
         }
 
         Team yourTeam = ConquestClientData.getYourTeam();
-        boolean spectating = yourTeam == Team.ADMIN;
+        boolean spectating = yourTeam == Team.ADMIN || yourTeam == Team.SPECTATOR;
         if (!ConquestClientData.isActive() || (!yourTeam.isCombatant() && !spectating)) {
             return;
         }

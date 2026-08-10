@@ -40,6 +40,27 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **観戦者チーム(`Team.SPECTATOR`)**(2026-08-10新規実装): 直前の「管理人チームでも試合HUDが
+  見えるように」対応を受けて、ユーザーから「adminと同等なので別枠で観戦者を」と依頼
+  (=試合を見る権利をOP限定の`admin`に混ぜず、誰でも参加できる別のチームとして独立させたい、
+  という趣旨と解釈)。`Team.RANGE`追加時に確立したパターンをそのまま再利用:
+  `isCombatant()`が自動でfalseを返す(チケット・スコア集計・自陣ゾーン/戦場境界処刑・
+  スポット等から追加コード無しで除外)、`shuffleTeams`の除外リストと`isConquestTeam`
+  (バニラチーム同期)の2箇所だけ`Team.SPECTATOR`を明示追加。`Team.RANGE`との違いは:
+  - 専用エリアへのテレポートは無し。代わりに`/conquest team join spectator`した瞬間
+    バニラのスペクテイターモード(`GameType.SPECTATOR`)へ強制切り替え(ノークリップで自由に
+    観戦移動でき、誰にも見えず干渉もできない)。他チームへ移ると`GameType.SURVIVAL`に戻す
+    (`ConquestManager.joinTeam`、ブレイクスルーの攻撃側ウェーブ待機で既に使われていた
+    `setGameMode(GameType.SPECTATOR/SURVIVAL)`と同じパターンを流用)
+  - OP不要(`admin`だけが`ConquestCommand.joinTeam`で`hasPermission(2)`チェックの対象、
+    `spectator`は素通り)
+  - スコアボード画面(右Alt)の「観戦中」欄(`conquest.score.spectating`、元は`admin`のみ表示)に
+    `spectator`も含めるよう`ConquestScoreScreen`のフィルタを拡張。`range`は対象外のまま
+    (演習場のプレイヤーはこの試合を観戦しているわけではないため)
+  - HUD(`ConquestHudOverlay`)の`spectating`フラグに`Team.SPECTATOR`も追加(直前のadmin対応と
+    同じ経路でチケットバー・拠点アイコンが見えるようになる)
+  - **未検証**: 実プレイで`/conquest team join spectator`した瞬間スペクテイターモードに
+    切り替わるか、他チームへ移るとサバイバルに戻るか、HUD・スコアボードに正しく表示されるか
 - **管理人チームでも試合HUD(チケットバー・拠点アイコン)が見えるように**(2026-08-10新規実装):
   ユーザーから「adminも試合を見れるようにして pointのアイコンの表示とか」と依頼。
   `ConquestHudOverlay`(常時表示のチケットバー+拠点アイコン列)は

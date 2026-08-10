@@ -127,11 +127,12 @@ public class ConquestScoreScreen extends Screen {
             renderLifetimeColumn(graphics, rightColX, cursor, colWidth, Team.B, teamB);
         }
 
-        // Admins are shown here, separately from the team tally above — they
-        // never contribute kills/deaths/assists/tickets/captures.
+        // Admins and spectators are shown here, separately from the team tally above — they
+        // never contribute kills/deaths/assists/tickets/captures. The training range team isn't
+        // included: those players aren't watching this match, they're off doing their own thing.
         List<ConquestScoreboardPacket.Entry> admins = new ArrayList<>();
         for (ConquestScoreboardPacket.Entry e : all) {
-            if (e.team() == Team.ADMIN) {
+            if (e.team() == Team.ADMIN || e.team() == Team.SPECTATOR) {
                 admins.add(e);
             }
         }

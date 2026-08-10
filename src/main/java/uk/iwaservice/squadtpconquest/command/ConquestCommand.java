@@ -128,7 +128,7 @@ public final class ConquestCommand {
                 .then(Commands.literal("team")
                         .then(Commands.literal("join")
                                 .then(Commands.argument("team", StringArgumentType.word())
-                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b", "admin", "range"}, b))
+                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b", "admin", "range", "spectator"}, b))
                                         .executes(ConquestCommand::joinTeam)
                                         .then(Commands.argument("player", EntityArgument.player())
                                                 .requires(src -> src.hasPermission(2))
