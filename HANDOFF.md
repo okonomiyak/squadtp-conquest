@@ -40,6 +40,24 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **squadtp本体の「募集」タブを分隊単位でグループ表示に**(2026-08-12、squadtp側の変更、
+  `PROTOCOL_VERSION`(squadtp側) 2→3): 直前の同一チーム絞り込みの後、ユーザーから改めて
+  「squadtp本体の募集タブを分隊ごとにしてほしい」と依頼。それまでの「分隊に参加申請する」欄は
+  オンラインの全プレイヤーを1人1行で列挙していたため、同じ分隊のメンバーが複数人いると
+  行が重複し、しかも分隊未所属のプレイヤーへの参加申請はサーバー側でどうせ失敗する
+  (`squadtp.msg.target_no_squad`)、という無駄のある一覧だった。新規`SquadListPacket`
+  (分隊ごとに代表名+全メンバー名のリスト)をサーバーの毎tick位置情報配信と同じ間隔で配信するよう
+  `ServerEvents.broadcastSquadList`を追加(オンライン全員へ、ただし自分の所属分隊とチームが
+  合わない分隊は`SquadCommand.sameTeam`——直前の修正でpublic化——で除外)。クライアントは
+  `SquadClientData`に`joinableSquads`を追加、`SquadScreen.buildJoinRequestList`を
+  1プレイヤー1行から1分隊1行(メンバー名カンマ区切り、リーダー★、squadtp-conquest側の一覧と
+  同じ見た目)に全面書き換え。分隊に既に所属していても他の分隊への切り替え申請は引き続き可能
+  (元の`excludeOwnSquad`引数の役割はサーバー側の除外に統合)。`../squadtp`
+  (squadtp-conquestの実依存先)・`../squadtp-1.20.1`(検証用クローン)の両方に同じ差分を
+  `git diff`→`git apply`で適用・それぞれコミット。squadtp-conquest側でも
+  `--refresh-dependencies`付きビルド+`gradlew printSquadtpCp`で、新しいjar
+  (バージョン番号自体は0.2.3のまま、中身だけ更新)が正しく解決される(=Gradleのキャッシュに
+  古いjarが居座っていない)ことを確認済み
 - **squadtp本体のGUIも同一チームに絞り込み+jarファイル名パターンのビルド設定修正**
   (2026-08-12、squadtp側の変更)。ユーザーがスクリーンショットで、squadtp本体の分隊GUI
   (「募集」タブ)の「招待できるプレイヤー」「分隊に参加申請する」の両リストが、チームに
