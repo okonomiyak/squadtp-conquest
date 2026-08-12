@@ -2275,6 +2275,10 @@ public class ConquestManager extends SavedData {
      * Other squads on the viewer's team they could request to join, for the GUI's squad section.
      * Empty unless the viewer is a combatant not already in a squad — squadtp exposes no way to
      * list squads itself, so this is built from online same-team players' {@code getSquadOf}.
+     * A squad is only included if every one of its members is on the viewer's team: squadtp's
+     * requireSameTeam guard only applies at squad join/invite time (not enforced continuously),
+     * so a squad with a member who switched conquest teams afterward could otherwise still show
+     * up here via one of its still-same-team members.
      */
     private List<ConquestSyncPacket.SquadStatus> joinableSquadsFor(ServerPlayer viewer) {
         Team viewerTeam = teamOf(viewer.getUUID());
@@ -2293,6 +2297,11 @@ public class ConquestManager extends SavedData {
             }
             Squad squad = squadManager.getSquadOf(player.getUUID());
             if (squad == null || !seenSquads.add(squad.getId())) {
+                continue;
+            }
+            boolean allSameTeam = squad.getMembers().keySet().stream()
+                    .allMatch(memberId -> teamOf(memberId) == viewerTeam);
+            if (!allSameTeam) {
                 continue;
             }
             result.add(new ConquestSyncPacket.SquadStatus(squad.getMemberName(squad.getLeader()), squad.size()));
