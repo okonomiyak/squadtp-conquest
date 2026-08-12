@@ -52,10 +52,13 @@ repositories {
     // squadtp jar built by the sibling project; never modified from here.
     // Ivy artifact-only layout gives the jar real module metadata so MDG's
     // SRG->named remapping transform applies (flatDir/files() do not work).
+    // squadtp's own build embeds the MC version/loader in its jar filename
+    // (archivesName = "squadtp-${minecraft_version}-forge"), so the pattern
+    // has to match that instead of a bare "[module]-[revision].[ext]".
     ivy {
         name = 'squadtpLocal'
         url = uri(file('../squadtp/build/libs'))
-        patternLayout { artifact '[module]-[revision].[ext]' }
+        patternLayout { artifact "[module]-${minecraft_version}-forge-[revision].[ext]" }
         metadataSources { artifact() }
         content { includeModule('uk.iwaservice', 'squadtp') }
     }

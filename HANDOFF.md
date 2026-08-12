@@ -40,6 +40,27 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **squadtp本体のGUIも同一チームに絞り込み+jarファイル名パターンのビルド設定修正**
+  (2026-08-12、squadtp側の変更)。ユーザーがスクリーンショットで、squadtp本体の分隊GUI
+  (「募集」タブ)の「招待できるプレイヤー」「分隊に参加申請する」の両リストが、チームに
+  関係なく全オンラインプレイヤーを表示していることを提示。`SquadScreen.onlinePlayersExcept`が
+  `minecraft.getConnection().getOnlinePlayers()`をチーム条件無しでそのまま使っていたのが原因
+  (実際の`/squad invite`・`/squad join`コマンド自体はサーバー側で`sameTeam`チェック済みだが、
+  GUIの候補一覧はその制限を反映していなかった)。バニラの`Scoreboard.getPlayersTeam`を
+  クライアント側でも比較する`sameTeam(UUID)`を追加し、両リストをこれでフィルタ
+  (`requireSameTeam`がfalseなら従来通り絞り込み無し)。**squadtp本体は無改造の方針の例外**として、
+  ユーザーの明示的な提示・依頼を受けて実施。`../squadtp`(ローカルの依存先)と、別途用意された
+  `../squadtp-1.20.1`(検証用クローン)の両方に同じ修正を適用・コミット(それぞれのリポジトリで
+  別コミット)。
+  修正作業中、`../squadtp`が(このセッション序盤で懸念していた通り)`main`(NeoForge 1.21.1)
+  ブランチのままだったため`1.20.1`ブランチへ切り替え、`fetch`したところ`origin/1.20.1`が
+  v0.2.3相当まで進んでいることを確認(以前の「作業が失われたかもしれない」という懸念は解消——
+  単にfetchしていなかっただけ)。ビルドし直したところ、squadtp側の最近の変更
+  (「ファイル名にMCバージョン/ローダーを含める」コミット)でjar名が`squadtp-0.2.3.jar`から
+  `squadtp-1.20.1-forge-0.2.3.jar`に変わっており、squadtp-conquest側の`build.gradle`の
+  ivy `patternLayout`(`[module]-[revision].[ext]`)が対応できていなかったことが判明。
+  `[module]-${minecraft_version}-forge-[revision].[ext]`に変更して対応(`gradlew
+  printSquadtpCp`で実際に解決されるjarを確認できる)。
 - **参加可能な分隊一覧をメンバー名で表示**(2026-08-12、`PROTOCOL_VERSION` 14→15): 前項の
   一覧実装直後、ユーザーから「GUIでもやった?」(squadtp本体のGUI側も同じチーム制限が効くか)と
   聞かれ、squadtpの実ソース(`../squadtp-1.20.1`、v0.2.3相当のブランチ)を確認したところ
@@ -751,8 +772,14 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 - **squadtpバージョン同期**: squadtpは独立にリビルドされ続けるため、squadtp-conquestのビルド前に
   必ず`../squadtp/build/libs/`の実際のjarファイル名を確認し、`gradle.properties`の
-  `squadtp_version`と一致させること。不一致だと`Could not find uk.iwaservice:squadtp:x.x.x`で
-  ビルド失敗する(このセッション中も0.1.2→0.1.3→0.1.4と複数回発生)
+  `squadtp_version`(末尾のバージョン番号部分)と一致させること。不一致だと
+  `Could not find uk.iwaservice:squadtp:x.x.x`でビルド失敗する(このセッション中も
+  0.1.2→0.1.3→0.1.4、後に命名規則自体の変更で再度、と複数回発生)。ivyの
+  `patternLayout`(`build.gradle`)はsquadtp側の`archivesName`規則
+  (`squadtp-${minecraft_version}-forge-[revision].[ext]`)に合わせてあるので、squadtpが
+  MCバージョン/ローダー名を変えない限りバージョン番号の更新だけで済むはず
+  (2026-08-12、squadtp側のファイル名変更で一度この前提が崩れて対応した)。
+  `gradlew printSquadtpCp`で実際に解決されているjarを確認できる
 - **JDK21固定**: 既定のJava(25等)ではGradle 8.8が動かない。`gradle.properties`の
   `org.gradle.java.home`で`C:/Program Files/Java/jdk-21.0.10`を明示指定済み。ビルドコマンドを
   手動実行する場合も`JAVA_HOME`をJDK21に向けること

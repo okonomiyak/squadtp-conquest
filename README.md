@@ -494,9 +494,13 @@ gradlew runServer     # 開発用サーバー (run-server/)
 ```
 
 squadtp本体は`../squadtp/build/libs/`のjarをローカルivyリポジトリ経由で参照する
-(`gradle.properties`の`squadtp_version`)。**squadtp本体をリビルドして`build/libs/`のjar名が
+(`gradle.properties`の`squadtp_version`)。ivyの`patternLayout`は
+`[module]-${minecraft_version}-forge-[revision].[ext]`(squadtp側の
+`archivesName = "squadtp-${minecraft_version}-forge"`という命名規則に合わせたもの、
+2026-08-12対応)。**squadtp本体をリビルドしてバージョン番号(末尾の`[revision]`部分)が
 変わったら、`squadtp_version`をそれに合わせて更新すること**(合っていないと
-`Could not find uk.iwaservice:squadtp:x.x.x`でビルドが失敗する)。
+`Could not find uk.iwaservice:squadtp:x.x.x`でビルドが失敗する)。実際にどのjarが
+解決されているかは`gradlew printSquadtpCp`で確認できる。
 
 ### 2プレイヤーテスト手順
 
