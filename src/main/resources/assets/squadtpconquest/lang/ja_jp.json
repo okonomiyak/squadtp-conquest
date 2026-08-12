@@ -185,6 +185,9 @@
   "conquest.gui.team_a": "チームAに参加",
   "conquest.gui.team_b": "チームBに参加",
   "conquest.gui.squad_section": "所属分隊",
+  "conquest.gui.squad_joinable_section": "参加可能な分隊",
+  "conquest.gui.squad_joinable_row": "%sの分隊(%s人)",
+  "conquest.gui.squad_join": "参加",
   "conquest.gui.callin_use": "使用",
 
   "block.squadtpconquest.conquest_flag": "コンクエストフラッグ",

@@ -2268,7 +2268,36 @@ public class ConquestManager extends SavedData {
         return new ConquestSyncPacket(statuses, ticketsA, ticketsB, isActive(), state, mode,
                 teamOf(viewer.getUUID()), viewer.hasPermissions(2), openScreen,
                 attackerTeam, sectorIndex(), sectorCount(), attackerTickets, respawnWaveSecondsRemaining,
-                callInStatuses, availableScore(viewer.getUUID()));
+                callInStatuses, availableScore(viewer.getUUID()), joinableSquadsFor(viewer));
+    }
+
+    /**
+     * Other squads on the viewer's team they could request to join, for the GUI's squad section.
+     * Empty unless the viewer is a combatant not already in a squad — squadtp exposes no way to
+     * list squads itself, so this is built from online same-team players' {@code getSquadOf}.
+     */
+    private List<ConquestSyncPacket.SquadStatus> joinableSquadsFor(ServerPlayer viewer) {
+        Team viewerTeam = teamOf(viewer.getUUID());
+        if (!viewerTeam.isCombatant()) {
+            return List.of();
+        }
+        SquadManager squadManager = SquadManager.get(viewer.server);
+        if (squadManager.getSquadOf(viewer.getUUID()) != null) {
+            return List.of();
+        }
+        List<ConquestSyncPacket.SquadStatus> result = new ArrayList<>();
+        Set<UUID> seenSquads = new HashSet<>();
+        for (ServerPlayer player : viewer.server.getPlayerList().getPlayers()) {
+            if (player == viewer || teamOf(player.getUUID()) != viewerTeam) {
+                continue;
+            }
+            Squad squad = squadManager.getSquadOf(player.getUUID());
+            if (squad == null || !seenSquads.add(squad.getId())) {
+                continue;
+            }
+            result.add(new ConquestSyncPacket.SquadStatus(squad.getMemberName(squad.getLeader()), squad.size()));
+        }
+        return result;
     }
 
     /** Used by the flag block's right-click handler: a fresh snapshot that opens the GUI. */

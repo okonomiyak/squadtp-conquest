@@ -205,10 +205,26 @@ public class ConquestScreen extends Screen {
         cursor = teamY + 36;
 
         squadY = cursor;
-        int squadTotal = SquadClientData.getMembers().size();
+        boolean inSquad = SquadClientData.isInSquad();
+        List<ConquestSyncPacket.SquadStatus> joinableSquads = ConquestClientData.getJoinableSquads();
+        int squadTotal = inSquad ? SquadClientData.getMembers().size() : joinableSquads.size();
         squadScrollOffset = clamp(squadScrollOffset, 0, Math.max(0, squadTotal - MAX_SQUAD_ROWS));
-        int squadRows = SquadClientData.isInSquad() ? Math.min(MAX_SQUAD_ROWS, squadTotal) : 0;
+        int squadRows = (inSquad || !joinableSquads.isEmpty()) ? Math.min(MAX_SQUAD_ROWS, squadTotal) : 0;
         cursor = squadY + 16 + squadRows * 12 + (squadRows == 0 ? 12 : 0);
+        // Not in a squad: each visible row of other-squads-on-your-team gets a "request to join"
+        // button (/squad join <leaderName>, squadtp's own request-join flow — the leader approves
+        // or it joins immediately if the squad has open join enabled). Your own squad's member
+        // list (when you're in one) is plain text with no widgets, drawn in render() instead.
+        if (!inSquad) {
+            for (int row = 0; row < squadRows; row++) {
+                ConquestSyncPacket.SquadStatus squad = joinableSquads.get(squadScrollOffset + row);
+                Button join = Button.builder(Component.translatable("conquest.gui.squad_join"),
+                        b -> command("squad join " + squad.leaderName()))
+                        .bounds(panelLeft + panelWidth - PAD - 44, 0, 44, 12).build();
+                placeAt(join, squadY + 12 + row * 12);
+                addRenderableWidget(join);
+            }
+        }
 
         List<ConquestSyncPacket.CallInStatus> callIns = ConquestClientData.getCallIns();
         if (!callIns.isEmpty()) {
@@ -466,10 +482,11 @@ public class ConquestScreen extends Screen {
 
     /**
      * Scrolls whichever of the active tab's overflowing lists the cursor is over: points/squad
-     * on STATUS, sectors on SECTORS. Points/sectors reposition per-row buttons, so those two
-     * call {@link #rebuild()}; the squad list is plain text with no widgets, so its offset alone
-     * is enough. Gated by activeTab (not just Y-bounds) since a previous tab's cached row
-     * positions could otherwise be accidentally hit-tested against the current tab's content.
+     * on STATUS, sectors on SECTORS. Points/sectors/joinable-squads reposition per-row buttons, so
+     * those call {@link #rebuild()}; your own squad's member list is plain text with no widgets,
+     * so its offset alone is enough. Gated by activeTab (not just Y-bounds) since a previous tab's
+     * cached row positions could otherwise be accidentally hit-tested against the current tab's
+     * content.
      */
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
@@ -495,6 +512,18 @@ public class ConquestScreen extends Screen {
                 int squadBottom = squadY + 16 + squadRows * 12;
                 if (squadTotal > MAX_SQUAD_ROWS && localY >= squadY && localY < squadBottom) {
                     squadScrollOffset = clamp(squadScrollOffset + step, 0, squadTotal - MAX_SQUAD_ROWS);
+                    return true;
+                }
+            } else {
+                // Unlike the plain-text member list above, each row here has its own "request to
+                // join" button, so scrolling has to reposition them via rebuild() (same as
+                // points/call-ins).
+                int squadTotal = ConquestClientData.getJoinableSquads().size();
+                int squadRows = Math.min(MAX_SQUAD_ROWS, squadTotal);
+                int squadBottom = squadY + 16 + squadRows * 12;
+                if (squadTotal > MAX_SQUAD_ROWS && localY >= squadY && localY < squadBottom) {
+                    squadScrollOffset = clamp(squadScrollOffset + step, 0, squadTotal - MAX_SQUAD_ROWS);
+                    rebuild();
                     return true;
                 }
             }
@@ -612,6 +641,23 @@ public class ConquestScreen extends Screen {
                 graphics.drawString(this.font, name, l + PAD + 4, t + squadY + 14 + row * 12, COLOR_TEXT_FAINT);
             }
             drawScrollHint(graphics, r, t + squadY, offset, squadRows, members.size());
+        } else {
+            List<ConquestSyncPacket.SquadStatus> joinableSquads = ConquestClientData.getJoinableSquads();
+            if (!joinableSquads.isEmpty()) {
+                graphics.drawString(this.font, Component.translatable("conquest.gui.squad_joinable_section"),
+                        l + PAD, t + squadY, COLOR_TEXT_DIM);
+                // Same live-recompute as the other lists: don't trust the cached squadScrollOffset
+                // against a list that may have shrunk since rebuild() (a squad disbanding).
+                int squadRows = Math.min(MAX_SQUAD_ROWS, joinableSquads.size());
+                int offset = clamp(squadScrollOffset, 0, Math.max(0, joinableSquads.size() - squadRows));
+                for (int row = 0; row < squadRows; row++) {
+                    ConquestSyncPacket.SquadStatus squad = joinableSquads.get(offset + row);
+                    graphics.drawString(this.font, Component.translatable("conquest.gui.squad_joinable_row",
+                                    squad.leaderName(), squad.memberCount()),
+                            l + PAD + 4, t + squadY + 14 + row * 12, COLOR_TEXT_FAINT);
+                }
+                drawScrollHint(graphics, r, t + squadY, offset, squadRows, joinableSquads.size());
+            }
         }
 
         List<ConquestSyncPacket.CallInStatus> callIns = ConquestClientData.getCallIns();

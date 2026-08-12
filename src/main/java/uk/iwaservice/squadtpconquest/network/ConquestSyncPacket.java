@@ -16,7 +16,8 @@ import java.util.List;
 
 /**
  * Full conquest state pushed to one player: every capture point's status,
- * tickets, their team and whether they may use the admin controls. Broadcast
+ * tickets, their team, whether they may use the admin controls, and (if they're a combatant not
+ * already in a squad) the other squads on their team they could request to join. Broadcast
  * once per tick, and sent on demand when a flag block is right-clicked
  * (openScreen = true tells the client to pop the GUI if it isn't already open).
  */
@@ -25,7 +26,8 @@ public record ConquestSyncPacket(List<PointStatus> points,
                                   Team yourTeam, boolean canAdmin, boolean openScreen,
                                   Team attackerTeam, int sectorIndex, int sectorCount,
                                   int attackerTickets, int respawnWaveSecondsRemaining,
-                                  List<CallInStatus> callIns, int availableScore) {
+                                  List<CallInStatus> callIns, int availableScore,
+                                  List<SquadStatus> joinableSquads) {
 
     /**
      * One capture point as seen by a specific viewer (contested/inZone are per-viewer).
@@ -39,6 +41,16 @@ public record ConquestSyncPacket(List<PointStatus> points,
 
     /** One registered /conquest callin, for the player-facing GUI list (see availableScore). */
     public record CallInStatus(String name, int scoreCost, ResourceLocation itemId, int count) {}
+
+    /**
+     * One other squad on the viewer's own team that they could request to join (squadtp exposes
+     * no way to list squads itself, so this is built server-side from online same-team players'
+     * {@code SquadManager.getSquadOf}). Empty unless the viewer is a combatant not already in a
+     * squad. {@code leaderName} is the join target for squadtp's own {@code /squad join <player>}
+     * (any member's name works — squadtp resolves it back to their squad — the leader is just a
+     * stable, always-present choice).
+     */
+    public record SquadStatus(String leaderName, int memberCount) {}
 
     public static void encode(ConquestSyncPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.points.size());
@@ -76,6 +88,11 @@ public record ConquestSyncPacket(List<PointStatus> points,
             buf.writeVarInt(c.count());
         }
         buf.writeVarInt(msg.availableScore);
+        buf.writeVarInt(msg.joinableSquads.size());
+        for (SquadStatus s : msg.joinableSquads) {
+            buf.writeUtf(s.leaderName());
+            buf.writeVarInt(s.memberCount());
+        }
     }
 
     public static ConquestSyncPacket decode(FriendlyByteBuf buf) {
@@ -105,9 +122,14 @@ public record ConquestSyncPacket(List<PointStatus> points,
             callIns.add(new CallInStatus(buf.readUtf(), buf.readVarInt(), buf.readResourceLocation(), buf.readVarInt()));
         }
         int availableScore = buf.readVarInt();
+        int squadCount = buf.readVarInt();
+        List<SquadStatus> joinableSquads = new ArrayList<>(squadCount);
+        for (int i = 0; i < squadCount; i++) {
+            joinableSquads.add(new SquadStatus(buf.readUtf(), buf.readVarInt()));
+        }
         return new ConquestSyncPacket(points, ticketsA, ticketsB, active, state, mode, yourTeam, canAdmin, openScreen,
                 attackerTeam, sectorIndex, sectorCount, attackerTickets, respawnWaveSecondsRemaining,
-                callIns, availableScore);
+                callIns, availableScore, joinableSquads);
     }
 
     public static void handle(ConquestSyncPacket msg, java.util.function.Supplier<NetworkEvent.Context> ctx) {
