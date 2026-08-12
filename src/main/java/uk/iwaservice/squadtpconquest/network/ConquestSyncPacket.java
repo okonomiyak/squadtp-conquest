@@ -48,9 +48,10 @@ public record ConquestSyncPacket(List<PointStatus> points,
      * {@code SquadManager.getSquadOf}). Empty unless the viewer is a combatant not already in a
      * squad. {@code leaderName} is the join target for squadtp's own {@code /squad join <player>}
      * (any member's name works — squadtp resolves it back to their squad — the leader is just a
-     * stable, always-present choice).
+     * stable, always-present choice). {@code memberNames} lists every member (leader included) for
+     * display, in squadtp's own member-map order.
      */
-    public record SquadStatus(String leaderName, int memberCount) {}
+    public record SquadStatus(String leaderName, List<String> memberNames) {}
 
     public static void encode(ConquestSyncPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.points.size());
@@ -91,7 +92,10 @@ public record ConquestSyncPacket(List<PointStatus> points,
         buf.writeVarInt(msg.joinableSquads.size());
         for (SquadStatus s : msg.joinableSquads) {
             buf.writeUtf(s.leaderName());
-            buf.writeVarInt(s.memberCount());
+            buf.writeVarInt(s.memberNames().size());
+            for (String name : s.memberNames()) {
+                buf.writeUtf(name);
+            }
         }
     }
 
@@ -125,7 +129,13 @@ public record ConquestSyncPacket(List<PointStatus> points,
         int squadCount = buf.readVarInt();
         List<SquadStatus> joinableSquads = new ArrayList<>(squadCount);
         for (int i = 0; i < squadCount; i++) {
-            joinableSquads.add(new SquadStatus(buf.readUtf(), buf.readVarInt()));
+            String leaderName = buf.readUtf();
+            int memberCount = buf.readVarInt();
+            List<String> memberNames = new ArrayList<>(memberCount);
+            for (int j = 0; j < memberCount; j++) {
+                memberNames.add(buf.readUtf());
+            }
+            joinableSquads.add(new SquadStatus(leaderName, memberNames));
         }
         return new ConquestSyncPacket(points, ticketsA, ticketsB, active, state, mode, yourTeam, canAdmin, openScreen,
                 attackerTeam, sectorIndex, sectorCount, attackerTickets, respawnWaveSecondsRemaining,

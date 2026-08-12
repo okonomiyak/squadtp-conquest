@@ -2304,7 +2304,8 @@ public class ConquestManager extends SavedData {
             if (!allSameTeam) {
                 continue;
             }
-            result.add(new ConquestSyncPacket.SquadStatus(squad.getMemberName(squad.getLeader()), squad.size()));
+            result.add(new ConquestSyncPacket.SquadStatus(
+                    squad.getMemberName(squad.getLeader()), List.copyOf(squad.getMembers().values())));
         }
         return result;
     }

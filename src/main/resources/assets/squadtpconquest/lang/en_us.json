@@ -186,7 +186,6 @@
   "conquest.gui.team_b": "Join Team B",
   "conquest.gui.squad_section": "Your Squad",
   "conquest.gui.squad_joinable_section": "Squads You Could Join",
-  "conquest.gui.squad_joinable_row": "%s's squad (%s)",
   "conquest.gui.squad_join": "Join",
   "conquest.gui.callin_use": "Use",
 

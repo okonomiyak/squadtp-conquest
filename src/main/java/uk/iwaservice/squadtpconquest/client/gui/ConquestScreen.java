@@ -652,9 +652,20 @@ public class ConquestScreen extends Screen {
                 int offset = clamp(squadScrollOffset, 0, Math.max(0, joinableSquads.size() - squadRows));
                 for (int row = 0; row < squadRows; row++) {
                     ConquestSyncPacket.SquadStatus squad = joinableSquads.get(offset + row);
-                    graphics.drawString(this.font, Component.translatable("conquest.gui.squad_joinable_row",
-                                    squad.leaderName(), squad.memberCount()),
-                            l + PAD + 4, t + squadY + 14 + row * 12, COLOR_TEXT_FAINT);
+                    MutableComponent line = Component.empty();
+                    List<String> memberNames = squad.memberNames();
+                    for (int i = 0; i < memberNames.size(); i++) {
+                        if (i > 0) {
+                            line.append(Component.literal(", ").withStyle(ChatFormatting.GRAY));
+                        }
+                        String name = memberNames.get(i);
+                        MutableComponent nameComponent = Component.literal(name);
+                        if (name.equals(squad.leaderName())) {
+                            nameComponent.append(Component.literal(" ★").withStyle(ChatFormatting.GOLD));
+                        }
+                        line.append(nameComponent);
+                    }
+                    graphics.drawString(this.font, line, l + PAD + 4, t + squadY + 14 + row * 12, COLOR_TEXT_FAINT);
                 }
                 drawScrollHint(graphics, r, t + squadY, offset, squadRows, joinableSquads.size());
             }
