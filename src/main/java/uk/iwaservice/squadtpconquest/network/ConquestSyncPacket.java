@@ -25,7 +25,7 @@ public record ConquestSyncPacket(List<PointStatus> points,
                                   int ticketsA, int ticketsB, boolean active, RoundState state, GameMode mode,
                                   Team yourTeam, boolean canAdmin, boolean openScreen,
                                   Team attackerTeam, int sectorIndex, int sectorCount,
-                                  int attackerTickets,
+                                  int attackerTickets, int attackerTicketsMax,
                                   List<CallInStatus> callIns, int availableScore,
                                   List<SquadStatus> joinableSquads) {
 
@@ -80,6 +80,7 @@ public record ConquestSyncPacket(List<PointStatus> points,
         buf.writeVarInt(msg.sectorIndex);
         buf.writeVarInt(msg.sectorCount);
         buf.writeVarInt(msg.attackerTickets);
+        buf.writeVarInt(msg.attackerTicketsMax);
         buf.writeVarInt(msg.callIns.size());
         for (CallInStatus c : msg.callIns) {
             buf.writeUtf(c.name());
@@ -118,6 +119,7 @@ public record ConquestSyncPacket(List<PointStatus> points,
         int sectorIndex = buf.readVarInt();
         int sectorCount = buf.readVarInt();
         int attackerTickets = buf.readVarInt();
+        int attackerTicketsMax = buf.readVarInt();
         int callInCount = buf.readVarInt();
         List<CallInStatus> callIns = new ArrayList<>(callInCount);
         for (int i = 0; i < callInCount; i++) {
@@ -136,7 +138,7 @@ public record ConquestSyncPacket(List<PointStatus> points,
             joinableSquads.add(new SquadStatus(leaderName, memberNames));
         }
         return new ConquestSyncPacket(points, ticketsA, ticketsB, active, state, mode, yourTeam, canAdmin, openScreen,
-                attackerTeam, sectorIndex, sectorCount, attackerTickets,
+                attackerTeam, sectorIndex, sectorCount, attackerTickets, attackerTicketsMax,
                 callIns, availableScore, joinableSquads);
     }
 

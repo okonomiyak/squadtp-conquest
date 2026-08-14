@@ -36,6 +36,7 @@ public final class ConquestClientData {
     private static int sectorIndex;
     private static int sectorCount;
     private static int attackerTickets;
+    private static int attackerTicketsMax;
     private static List<ConquestSyncPacket.CallInStatus> callIns = List.of();
     private static int availableScore;
     private static List<ConquestSyncPacket.SquadStatus> joinableSquads = List.of();
@@ -46,7 +47,7 @@ public final class ConquestClientData {
                                           int newTicketsA, int newTicketsB, boolean newActive, RoundState newState,
                                           GameMode newMode, Team newYourTeam, boolean newCanAdmin,
                                           Team newAttackerTeam, int newSectorIndex, int newSectorCount,
-                                          int newAttackerTickets,
+                                          int newAttackerTickets, int newAttackerTicketsMax,
                                           List<ConquestSyncPacket.CallInStatus> newCallIns, int newAvailableScore,
                                           List<ConquestSyncPacket.SquadStatus> newJoinableSquads) {
         points = List.copyOf(newPoints);
@@ -61,6 +62,7 @@ public final class ConquestClientData {
         sectorIndex = newSectorIndex;
         sectorCount = newSectorCount;
         attackerTickets = newAttackerTickets;
+        attackerTicketsMax = newAttackerTicketsMax;
         callIns = List.copyOf(newCallIns);
         availableScore = newAvailableScore;
         joinableSquads = List.copyOf(newJoinableSquads);
@@ -161,6 +163,10 @@ public final class ConquestClientData {
 
     public static synchronized int getAttackerTickets() {
         return attackerTickets;
+    }
+
+    public static synchronized int getAttackerTicketsMax() {
+        return attackerTicketsMax;
     }
 
     public static synchronized List<ConquestSyncPacket.CallInStatus> getCallIns() {

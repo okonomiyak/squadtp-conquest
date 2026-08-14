@@ -212,6 +212,8 @@ public class ConquestManager extends SavedData {
     private int activeSectorNumber;
     /** Attacker respawn tickets remaining this round; a death consumes one if any are left. */
     private int attackerTickets;
+    /** Attacker tickets at round start (before sector-capture bonuses); denominator for the HUD bar. */
+    private int attackerTicketsMax;
     /** Seconds until the active sector's time limit expires (defenders win on 0). */
     private int sectorSecondsRemaining;
     /**
@@ -363,6 +365,11 @@ public class ConquestManager extends SavedData {
 
     public int attackerTickets() {
         return attackerTickets;
+    }
+
+    /** Attacker tickets at round start (before sector-capture bonuses); denominator for the HUD bar. */
+    public int attackerTicketsMax() {
+        return attackerTicketsMax;
     }
 
     /** Adds a capture point at the given position and assigns it to the named sector (creating it if new). */
@@ -1686,6 +1693,7 @@ public class ConquestManager extends SavedData {
         if (mode == GameMode.BREAKTHROUGH) {
             activeSectorNumber = sectors.firstKey();
             attackerTickets = Config.BT_ATTACKER_TICKETS.get();
+            attackerTicketsMax = attackerTickets;
             sectorSecondsRemaining = currentSectorTimeLimit();
         } else {
             activeSectorNumber = 0;
@@ -2044,6 +2052,7 @@ public class ConquestManager extends SavedData {
         sectorAreaGraceSecondsRemaining = Config.BT_SECTOR_AREA_TRANSITION_GRACE_SECONDS.get();
         int ticketBonus = Config.BT_TICKETS_PER_SECTOR_CAPTURE.get();
         attackerTickets += ticketBonus;
+        attackerTicketsMax += ticketBonus;
         setDirty();
         broadcast(server, Component.translatable("conquest.msg.sector_cleared", clearedNumber, sectorIndex(), sectorCount(), ticketBonus)
                 .withStyle(ChatFormatting.GOLD));
@@ -2324,7 +2333,7 @@ public class ConquestManager extends SavedData {
         }
         return new ConquestSyncPacket(statuses, ticketsA, ticketsB, isActive(), state, mode,
                 teamOf(viewer.getUUID()), viewer.hasPermissions(2), openScreen,
-                attackerTeam, sectorIndex(), sectorCount(), attackerTickets,
+                attackerTeam, sectorIndex(), sectorCount(), attackerTickets, attackerTicketsMax,
                 callInStatuses, availableScore(viewer.getUUID()), joinableSquadsFor(viewer));
     }
 
@@ -2521,6 +2530,8 @@ public class ConquestManager extends SavedData {
         manager.attackerTeam = tag.contains("AttackerTeam") ? Team.valueOf(tag.getString("AttackerTeam")) : Team.A;
         manager.activeSectorNumber = tag.getInt("ActiveSectorNumber");
         manager.attackerTickets = tag.getInt("AttackerTickets");
+        manager.attackerTicketsMax = tag.contains("AttackerTicketsMax")
+                ? tag.getInt("AttackerTicketsMax") : manager.attackerTickets;
         manager.sectorSecondsRemaining = tag.getInt("SectorSecondsRemaining");
         ListTag pendingList = tag.getList("PendingAttackerRespawns", Tag.TAG_COMPOUND);
         for (int i = 0; i < pendingList.size(); i++) {
@@ -2660,6 +2671,7 @@ public class ConquestManager extends SavedData {
         tag.putString("AttackerTeam", attackerTeam.name());
         tag.putInt("ActiveSectorNumber", activeSectorNumber);
         tag.putInt("AttackerTickets", attackerTickets);
+        tag.putInt("AttackerTicketsMax", attackerTicketsMax);
         tag.putInt("SectorSecondsRemaining", sectorSecondsRemaining);
         ListTag pendingList = new ListTag();
         for (UUID uuid : pendingAttackerRespawns) {

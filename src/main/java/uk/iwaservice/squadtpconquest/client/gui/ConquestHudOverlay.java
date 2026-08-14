@@ -103,12 +103,22 @@ public class ConquestHudOverlay implements IGuiOverlay {
         graphics.drawCenteredString(font, Component.translatable("conquest.hud.sector",
                 ConquestClientData.getSectorIndex(), ConquestClientData.getSectorCount()), width / 2, barY - 10, 0xFFFFFF);
 
-        Component roleLine = showAttackerInfo
-                ? Component.translatable("conquest.hud.attacker_tickets", ConquestClientData.getAttackerTickets())
-                : Component.translatable("conquest.hud.defending");
-        graphics.drawCenteredString(font, roleLine, width / 2, barY, attackerTeam.hudColor());
+        if (showAttackerInfo) {
+            int barX = (width - BAR_WIDTH) / 2;
+            int tickets = ConquestClientData.getAttackerTickets();
+            int maxTickets = Math.max(1, ConquestClientData.getAttackerTicketsMax());
+            int fillWidth = Math.round(BAR_WIDTH * Math.min(1f, tickets / (float) maxTickets));
 
-        int nextY = barY + 10;
+            graphics.fill(barX - 1, barY - 1, barX + BAR_WIDTH + 1, barY + BAR_HEIGHT + 1, 0xA0000000);
+            graphics.fill(barX, barY, barX + fillWidth, barY + BAR_HEIGHT, attackerTeam.hudColor());
+            graphics.drawCenteredString(font, Component.translatable("conquest.hud.attacker_tickets", tickets),
+                    width / 2, barY + 1, 0xFFFFFF);
+        } else {
+            graphics.drawCenteredString(font, Component.translatable("conquest.hud.defending"),
+                    width / 2, barY, attackerTeam.hudColor());
+        }
+
+        int nextY = barY + BAR_HEIGHT;
 
         List<ConquestSyncPacket.PointStatus> activePoints = ConquestClientData.getPoints().stream()
                 .filter(ConquestSyncPacket.PointStatus::active).toList();
