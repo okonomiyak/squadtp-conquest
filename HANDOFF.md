@@ -51,7 +51,10 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
     古いピンを自動置き換えでき、`cleared`フラグで削除も同じパケット型で表現できる)、
     `NetworkHandler`にID 3で登録、`PROTOCOL_VERSION` 17→18
   - `ConquestManager.placePin`/`clearPin`(スポットと同じ`Map<UUID, Integer>`クールダウン方式、
-    ただし`clearPin`はクールダウン対象外)、同一チームへのみブロードキャスト
+    ただし`clearPin`はクールダウン対象外)。ブロードキャスト範囲は最初チーム全体にしていたが、
+    直後にユーザーから「ピンは分隊ごとでいい」と修正依頼があり、`SquadManager.getSquadOf`で
+    判定する分隊単位に変更(`broadcastPin`)。分隊未所属なら自分にしか送らない(スポットは
+    そのままチーム全体スコープで維持、ピンだけ分隊スコープにした)
   - `ConquestClientData`に`Map<UUID, PinEntry>`追加(キーは設置者UUID)、
     `ConquestJmWaypointHandler`でJourneyMapウェイポイントとして表示(自チーム色、
     `pin_<placerUUID>`のID)。`pinDurationSeconds`(既定60)経過で自動消滅、または

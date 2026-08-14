@@ -513,7 +513,7 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Marks {@code pos} for {@code placer}'s team (see {@link PinPacket}), replacing any pin the
+     * Marks {@code pos} for {@code placer}'s squad (see {@link PinPacket}), replacing any pin the
      * same placer already has active — each player has at most one live pin. Gated by a
      * per-placer cooldown, same shape as {@link #spotPlayer}. False if still on cooldown (no-op);
      * the caller has already validated eligibility (round state, team) before calling this.
@@ -537,11 +537,17 @@ public class ConquestManager extends SavedData {
                 placer.level().dimension().location(), placer.blockPosition(), 0, true));
     }
 
+    /** Squad-scoped, not team-wide: squadless players only see their own pins. */
     private void broadcastPin(MinecraftServer server, ServerPlayer placer, PinPacket packet) {
-        Team placerTeam = teamOf(placer.getUUID());
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (teamOf(player.getUUID()) == placerTeam) {
-                NetworkHandler.send(player, packet);
+        Squad squad = SquadManager.get(server).getSquadOf(placer.getUUID());
+        if (squad == null) {
+            NetworkHandler.send(placer, packet);
+            return;
+        }
+        for (UUID memberId : squad.getMembers().keySet()) {
+            ServerPlayer member = server.getPlayerList().getPlayer(memberId);
+            if (member != null) {
+                NetworkHandler.send(member, packet);
             }
         }
     }
