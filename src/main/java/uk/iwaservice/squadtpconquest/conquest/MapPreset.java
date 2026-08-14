@@ -17,9 +17,10 @@ import java.util.List;
 
 /**
  * A named, reusable map layout: capture point positions/radii, team spawns, home zones,
- * battlefield boundary, protect zones, in-game-added indestructible block types and the game mode
- * they belong to. Captured/loaded from the live {@link ConquestManager} state, but holds no
- * round-in-progress data (ownership, tickets, scores) — only what's needed to rebuild the setup.
+ * battlefield boundary, protect zones, spawn zones, in-game-added indestructible block types and
+ * the game mode they belong to. Captured/loaded from the live {@link ConquestManager} state, but
+ * holds no round-in-progress data (ownership, tickets, scores) — only what's needed to rebuild the
+ * setup.
  */
 public final class MapPreset {
 
@@ -74,13 +75,14 @@ public final class MapPreset {
     @Nullable
     private final ZoneBox boundary;
     private final List<ProtectZone> protectZones;
+    private final List<SpawnZone> spawnZones;
     private final List<String> protectedBlocks;
 
     public MapPreset(String name, GameMode mode, List<PointLayout> points,
                       @Nullable ResourceKey<Level> spawnADim, @Nullable BlockPos spawnAPos,
                       @Nullable ResourceKey<Level> spawnBDim, @Nullable BlockPos spawnBPos,
                       @Nullable ZoneBox zoneA, @Nullable ZoneBox zoneB, @Nullable ZoneBox boundary,
-                      List<ProtectZone> protectZones, List<String> protectedBlocks) {
+                      List<ProtectZone> protectZones, List<SpawnZone> spawnZones, List<String> protectedBlocks) {
         this.name = name;
         this.mode = mode;
         this.points = points;
@@ -92,6 +94,7 @@ public final class MapPreset {
         this.zoneB = zoneB;
         this.boundary = boundary;
         this.protectZones = protectZones;
+        this.spawnZones = spawnZones;
         this.protectedBlocks = protectedBlocks;
     }
 
@@ -146,6 +149,10 @@ public final class MapPreset {
         return protectZones;
     }
 
+    public List<SpawnZone> getSpawnZones() {
+        return spawnZones;
+    }
+
     public List<String> getProtectedBlocks() {
         return protectedBlocks;
     }
@@ -183,6 +190,11 @@ public final class MapPreset {
             protectZoneList.add(zone.save());
         }
         tag.put("ProtectZones", protectZoneList);
+        ListTag spawnZoneList = new ListTag();
+        for (SpawnZone zone : spawnZones) {
+            spawnZoneList.add(zone.save());
+        }
+        tag.put("SpawnZones", spawnZoneList);
         ListTag protectedBlockList = new ListTag();
         for (String id : protectedBlocks) {
             protectedBlockList.add(StringTag.valueOf(id));
@@ -219,12 +231,17 @@ public final class MapPreset {
         for (int i = 0; i < protectZoneList.size(); i++) {
             protectZones.add(ProtectZone.load(protectZoneList.getCompound(i)));
         }
+        List<SpawnZone> spawnZones = new ArrayList<>();
+        ListTag spawnZoneList = tag.getList("SpawnZones", Tag.TAG_COMPOUND);
+        for (int i = 0; i < spawnZoneList.size(); i++) {
+            spawnZones.add(SpawnZone.load(spawnZoneList.getCompound(i)));
+        }
         List<String> protectedBlocks = new ArrayList<>();
         ListTag protectedBlockList = tag.getList("ProtectedBlocks", Tag.TAG_STRING);
         for (int i = 0; i < protectedBlockList.size(); i++) {
             protectedBlocks.add(protectedBlockList.getString(i));
         }
         return new MapPreset(name, mode, points, spawnADim, spawnAPos, spawnBDim, spawnBPos,
-                zoneA, zoneB, boundary, protectZones, protectedBlocks);
+                zoneA, zoneB, boundary, protectZones, spawnZones, protectedBlocks);
     }
 }

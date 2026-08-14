@@ -16,6 +16,7 @@ public final class CaptureZoneVisualizer {
     private static final Vector3f COLOR_B = new Vector3f(0.88f, 0.23f, 0.23f);
     private static final Vector3f COLOR_NEUTRAL = new Vector3f(0.85f, 0.85f, 0.85f);
     private static final Vector3f COLOR_RANGE = new Vector3f(0.23f, 0.88f, 0.37f);
+    private static final Vector3f COLOR_SPAWN_ZONE = new Vector3f(0.98f, 0.85f, 0.2f);
 
     /** Vanilla clamps dust scale to [0.01, 4.0]; this is chunky without clipping. */
     private static final float PARTICLE_SCALE = 3.0f;
@@ -48,7 +49,12 @@ public final class CaptureZoneVisualizer {
 
     /** Wireframe box (12 edges) marking a home zone's bounds, from its min corner to its max corner (inclusive). */
     public static void renderBox(ServerLevel level, BlockPos min, BlockPos max, Team color) {
-        DustParticleOptions options = new DustParticleOptions(teamColor(color), PARTICLE_SCALE);
+        renderBox(level, min, max, teamColor(color));
+    }
+
+    /** Same wireframe box, for a fixed RGB color rather than a team's — used by zone types with no team. */
+    public static void renderBox(ServerLevel level, BlockPos min, BlockPos max, Vector3f color) {
+        DustParticleOptions options = new DustParticleOptions(color, PARTICLE_SCALE);
 
         double x1 = min.getX();
         double y1 = min.getY();
@@ -93,6 +99,10 @@ public final class CaptureZoneVisualizer {
             // just a safe fallback rather than a real case.
             case NEUTRAL, ADMIN, SPECTATOR -> COLOR_NEUTRAL;
         };
+    }
+
+    public static Vector3f spawnZoneColor() {
+        return COLOR_SPAWN_ZONE;
     }
 
     private CaptureZoneVisualizer() {}

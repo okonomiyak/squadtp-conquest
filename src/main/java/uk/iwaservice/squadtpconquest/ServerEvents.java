@@ -17,6 +17,7 @@ import uk.iwaservice.squadtpconquest.conquest.CaptureZoneVisualizer;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.ProtectZone;
 import uk.iwaservice.squadtpconquest.conquest.Sector;
+import uk.iwaservice.squadtpconquest.conquest.SpawnZone;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 
 /** Forge-bus event handlers: command registration, respawn ticket cost and the game loop. */
@@ -75,6 +76,12 @@ public final class ServerEvents {
                 ServerLevel level = server.getLevel(zone.getDim());
                 if (level != null) {
                     CaptureZoneVisualizer.renderBox(level, zone.getMin(), zone.getMax(), Team.NEUTRAL);
+                }
+            }
+            for (SpawnZone zone : manager.getSpawnZones()) {
+                ServerLevel level = server.getLevel(zone.getDim());
+                if (level != null) {
+                    CaptureZoneVisualizer.renderBox(level, zone.getMin(), zone.getMax(), CaptureZoneVisualizer.spawnZoneColor());
                 }
             }
             Sector activeSector = manager.currentSector();

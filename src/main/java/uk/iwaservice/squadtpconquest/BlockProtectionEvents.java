@@ -10,11 +10,13 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 
 /**
- * Blocks marked indestructible (config default or {@code /conquest protectblock}) or inside a
- * protect zone ({@code /conquest protectzone}) can't be broken by anything except creative mode.
- * Unlike {@link TerrainDestructionEvents} (explosions only, gated on terrainDestructionEnabled
- * and round state), this applies to ordinary breaking at all times, since it's protecting map
- * setup (flag poles, admin-designated blocks/areas) rather than shaping crater damage.
+ * Blocks marked indestructible (config default or {@code /conquest protectblock}), inside a
+ * protect zone ({@code /conquest protectzone}), or inside a spawn zone
+ * ({@code /conquest spawnzone}) can't be broken by anything except creative mode; spawn zones
+ * additionally block placement. Unlike {@link TerrainDestructionEvents} (explosions only, gated on
+ * terrainDestructionEnabled and round state), this applies to ordinary breaking/placing at all
+ * times, since it's protecting map setup (flag poles, admin-designated blocks/areas/spawns) rather
+ * than shaping crater damage.
  */
 public final class BlockProtectionEvents {
 
@@ -27,7 +29,22 @@ public final class BlockProtectionEvents {
         ConquestManager manager = ConquestManager.get(level.getServer());
         ResourceKey<Level> dim = level.dimension();
         BlockPos pos = event.getPos();
-        if (manager.isIndestructible(event.getState()) || manager.isProtected(dim, pos)) {
+        if (manager.isIndestructible(event.getState()) || manager.isProtected(dim, pos)
+                || manager.isInSpawnZone(dim, pos)) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlace(BlockEvent.EntityPlaceEvent event) {
+        if (!(event.getEntity() instanceof Player player) || player.isCreative()) {
+            return;
+        }
+        if (!(event.getLevel() instanceof ServerLevel level)) {
+            return;
+        }
+        ConquestManager manager = ConquestManager.get(level.getServer());
+        if (manager.isInSpawnZone(level.dimension(), event.getPos())) {
             event.setCanceled(true);
         }
     }

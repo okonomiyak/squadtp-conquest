@@ -74,6 +74,7 @@ public class ConquestManager extends SavedData {
     private final LinkedHashMap<String, MapPreset> presets = new LinkedHashMap<>();
     /** Named boxes in which terrain destruction never modifies blocks; any number may exist. */
     private final LinkedHashMap<String, ProtectZone> protectZones = new LinkedHashMap<>();
+    private final LinkedHashMap<String, SpawnZone> spawnZones = new LinkedHashMap<>();
     /** Block registry names terrain destruction never destroys, in addition to Config.INDESTRUCTIBLE_BLOCKS. */
     private final LinkedHashSet<String> protectedBlocks = new LinkedHashSet<>();
     /** Named scorestreak-style rewards (score cost -> item), keyed by name. */
@@ -236,7 +237,7 @@ public class ConquestManager extends SavedData {
     /** Fresh world only (see {@link #get}): seeds a built-in blank "Normal" preset to reset to. */
     public ConquestManager() {
         presets.put("Normal", new MapPreset("Normal", GameMode.CONQUEST, List.of(),
-                null, null, null, null, null, null, null, List.of(), List.of()));
+                null, null, null, null, null, null, null, List.of(), List.of(), List.of()));
     }
 
     // --- accessors ---
@@ -1485,6 +1486,37 @@ public class ConquestManager extends SavedData {
                 && pos.getZ() >= min.getZ() && pos.getZ() <= max.getZ();
     }
 
+    // --- spawn zones: no PvP damage, no block break/place (see SpawnZoneEvents/BlockProtectionEvents) ---
+
+    public Collection<SpawnZone> getSpawnZones() {
+        return spawnZones.values();
+    }
+
+    /** Adds/replaces a named spawn zone. */
+    public void addSpawnZone(String name, ServerLevel level, BlockPos pos1, BlockPos pos2) {
+        spawnZones.put(name, new SpawnZone(name, level.dimension(), pos1, pos2));
+        setDirty();
+    }
+
+    /** Removes a spawn zone. False if no zone has that name. */
+    public boolean removeSpawnZone(String name) {
+        if (spawnZones.remove(name) == null) {
+            return false;
+        }
+        setDirty();
+        return true;
+    }
+
+    /** True if any spawn zone in {@code dim} contains {@code pos}. */
+    public boolean isInSpawnZone(ResourceKey<Level> dim, BlockPos pos) {
+        for (SpawnZone zone : spawnZones.values()) {
+            if (zone.getDim().equals(dim) && containsPos(zone.getMin(), zone.getMax(), pos)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * True if terrain destruction must never destroy this block type, whether from the
      * {@code indestructibleBlocks} config default or added in-game via {@link #addProtectedBlock}.
@@ -1637,8 +1669,8 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Snapshots the current points/spawns/mode/zones/boundary/protect zones/protected block types
-     * as a named preset, overwriting any existing one of that name.
+     * Snapshots the current points/spawns/mode/zones/boundary/protect zones/spawn zones/protected
+     * block types as a named preset, overwriting any existing one of that name.
      */
     public void savePreset(String name) {
         List<MapPreset.PointLayout> layout = new ArrayList<>();
@@ -1653,7 +1685,7 @@ public class ConquestManager extends SavedData {
                 ? new MapPreset.ZoneBox(boundaryDim, boundaryPos1, boundaryPos2) : null;
         presets.put(name, new MapPreset(name, mode, layout, spawnADim, spawnAPos, spawnBDim, spawnBPos,
                 zoneABox, zoneBBox, boundaryBox, new ArrayList<>(protectZones.values()),
-                new ArrayList<>(protectedBlocks)));
+                new ArrayList<>(spawnZones.values()), new ArrayList<>(protectedBlocks)));
         setDirty();
     }
 
@@ -1710,6 +1742,10 @@ public class ConquestManager extends SavedData {
         protectZones.clear();
         for (ProtectZone zone : preset.getProtectZones()) {
             protectZones.put(zone.getName(), zone);
+        }
+        spawnZones.clear();
+        for (SpawnZone zone : preset.getSpawnZones()) {
+            spawnZones.put(zone.getName(), zone);
         }
         protectedBlocks.clear();
         protectedBlocks.addAll(preset.getProtectedBlocks());
@@ -2612,6 +2648,11 @@ public class ConquestManager extends SavedData {
             ProtectZone zone = ProtectZone.load(protectZoneList.getCompound(i));
             manager.protectZones.put(zone.getName(), zone);
         }
+        ListTag spawnZoneList = tag.getList("SpawnZones", Tag.TAG_COMPOUND);
+        for (int i = 0; i < spawnZoneList.size(); i++) {
+            SpawnZone zone = SpawnZone.load(spawnZoneList.getCompound(i));
+            manager.spawnZones.put(zone.getName(), zone);
+        }
         ListTag protectedBlockList = tag.getList("ProtectedBlocks", Tag.TAG_STRING);
         for (int i = 0; i < protectedBlockList.size(); i++) {
             manager.protectedBlocks.add(protectedBlockList.getString(i));
@@ -2752,6 +2793,11 @@ public class ConquestManager extends SavedData {
             protectZoneList.add(zone.save());
         }
         tag.put("ProtectZones", protectZoneList);
+        ListTag spawnZoneList = new ListTag();
+        for (SpawnZone zone : spawnZones.values()) {
+            spawnZoneList.add(zone.save());
+        }
+        tag.put("SpawnZones", spawnZoneList);
         ListTag protectedBlockList = new ListTag();
         for (String id : protectedBlocks) {
             protectedBlockList.add(StringTag.valueOf(id));

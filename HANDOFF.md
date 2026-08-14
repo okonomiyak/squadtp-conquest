@@ -40,6 +40,25 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **スポーン区域を新規実装**(2026-08-14): ユーザーから「スポーン区域という何もできないけど戦闘区域の
+  中に区域を作成して」と依頼。AskUserQuestionで「何もできない」の内容を確認し、PvPダメージ無効+
+  ブロック破壊/設置不可の両方が必要と判明。既存の[破壊禁止ゾーン](#地形破壊bf風クレーター)
+  (`ProtectZone`、名前付き複数box、ワンド対応)と構造的にほぼ同じだが、破壊禁止ゾーンは
+  「terrain destructionからの保護」専用でPvP/設置には一切関与しない設計だったため、意味を
+  混ぜずに新規`SpawnZone`クラス(`ProtectZone`とフィールド構成は同一)として別管理にした:
+  - `ConquestManager`に`spawnZones`マップ+`addSpawnZone`/`removeSpawnZone`/`isInSpawnZone`
+    (`isProtected`と同じ`containsPos`ヘルパーを再利用)
+  - `BlockProtectionEvents.onBreak`に`isInSpawnZone`判定を追加、新規`onPlace`
+    (`BlockEvent.EntityPlaceEvent`)でスポーン区域内の設置だけを禁止(破壊禁止ゾーン/
+    indestructibleBlocksは従来通り設置には無関与のまま——設置禁止はスポーン区域だけの新機能)
+  - 新規`SpawnZoneEvents`(`LivingAttackEvent`をフックし、被害者がスポーン区域内かつ攻撃者が
+    プレイヤーの場合にキャンセル。転落・溺死等の環境ダメージは対象外)、`SquadTpConquest`に登録
+  - `/conquest spawnzone add|remove|list`(`protectzone`と同じ形、ワンド対応)
+  - `CaptureZoneVisualizer.renderBox`をTeamベースの色だけでなく生の`Vector3f`色も受け取れるように
+    オーバーロード追加(スポーン区域専用の黄色`COLOR_SPAWN_ZONE`を、既存のTeam列挙型を汚さずに
+    導入するため)。`ServerEvents`の10tick可視化ループに追加
+  - `MapPreset`にも`protectZones`と並べて`spawnZones`を追加(コンストラクタ引数が増える
+    cascadingな変更——`ConquestManager`の3箇所の呼び出しと`savePreset`/`loadPreset`を更新)
 - **ピン機能を新規実装**(2026-08-14): ユーザーから「ピン機能がほしい」と依頼され、
   AskUserQuestionで「任意の地点にマーカーを立てる(既存のスポットと同じ仕組みを、地点指定・
   手動消滅ありで流用)」を選択。既存の[索敵マーキング(スポット)](#索敵マーキングスポット)

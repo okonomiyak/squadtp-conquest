@@ -32,6 +32,7 @@ import uk.iwaservice.squadtpconquest.conquest.MapPreset;
 import uk.iwaservice.squadtpconquest.conquest.ProtectZone;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.conquest.Sector;
+import uk.iwaservice.squadtpconquest.conquest.SpawnZone;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 import uk.iwaservice.squadtpconquest.conquest.ZoneSelection;
 
@@ -118,6 +119,11 @@ public final class ConquestCommand {
             (ctx, builder) -> SharedSuggestionProvider.suggest(
                     ConquestManager.get(ctx.getSource().getServer()).getProtectZones().stream()
                             .map(ProtectZone::getName), builder);
+
+    private static final com.mojang.brigadier.suggestion.SuggestionProvider<CommandSourceStack> SPAWN_ZONE_NAMES =
+            (ctx, builder) -> SharedSuggestionProvider.suggest(
+                    ConquestManager.get(ctx.getSource().getServer()).getSpawnZones().stream()
+                            .map(SpawnZone::getName), builder);
 
     private static final com.mojang.brigadier.suggestion.SuggestionProvider<CommandSourceStack> CALLIN_NAMES =
             (ctx, builder) -> SharedSuggestionProvider.suggest(
@@ -220,6 +226,19 @@ public final class ConquestCommand {
                                         .suggests(PROTECT_ZONE_NAMES)
                                         .executes(ConquestCommand::protectZoneRemove)))
                         .then(Commands.literal("list").executes(ConquestCommand::protectZoneList)))
+                .then(Commands.literal("spawnzone")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("add")
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .executes(ConquestCommand::spawnZoneAddFromWand)
+                                        .then(Commands.argument("pos1", BlockPosArgument.blockPos())
+                                                .then(Commands.argument("pos2", BlockPosArgument.blockPos())
+                                                        .executes(ConquestCommand::spawnZoneAdd)))))
+                        .then(Commands.literal("remove")
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .suggests(SPAWN_ZONE_NAMES)
+                                        .executes(ConquestCommand::spawnZoneRemove)))
+                        .then(Commands.literal("list").executes(ConquestCommand::spawnZoneList)))
                 .then(Commands.literal("protectblock")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("add")
@@ -1047,6 +1066,58 @@ public final class ConquestCommand {
         }
         MutableComponent result = msg;
         ctx.getSource().sendSuccess(() -> result, false);
+        return 1;
+    }
+
+    private static int spawnZoneAdd(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        String name = StringArgumentType.getString(ctx, "name");
+        BlockPos pos1 = BlockPosArgument.getBlockPos(ctx, "pos1");
+        BlockPos pos2 = BlockPosArgument.getBlockPos(ctx, "pos2");
+        ConquestManager.get(ctx.getSource().getServer())
+                .addSpawnZone(name, ctx.getSource().getLevel(), pos1, pos2);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.spawnzone_added", name,
+                        pos1.toShortString(), pos2.toShortString()), true);
+        return 1;
+    }
+
+    /** {@code /conquest spawnzone add <name>} with no coordinates: uses the sender's zone wand selection instead. */
+    private static int spawnZoneAddFromWand(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        String name = StringArgumentType.getString(ctx, "name");
+        BlockPos[] selection = ZoneSelection.get(player);
+        if (selection == null) {
+            return fail(ctx, Component.translatable("conquest.msg.wand_no_selection"));
+        }
+        ConquestManager.get(ctx.getSource().getServer())
+                .addSpawnZone(name, player.serverLevel(), selection[0], selection[1]);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.spawnzone_added", name,
+                        selection[0].toShortString(), selection[1].toShortString()), true);
+        return 1;
+    }
+
+    private static int spawnZoneRemove(CommandContext<CommandSourceStack> ctx) {
+        String name = StringArgumentType.getString(ctx, "name");
+        if (!ConquestManager.get(ctx.getSource().getServer()).removeSpawnZone(name)) {
+            return fail(ctx, Component.translatable("conquest.msg.spawnzone_not_found", name));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.spawnzone_removed", name), true);
+        return 1;
+    }
+
+    private static int spawnZoneList(CommandContext<CommandSourceStack> ctx) {
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        if (manager.getSpawnZones().isEmpty()) {
+            return fail(ctx, Component.translatable("conquest.msg.no_spawnzone"));
+        }
+        MutableComponent msg = Component.translatable("conquest.msg.spawnzone_list_header").withStyle(ChatFormatting.GOLD);
+        for (SpawnZone zone : manager.getSpawnZones()) {
+            msg.append("\n").append(Component.translatable("conquest.status.spawnzone",
+                    zone.getName(), zone.getMin().toShortString(), zone.getMax().toShortString()));
+        }
+        MutableComponent spawnZoneResult = msg;
+        ctx.getSource().sendSuccess(() -> spawnZoneResult, false);
         return 1;
     }
 
