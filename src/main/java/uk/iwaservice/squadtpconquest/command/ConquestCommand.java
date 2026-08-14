@@ -70,6 +70,7 @@ public final class ConquestCommand {
         CONFIG_KEYS.put("scorePerKill", intEntry(Config.SCORE_PER_KILL));
         CONFIG_KEYS.put("scorePerAssist", intEntry(Config.SCORE_PER_ASSIST));
         CONFIG_KEYS.put("scorePerRevive", intEntry(Config.SCORE_PER_REVIVE));
+        CONFIG_KEYS.put("ticketsPerSectorCapture", intEntry(Config.BT_TICKETS_PER_SECTOR_CAPTURE));
     }
 
     private static ConfigEntry intEntry(ForgeConfigSpec.IntValue value) {

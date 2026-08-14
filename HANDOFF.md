@@ -40,6 +40,11 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **セクター制圧時のチケット回復量を`/conquest config set`で変更可能に**(2026-08-14):
+  `ticketsPerSectorCapture`(`BT_TICKETS_PER_SECTOR_CAPTURE`)は既に存在していたconfig値だが
+  `ConquestCommand.CONFIG_KEYS`に未登録で、TOML直接編集でしか変更できなかった。ユーザーから
+  「セクター制圧時のチケット回復量を決めたい」と依頼され、他の`breakthrough`項目は据え置いたまま
+  これだけ`CONFIG_KEYS`に追加(1行、他の数値項目と同じ`intEntry`パターン)
 - **ブレイクスルーモードの調整3件**(2026-08-14): ユーザーから「蘇生はあり、間隔スポーンなしで、
   戦闘区域は0が攻め陣・1が戦闘区域・2が守り陣でセクター攻略ごとに1つずつずれるように」と依頼。
   (1) **蘇生を有効なままに**: `SquadFeature.REVIVE`の自動無効化条件を`mode != CONQUEST`

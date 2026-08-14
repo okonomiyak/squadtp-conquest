@@ -483,10 +483,12 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 
 これらは`/conquest config set <key> <value>`でゲーム内から再起動なしに変更できる
 (TOMLにも自動で永続化される)。ただし対応しているのは元々の`conquest`/`scoreboard`セクションの
-一部数値・真偽値項目のみ(`ConquestCommand.CONFIG_KEYS`に明示登録されたキーだけ)で、
-`breakthrough`・`homeZoneKillSeconds`・`boundaryKillSeconds`・`teamBeaconLifetimeSeconds`・
-`spawnAtOwnedPointsEnabled`・`spotRangeBlocks`・`spotDurationSeconds`・`spotCooldownSeconds`・
-`rangeResetIntervalSeconds`・`terrainDestruction`セクションの項目(リスト・文字列型を含む)は
+一部数値・真偽値項目、および`breakthrough`セクションの`ticketsPerSectorCapture`のみ
+(`ConquestCommand.CONFIG_KEYS`に明示登録されたキーだけ)で、`breakthrough`の残り
+(`attackerTickets`・`sectorTimeLimitSeconds`等)・`homeZoneKillSeconds`・`boundaryKillSeconds`・
+`teamBeaconLifetimeSeconds`・`spawnAtOwnedPointsEnabled`・`spotRangeBlocks`・
+`spotDurationSeconds`・`spotCooldownSeconds`・`rangeResetIntervalSeconds`・
+`terrainDestruction`セクションの項目(リスト・文字列型を含む)は
 `world/serverconfig/squadtpconquest-server.toml`の直接編集が必要(既存の制約で、今回追加した
 項目も同様の扱いにしている)。
 
