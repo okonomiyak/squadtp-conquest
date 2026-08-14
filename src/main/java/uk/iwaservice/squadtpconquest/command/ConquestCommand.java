@@ -303,6 +303,14 @@ public final class ConquestCommand {
                                                 .then(Commands.argument("pos1", BlockPosArgument.blockPos())
                                                         .then(Commands.argument("pos2", BlockPosArgument.blockPos())
                                                                 .executes(ConquestCommand::sectorAreaSet)))))
+                                .then(Commands.literal("corner1")
+                                        .then(Commands.literal("set")
+                                                .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                                                        .executes(ctx -> sectorAreaCornerSet(ctx, true)))))
+                                .then(Commands.literal("corner2")
+                                        .then(Commands.literal("set")
+                                                .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                                                        .executes(ctx -> sectorAreaCornerSet(ctx, false)))))
                                 .then(Commands.literal("remove")
                                         .then(Commands.argument("number", IntegerArgumentType.integer(1))
                                                 .executes(ConquestCommand::sectorAreaRemove))))
@@ -540,6 +548,18 @@ public final class ConquestCommand {
         }
         ctx.getSource().sendSuccess(() ->
                 Component.translatable("conquest.msg.sector_area_set", number, selection[0].toShortString(), selection[1].toShortString()), true);
+        return 1;
+    }
+
+    private static int sectorAreaCornerSet(CommandContext<CommandSourceStack> ctx, boolean corner1) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        int number = IntegerArgumentType.getInteger(ctx, "number");
+        if (!ConquestManager.get(ctx.getSource().getServer())
+                .setSectorAreaCorner(player.serverLevel(), number, corner1, player.blockPosition())) {
+            return fail(ctx, Component.translatable("conquest.msg.sector_not_found", number));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable(
+                corner1 ? "conquest.msg.sector_area_corner1_set" : "conquest.msg.sector_area_corner2_set", number), true);
         return 1;
     }
 

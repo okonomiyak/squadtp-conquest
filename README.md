@@ -24,6 +24,7 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 | `/conquest sector spawn set <attacker\|defender> <番号>` | 実行者の足元を、指定セクターのその役割のスポーン地点に設定 | OP |
 | `/conquest sector timelimit set <番号> <秒>` | セクター個別の制限時間を上書き(0で`sectorTimeLimitSeconds`既定値に戻す) | OP |
 | `/conquest sector area set <番号> [<x1 y1 z1> <x2 y2 z2>]` | セクターの**戦闘エリア**(そのセクターがアクティブな間だけ有効な戦場境界)を設定。座標省略時はゾーンワンドの選択範囲を使用 | OP |
+| `/conquest sector area corner1 set <番号>` / `/conquest sector area corner2 set <番号>` | 実行者の足元をそのセクターの戦闘エリアの角1/角2に設定(両方設定されて初めて有効になる) | OP |
 | `/conquest sector area remove <番号>` | セクターの戦闘エリアを削除(未設定に戻す。グローバルの`/conquest boundary`があればそちらにフォールバック) | OP |
 | `/conquest sector remove <番号>` | セクターと、それに属する全拠点を削除(旗ブロックも撤去) | OP |
 | `/conquest sector list` | 全セクターの番号・所属拠点一覧を表示 | - |

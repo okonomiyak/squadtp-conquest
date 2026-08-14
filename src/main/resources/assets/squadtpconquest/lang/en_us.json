@@ -27,6 +27,8 @@
   "conquest.msg.sector_spawn_set": "%s spawn set for sector %s",
   "conquest.msg.sector_timelimit_set": "Sector %s time limit set to %s seconds (0 = use default)",
   "conquest.msg.sector_area_set": "Sector %s combat area set: %s to %s",
+  "conquest.msg.sector_area_corner1_set": "Sector %s combat area corner 1 set here",
+  "conquest.msg.sector_area_corner2_set": "Sector %s combat area corner 2 set here",
   "conquest.msg.sector_area_removed": "Sector %s combat area removed",
   "conquest.msg.sector_area_not_found": "No sector numbered %s, or it has no combat area set",
   "conquest.msg.sector_not_found": "No sector numbered %s",

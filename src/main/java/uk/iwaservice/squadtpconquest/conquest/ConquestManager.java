@@ -425,6 +425,17 @@ public class ConquestManager extends SavedData {
         return true;
     }
 
+    /** Sets one corner of a sector's combat area, leaving the other untouched. False if no sector has that number. */
+    public boolean setSectorAreaCorner(ServerLevel level, int number, boolean corner1, BlockPos pos) {
+        Sector sector = sectors.get(number);
+        if (sector == null) {
+            return false;
+        }
+        sector.setCombatAreaCorner(level.dimension(), corner1, pos);
+        setDirty();
+        return true;
+    }
+
     /** Clears a sector's combat area. False if no sector has that number, or it had none set. */
     public boolean removeSectorArea(int number) {
         Sector sector = sectors.get(number);

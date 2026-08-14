@@ -27,6 +27,8 @@
   "conquest.msg.sector_spawn_set": "セクター%2$sの%1$sスポーンを設定した",
   "conquest.msg.sector_timelimit_set": "セクター%sの制限時間を%s秒に設定した(0=既定値を使用)",
   "conquest.msg.sector_area_set": "セクター%sの戦闘エリアを設定した: %s 〜 %s",
+  "conquest.msg.sector_area_corner1_set": "セクター%sの戦闘エリアの角1をここに設定した",
+  "conquest.msg.sector_area_corner2_set": "セクター%sの戦闘エリアの角2をここに設定した",
   "conquest.msg.sector_area_removed": "セクター%sの戦闘エリアを削除した",
   "conquest.msg.sector_area_not_found": "セクター%sが存在しないか、戦闘エリアが未設定です",
   "conquest.msg.sector_not_found": "セクター%sは存在しません",

@@ -107,6 +107,24 @@ public final class Sector {
         this.combatAreaPos2 = pos2.immutable();
     }
 
+    /**
+     * Sets one corner of the combat area, leaving the other corner untouched (the area only
+     * becomes active once both are set). If it already had a corner in a different dimension,
+     * both corners are reset first — same rule as the home zone's corner1/corner2 set.
+     */
+    public void setCombatAreaCorner(ResourceKey<Level> dim, boolean corner1, BlockPos pos) {
+        if (combatAreaDim != null && !combatAreaDim.equals(dim)) {
+            combatAreaPos1 = null;
+            combatAreaPos2 = null;
+        }
+        combatAreaDim = dim;
+        if (corner1) {
+            combatAreaPos1 = pos.immutable();
+        } else {
+            combatAreaPos2 = pos.immutable();
+        }
+    }
+
     /** Clears this sector's combat area (falls back to the global boundary). False if it wasn't set. */
     public boolean removeCombatArea() {
         if (combatAreaPos1 == null && combatAreaPos2 == null) {

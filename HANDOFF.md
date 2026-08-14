@@ -40,6 +40,15 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **セクター戦闘エリアにcorner1/corner2の歩いて設定する方式を追加**(2026-08-14): 「wandで行けるように
+  して sector」と依頼され、`/conquest sector area set <番号>`は既にワンド(右クリック/左クリックで
+  2点選択)に対応済みだったため一度AskUserQuestionで確認したところ、実際に欲しかったのは
+  zone/boundary/rangeに既にある「歩いて行った場所で1点ずつ`corner1 set`/`corner2 set`」という
+  ワンド不要の代替手段だった。`Sector`に`setCombatAreaCorner(dim, corner1, pos)`
+  (`ConquestManager.setZoneCorner`と全く同じ「別ディメンションに切り替わったら両方リセット」
+  ルール)を追加し、`ConquestManager.setSectorAreaCorner`経由で
+  `/conquest sector area corner1 set <番号>` / `corner2 set <番号>`として公開。新規フィールド無し、
+  既存の`combatAreaPos1/2`を書き換えるだけ
 - **セクター制圧時のチケット回復量を`/conquest config set`で変更可能に**(2026-08-14):
   `ticketsPerSectorCapture`(`BT_TICKETS_PER_SECTOR_CAPTURE`)は既に存在していたconfig値だが
   `ConquestCommand.CONFIG_KEYS`に未登録で、TOML直接編集でしか変更できなかった。ユーザーから
