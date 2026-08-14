@@ -116,6 +116,7 @@
   "conquest.msg.neutralized": "拠点%sが中立化された",
   "conquest.msg.victory": "%sの勝利!",
   "conquest.msg.draw": "ラウンドは引き分けで終了した!",
+  "conquest.msg.mvp": "MVP: %s (%sポイント)",
 
   "conquest.title.get_ready": "準備してください!",
   "conquest.title.started": "コンクエスト開始",

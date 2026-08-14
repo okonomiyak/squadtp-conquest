@@ -2350,6 +2350,7 @@ public class ConquestManager extends SavedData {
                     .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
         }
         broadcastTitle(server, title, subtitle);
+        announceMvp(server);
         teleportToGatherPoint(server);
         restoreTerrainSnapshot(server);
 
@@ -2357,6 +2358,26 @@ public class ConquestManager extends SavedData {
         // this clears downed/revive state server-wide rather than just for
         // this round's players.
         ReviveSystem.clear();
+    }
+
+    /** Announces the round's top scorer (by {@link #totalScore}) in chat. No-op if no combatant is online. */
+    private void announceMvp(MinecraftServer server) {
+        ServerPlayer mvp = null;
+        int mvpScore = 0;
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (!teamOf(player.getUUID()).isCombatant()) {
+                continue;
+            }
+            int score = totalScore(player.getUUID());
+            if (mvp == null || score > mvpScore) {
+                mvp = player;
+                mvpScore = score;
+            }
+        }
+        if (mvp != null) {
+            broadcast(server, Component.translatable("conquest.msg.mvp",
+                    mvp.getGameProfile().getName(), mvpScore).withStyle(ChatFormatting.AQUA));
+        }
     }
 
     /** If a gather point is set, teleports every combatant there (no-op otherwise). */
