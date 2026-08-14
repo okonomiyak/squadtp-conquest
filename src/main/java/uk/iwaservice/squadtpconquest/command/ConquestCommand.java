@@ -167,7 +167,11 @@ public final class ConquestCommand {
                         .then(Commands.literal("set")
                                 .then(Commands.argument("team", StringArgumentType.word())
                                         .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
-                                        .executes(ConquestCommand::setSpawn))))
+                                        .executes(ConquestCommand::setSpawn)))
+                        .then(Commands.literal("set2")
+                                .then(Commands.argument("team", StringArgumentType.word())
+                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
+                                        .executes(ConquestCommand::setSpawn2))))
                 .then(Commands.literal("gather")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set").executes(ConquestCommand::setGatherPoint))
@@ -637,6 +641,19 @@ public final class ConquestCommand {
                 .setSpawn(player.serverLevel(), team, player.blockPosition());
         ctx.getSource().sendSuccess(() ->
                 Component.translatable("conquest.msg.spawn_set", team.display()), true);
+        return 1;
+    }
+
+    private static int setSpawn2(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        Team team = Team.byKey(StringArgumentType.getString(ctx, "team"));
+        if (team == null) {
+            return fail(ctx, Component.translatable("conquest.msg.unknown_team"));
+        }
+        ConquestManager.get(ctx.getSource().getServer())
+                .setSpawn2(player.serverLevel(), team, player.blockPosition());
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.spawn2_set", team.display()), true);
         return 1;
     }
 

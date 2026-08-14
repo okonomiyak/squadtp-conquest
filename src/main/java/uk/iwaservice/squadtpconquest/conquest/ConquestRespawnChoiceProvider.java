@@ -17,6 +17,7 @@ import java.util.List;
 public final class ConquestRespawnChoiceProvider implements RespawnChoiceProvider {
 
     private static final String TEAM_SPAWN_CHOICE = "team_spawn";
+    private static final String TEAM_SPAWN2_CHOICE = "team_spawn2";
     private static final String BEACON_CHOICE = "beacon";
     private static final String POINT_PREFIX = "point_";
 
@@ -42,6 +43,11 @@ public final class ConquestRespawnChoiceProvider implements RespawnChoiceProvide
             choices.add(new RespawnChoiceEntry(TEAM_SPAWN_CHOICE,
                     Component.translatable("conquest.gui.respawn_choice_team_spawn"),
                     roleSpawn.dim().location(), roleSpawn.pos()));
+        }
+        if (manager.getSpawn2Dim(team) != null && manager.getSpawn2Pos(team) != null) {
+            choices.add(new RespawnChoiceEntry(TEAM_SPAWN2_CHOICE,
+                    Component.translatable("conquest.gui.respawn_choice_team_spawn2"),
+                    manager.getSpawn2Dim(team).location(), manager.getSpawn2Pos(team)));
         }
         var beaconDim = manager.getTeamBeaconDim(team);
         var beaconPos = manager.getTeamBeaconPos(team);
@@ -70,6 +76,9 @@ public final class ConquestRespawnChoiceProvider implements RespawnChoiceProvide
             }
             manager.teleportToRoleSpawn(player, team);
             return true;
+        }
+        if (choiceId.equals(TEAM_SPAWN2_CHOICE)) {
+            return manager.teleportToSpawn2(player, team);
         }
         if (choiceId.equals(BEACON_CHOICE)) {
             return manager.teleportToTeamBeacon(player, team);

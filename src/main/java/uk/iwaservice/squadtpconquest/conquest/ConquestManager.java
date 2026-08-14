@@ -101,6 +101,15 @@ public class ConquestManager extends SavedData {
     private ResourceKey<Level> spawnBDim;
     @Nullable
     private BlockPos spawnBPos;
+    /** Second, teleport-only spawn choice per team — no round-start auto-teleport, just an extra respawn option. */
+    @Nullable
+    private ResourceKey<Level> spawnA2Dim;
+    @Nullable
+    private BlockPos spawnA2Pos;
+    @Nullable
+    private ResourceKey<Level> spawnB2Dim;
+    @Nullable
+    private BlockPos spawnB2Pos;
 
     /** Where every combatant is teleported to when a round ends (see {@link #endRound}). Optional. */
     @Nullable
@@ -862,6 +871,49 @@ public class ConquestManager extends SavedData {
             spawnBPos = pos.immutable();
         }
         setDirty();
+    }
+
+    /** Sets the team's second spawn (teleport-only respawn choice; no round-start auto-teleport). */
+    public void setSpawn2(ServerLevel level, Team team, BlockPos pos) {
+        if (team == Team.A) {
+            spawnA2Dim = level.dimension();
+            spawnA2Pos = pos.immutable();
+        } else if (team == Team.B) {
+            spawnB2Dim = level.dimension();
+            spawnB2Pos = pos.immutable();
+        }
+        setDirty();
+    }
+
+    @Nullable
+    public ResourceKey<Level> getSpawn2Dim(Team team) {
+        return team == Team.A ? spawnA2Dim : team == Team.B ? spawnB2Dim : null;
+    }
+
+    @Nullable
+    public BlockPos getSpawn2Pos(Team team) {
+        return team == Team.A ? spawnA2Pos : team == Team.B ? spawnB2Pos : null;
+    }
+
+    /**
+     * Teleports the player to their team's second spawn, if set. False (no-op) otherwise. Called
+     * from {@link ConquestRespawnChoiceProvider#onChosen} when the player picks this option in
+     * squadtp's respawn chooser.
+     */
+    boolean teleportToSpawn2(ServerPlayer player, Team team) {
+        ResourceKey<Level> dim = getSpawn2Dim(team);
+        BlockPos pos = getSpawn2Pos(team);
+        if (dim == null || pos == null) {
+            return false;
+        }
+        ServerLevel level = player.server.getLevel(dim);
+        if (level == null) {
+            return false;
+        }
+        BlockPos safe = TeleportHelper.findSafeSpot(level, pos);
+        player.teleportTo(level, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
+                Set.of(), player.getYRot(), player.getXRot());
+        return true;
     }
 
     public void setGatherPoint(ServerLevel level, BlockPos pos) {
@@ -2368,6 +2420,14 @@ public class ConquestManager extends SavedData {
             manager.spawnBDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("SpawnBDim")));
             manager.spawnBPos = NbtUtils.readBlockPos(tag.getCompound("SpawnBPos"));
         }
+        if (tag.contains("SpawnA2Dim")) {
+            manager.spawnA2Dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("SpawnA2Dim")));
+            manager.spawnA2Pos = NbtUtils.readBlockPos(tag.getCompound("SpawnA2Pos"));
+        }
+        if (tag.contains("SpawnB2Dim")) {
+            manager.spawnB2Dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("SpawnB2Dim")));
+            manager.spawnB2Pos = NbtUtils.readBlockPos(tag.getCompound("SpawnB2Pos"));
+        }
         if (tag.contains("GatherDim")) {
             manager.gatherDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("GatherDim")));
             manager.gatherPos = NbtUtils.readBlockPos(tag.getCompound("GatherPos"));
@@ -2500,6 +2560,14 @@ public class ConquestManager extends SavedData {
         if (spawnBDim != null && spawnBPos != null) {
             tag.putString("SpawnBDim", spawnBDim.location().toString());
             tag.put("SpawnBPos", NbtUtils.writeBlockPos(spawnBPos));
+        }
+        if (spawnA2Dim != null && spawnA2Pos != null) {
+            tag.putString("SpawnA2Dim", spawnA2Dim.location().toString());
+            tag.put("SpawnA2Pos", NbtUtils.writeBlockPos(spawnA2Pos));
+        }
+        if (spawnB2Dim != null && spawnB2Pos != null) {
+            tag.putString("SpawnB2Dim", spawnB2Dim.location().toString());
+            tag.put("SpawnB2Pos", NbtUtils.writeBlockPos(spawnB2Pos));
         }
         if (zoneADim != null) {
             tag.putString("ZoneADim", zoneADim.location().toString());
