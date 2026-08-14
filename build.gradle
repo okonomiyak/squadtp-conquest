@@ -87,6 +87,14 @@ dependencies {
     modRuntimeOnly 'curse.maven:journeymap-32274:5789363'
 }
 
+// mods.toml's version="${file.jarVersion}" reads this manifest attribute; without it Forge has
+// nothing to substitute and the mods list falls back to a stale/default version display.
+tasks.named('jar') {
+    manifest {
+        attributes('Implementation-Version': project.version)
+    }
+}
+
 // Debug aid: print the resolved runtime classpath entries for squadtp.
 tasks.register('printSquadtpCp') {
     def cp = configurations.runtimeClasspath
