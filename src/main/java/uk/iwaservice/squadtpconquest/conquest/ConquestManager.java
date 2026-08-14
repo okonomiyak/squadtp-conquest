@@ -2005,7 +2005,11 @@ public class ConquestManager extends SavedData {
             if (cleared) {
                 advanceSector(server);
             }
-            checkSectorFrontZones(server, sector);
+            // Re-fetch: advanceSector() may have just moved activeSectorNumber past `sector`.
+            Sector nowActive = currentSector();
+            if (nowActive != null) {
+                checkSectorFrontZones(server, nowActive);
+            }
         }
 
         if (state == RoundState.IN_PROGRESS && --sectorSecondsRemaining <= 0) {
