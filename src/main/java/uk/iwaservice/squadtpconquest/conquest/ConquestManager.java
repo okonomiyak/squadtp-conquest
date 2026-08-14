@@ -1631,8 +1631,10 @@ public class ConquestManager extends SavedData {
     /**
      * Manually pastes back the current terrain snapshot, e.g. after {@code /conquest stop} — which,
      * unlike {@link #endRound}, deliberately skips the automatic restore so admins can inspect the
-     * damage first. Returns false if no snapshot is held (never captured this round, boundary unset,
-     * or already consumed by a prior restore/round end).
+     * damage first. Repeatable any number of times (the snapshot isn't consumed — break it, restore
+     * it, break it again, as many times as needed for testing); a fresh snapshot only replaces it at
+     * the next {@code /conquest start}. Returns false if no snapshot is held (never captured this
+     * round, or no boundary/sector combat area was set to capture from).
      */
     public boolean restoreTerrain(MinecraftServer server) {
         if (terrainSnapshot == null) {
@@ -1652,9 +1654,6 @@ public class ConquestManager extends SavedData {
             terrainSnapshot.placeInWorld(level, terrainSnapshotOrigin, terrainSnapshotOrigin,
                     new StructurePlaceSettings().setIgnoreEntities(true).setKnownShape(true), level.getRandom(), 3);
         }
-        terrainSnapshot = null;
-        terrainSnapshotDim = null;
-        terrainSnapshotOrigin = null;
     }
 
     // --- map presets (named, reusable point/spawn/mode layouts) ---

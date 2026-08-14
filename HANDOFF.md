@@ -40,6 +40,15 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **`/conquest boundary restore`を何度でも呼び直せるように**(2026-08-15): ユーザーから
+  「何回でも戦闘区域をリセットできるように」と依頼。`restoreTerrainSnapshot`が復元後に
+  `terrainSnapshot`(保持していた`StructureTemplate`)を`null`にリセットしていたため、
+  `/conquest boundary restore`は1ラウンドにつき1回しか成功せず、2回目以降は「スナップショットが
+  無い」エラーになっていた(マップテスト中に壊す→復元→また壊す、を繰り返すには毎回
+  `/conquest start`し直す必要があった)。復元後もスナップショットを保持したままにするよう変更
+  (次の`/conquest start`で新しいスナップショットに上書きされるまでそのまま)。`endRound`の
+  自動復元も同じ`restoreTerrainSnapshot`を使っているが、そちらは元々1回しか呼ばれないので
+  挙動に変化は無い
 - **Minecraftのmodリスト画面でバージョン表示が更新されないバグを修正**(2026-08-14、
   squadtp本体も同じ修正): v0.2.7リリース直後、ユーザーから「mod verがminecraft上でうまく
   反映されてない」と報告。`mods.toml`の`version`欄が初期スキャフォールドのまま`"0.2.1"`
