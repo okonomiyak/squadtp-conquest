@@ -38,9 +38,11 @@ import java.util.Set;
  * cratering, since anything left unhandled falls straight through to vanilla destruction.
  *
  * <p>Restoration is handled separately and unconditionally by
- * {@link ConquestManager#restoreTerrainSnapshot}, which pastes back a whole-region snapshot of
- * the battlefield boundary taken at round start — so damage from any source (not just what this
- * class craters) resets as long as a boundary is set, regardless of what happens here.
+ * {@link ConquestManager#restoreTerrainSnapshot}, which pastes back a whole-region snapshot taken
+ * at round start of the battlefield boundary, or — in breakthrough, if no global boundary is set —
+ * the union of every sector's combat area (see {@link ConquestManager#resolveSnapshotRegion}). So
+ * damage from any source (not just what this class craters) resets as long as one of those is set,
+ * regardless of what happens here.
  *
  * <p>Every craterized block still gets {@link Block#wasExploded} called on it (same hook vanilla's
  * own explosion finalization uses), so TNT caught in the blast still primes and chain-detonates —

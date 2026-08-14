@@ -1477,33 +1477,79 @@ public class ConquestManager extends SavedData {
         return protectedBlocks;
     }
 
+    /** dim+box the terrain snapshot should cover; see {@link #resolveSnapshotRegion}. */
+    private record SnapshotRegion(ResourceKey<Level> dim, BlockPos min, BlockPos max) {}
+
     /**
-     * Takes a whole-region snapshot of the battlefield boundary for later restoration by
+     * The global battlefield boundary if set; otherwise (breakthrough only) the union of every
+     * sector's combat area, so a breakthrough map that skips the global boundary in favor of
+     * per-sector areas still gets its terrain snapshotted/restored. Sectors whose combat area is
+     * in a different dimension than the first one found are ignored (a snapshot can't span
+     * dimensions). Null if neither is available.
+     */
+    @Nullable
+    private SnapshotRegion resolveSnapshotRegion() {
+        if (boundaryDim != null) {
+            BlockPos min = getBoundaryMin();
+            BlockPos max = getBoundaryMax();
+            if (min != null && max != null) {
+                return new SnapshotRegion(boundaryDim, min, max);
+            }
+        }
+        if (mode != GameMode.BREAKTHROUGH) {
+            return null;
+        }
+        ResourceKey<Level> dim = null;
+        BlockPos min = null;
+        BlockPos max = null;
+        for (Sector sector : sectors.values()) {
+            ResourceKey<Level> sectorDim = sector.getCombatAreaDim();
+            BlockPos sectorMin = sector.getCombatAreaMin();
+            BlockPos sectorMax = sector.getCombatAreaMax();
+            if (sectorDim == null || sectorMin == null || sectorMax == null) {
+                continue;
+            }
+            if (dim == null) {
+                dim = sectorDim;
+            } else if (!dim.equals(sectorDim)) {
+                continue;
+            }
+            min = min == null ? sectorMin : new BlockPos(Math.min(min.getX(), sectorMin.getX()),
+                    Math.min(min.getY(), sectorMin.getY()), Math.min(min.getZ(), sectorMin.getZ()));
+            max = max == null ? sectorMax : new BlockPos(Math.max(max.getX(), sectorMax.getX()),
+                    Math.max(max.getY(), sectorMax.getY()), Math.max(max.getZ(), sectorMax.getZ()));
+        }
+        return dim == null ? null : new SnapshotRegion(dim, min, max);
+    }
+
+    /**
+     * Takes a whole-region snapshot of {@link #resolveSnapshotRegion} for later restoration by
      * {@link #restoreTerrainSnapshot}. No-op (leaves {@link #terrainSnapshot} null) if terrain
-     * destruction is disabled or no boundary is set — automatic terrain reset is opt-in via
-     * {@code /conquest boundary set}.
+     * destruction is disabled or no region is available — automatic terrain reset is opt-in via
+     * {@code /conquest boundary set} (or, in breakthrough, {@code /conquest sector area set}).
      */
     private void captureTerrainSnapshot(MinecraftServer server) {
         terrainSnapshot = null;
         terrainSnapshotDim = null;
         terrainSnapshotOrigin = null;
-        if (!Config.TERRAIN_DESTRUCTION_ENABLED.get() || boundaryDim == null) {
+        if (!Config.TERRAIN_DESTRUCTION_ENABLED.get()) {
             return;
         }
-        BlockPos min = getBoundaryMin();
-        BlockPos max = getBoundaryMax();
-        if (min == null || max == null) {
+        SnapshotRegion region = resolveSnapshotRegion();
+        if (region == null) {
             return;
         }
-        ServerLevel level = server.getLevel(boundaryDim);
+        ServerLevel level = server.getLevel(region.dim());
         if (level == null) {
             return;
         }
+        BlockPos min = region.min();
+        BlockPos max = region.max();
         Vec3i size = new Vec3i(max.getX() - min.getX() + 1, max.getY() - min.getY() + 1, max.getZ() - min.getZ() + 1);
         StructureTemplate template = new StructureTemplate();
         template.fillFromWorld(level, min, size, false, null);
         terrainSnapshot = template;
-        terrainSnapshotDim = boundaryDim;
+        terrainSnapshotDim = region.dim();
         terrainSnapshotOrigin = min.immutable();
     }
 

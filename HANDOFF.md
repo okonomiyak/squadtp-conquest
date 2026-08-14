@@ -40,6 +40,19 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **ブレイクスルーで地形の自動復元が機能しない穴を修正**(2026-08-14): ユーザーから「地形破壊を
+  行けるようにして」と依頼。地形破壊(クレーター化)自体は`TerrainDestructionEvents`が
+  `terrainDestructionEnabled`とラウンド状態だけを見ており全モードで機能していたが、
+  **自動復元**(`ConquestManager.captureTerrainSnapshot`/`restoreTerrainSnapshot`)は
+  グローバルな`/conquest boundary`が設定されている場合にしか動かなかった。ブレイクスルーは
+  グローバル境界を使わずセクター単位の`sector area`だけで運用することが多いため、そういう
+  マップでは地形が壊れっぱなしで戻らない抜け穴になっていた。`resolveSnapshotRegion()`を新設し、
+  グローバル境界があればそれを優先、無ければ(ブレイクスルーのみ)全セクターの戦闘エリアの
+  バウンディングボックス(合算範囲)にフォールバックするようにした。異なるディメンションの
+  戦闘エリアが混在する場合は最初に見つかったディメンションのセクターだけを合算(通常は
+  発生しない想定)。`captureTerrainSnapshot`/`restoreTerrainSnapshot`自体のロジック(スナップショット
+  ・貼り戻し・`/conquest boundary restore`との連携)は変更していない——対象範囲の決め方だけを
+  差し替えた
 - **攻め陣/守り陣判定が古いセクター情報を使っていたバグを修正**(2026-08-14): ユーザーから
   「ブレイクスルーで自陣敵陣システムどうなってる」と聞かれ`tickBreakthrough`を読み直したところ、
   `checkSectorFrontZones(server, sector)`が`advanceSector(server)`(セクター突破時に
