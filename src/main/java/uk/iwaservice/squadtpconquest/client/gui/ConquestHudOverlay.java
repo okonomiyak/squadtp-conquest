@@ -27,7 +27,8 @@ public class ConquestHudOverlay implements IGuiOverlay {
 
     private static final int BAR_WIDTH = 200;
     private static final int BAR_HEIGHT = 10;
-    private static final int BAR_Y = 6;
+    // Leaves room above the bar for the lead indicator / sector line, which sits at BAR_Y - 10.
+    private static final int BAR_Y = 18;
 
     private static final int ICON_SIZE = 16;
     private static final int ICON_GAP = 6;
