@@ -19,7 +19,8 @@ import java.util.UUID;
 /**
  * Renders every capture point as a JourneyMap waypoint, colored by its current owner, plus a
  * temporary marker for each enemy currently spotted by the viewer's team (see
- * {@link uk.iwaservice.squadtpconquest.network.SpotPacket}).
+ * {@link uk.iwaservice.squadtpconquest.network.SpotPacket}) and each location currently pinned by
+ * a teammate (see {@link uk.iwaservice.squadtpconquest.network.PinPacket}).
  */
 public final class ConquestJmWaypointHandler {
 
@@ -53,6 +54,13 @@ public final class ConquestJmWaypointHandler {
         for (Map.Entry<UUID, ConquestClientData.SpotEntry> entry : ConquestClientData.getSpots().entrySet()) {
             ConquestClientData.SpotEntry spot = entry.getValue();
             show(api, waypoint("spot_" + entry.getKey(), spot.name(), spot.dimension(), spot.pos(), spotColor));
+        }
+
+        // Pins are only ever sent by/to teammates, so the placer's team is always our own.
+        int pinColor = ConquestClientData.getYourTeam().hudColor() & 0xFFFFFF;
+        for (Map.Entry<UUID, ConquestClientData.PinEntry> entry : ConquestClientData.getPins().entrySet()) {
+            ConquestClientData.PinEntry pin = entry.getValue();
+            show(api, waypoint("pin_" + entry.getKey(), pin.placerName(), pin.dimension(), pin.pos(), pinColor));
         }
     }
 

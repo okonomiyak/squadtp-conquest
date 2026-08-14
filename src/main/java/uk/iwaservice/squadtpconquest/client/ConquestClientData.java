@@ -20,7 +20,12 @@ public final class ConquestClientData {
     /** A spotted enemy's last known position (see {@link uk.iwaservice.squadtpconquest.network.SpotPacket}). */
     public record SpotEntry(String name, ResourceLocation dimension, BlockPos pos, long expiryGameTime) {}
 
+    /** A teammate's pinned location (see {@link uk.iwaservice.squadtpconquest.network.PinPacket}). */
+    public record PinEntry(String placerName, ResourceLocation dimension, BlockPos pos, long expiryGameTime) {}
+
     private static final Map<UUID, SpotEntry> spots = new HashMap<>();
+    /** Keyed by placer UUID — each player has at most one active pin. */
+    private static final Map<UUID, PinEntry> pins = new HashMap<>();
 
     private static List<ConquestSyncPacket.PointStatus> points = List.of();
     private static int ticketsA;
@@ -119,6 +124,29 @@ public final class ConquestClientData {
     /** Called on logout: spot expiry is measured in absolute world time, meaningless across sessions/servers. */
     public static synchronized void clearSpots() {
         spots.clear();
+    }
+
+    public static synchronized void addPin(UUID placer, String placerName, ResourceLocation dimension, BlockPos pos,
+                                           long expiryGameTime) {
+        pins.put(placer, new PinEntry(placerName, dimension, pos, expiryGameTime));
+    }
+
+    public static synchronized void removePin(UUID placer) {
+        pins.remove(placer);
+    }
+
+    /** Drops expired pins. Returns true if anything was removed, so the caller knows to redraw. */
+    public static synchronized boolean pruneExpiredPins(long currentGameTime) {
+        return pins.entrySet().removeIf(e -> e.getValue().expiryGameTime() <= currentGameTime);
+    }
+
+    public static synchronized Map<UUID, PinEntry> getPins() {
+        return Map.copyOf(pins);
+    }
+
+    /** Called on logout: pin expiry is measured in absolute world time, meaningless across sessions/servers. */
+    public static synchronized void clearPins() {
+        pins.clear();
     }
 
     public static synchronized int getTicketsA() {

@@ -17,6 +17,8 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 | `/conquest team join <a\|b\|admin\|range\|spectator>` | チームA/Bに参加。同時にバニラチーム`conquest_a`/`conquest_b`にも自動参加(フレンドリーファイア無効・チーム色設定)。`admin`は観戦用の第3チームでOP限定。`range`は[演習場](#演習場)に参加(誰でも可、参加した瞬間エリア内へテレポート)。`spectator`は誰でも参加できる観戦専用チーム(`admin`と同様に試合には一切影響しないが、OP不要な代わりにバニラのスペクテイターモードへ強制切り替え) | - (`admin`のみOP) |
 | `/conquest team join <a\|b\|admin\|range\|spectator> <プレイヤー>` | 指定したプレイヤーをそのチームに参加させる(自分以外も指定可)。対象にも参加したことがアクションバーで通知される | OP |
 | `/conquest spot <プレイヤー>` | 対象を[索敵マーキング](#索敵マーキングスポット)する。通常は専用キーで自動送信されるため手動実行の必要はない | - |
+| `/conquest pin <x> <y> <z>` | [ピン](#ピン)を立てる。通常は専用キーで自動送信されるため手動実行の必要はない | - |
+| `/conquest pin clear` | 自分が立てたピンを手動で消す。通常はピンキーをしゃがみながら押すと自動送信される | - |
 | `/conquest team shuffle` | 管理人チーム以外のオンラインプレイヤーをランダムにA/Bへ均等に振り分け直す | OP |
 | `/conquest team assign <attacker\|defender> <a\|b>` | ブレイクスルーモードで、チームA/Bのどちらが攻撃側/防衛側かを設定。ラウンドが`WAITING`の時のみ変更可(既定は攻撃側=チームA) | OP |
 | `/conquest mode set <conquest\|tdm\|breakthrough>` | ゲームモードを切り替え。ラウンドが`WAITING`の時のみ変更可 | OP |
@@ -331,6 +333,19 @@ JourneyMapを導入している場合、ラウンド進行中(`IN_PROGRESS`)は�
 Waypoint経由で別途表示されるので、この非表示化と競合しない)。味方は対象外(squadtp本体の
 分隊メンバー位置共有と同じ扱い)
 
+## ピン
+
+任意の地点に自チーム向けのマーカーを立てる、[索敵マーキング](#索敵マーキングスポット)の
+地点版(スポットが「敵プレイヤー」を対象にするのに対し、ピンは「地面・ブロック」を対象にする)。
+キー(既定: `N`キー、`key.squadtpconquest.pin`)を押すと、クロスヘアの先のブロックを
+`pinRangeBlocks`(既定100)ブロック先まで判定して`/conquest pin <x> <y> <z>`が飛び、
+[JourneyMapウェイポイント](#拠点のウェイポイント表示journeymap連携)としてその位置が
+`pinDurationSeconds`秒(既定60)だけ表示される(自チーム色)。1人につき同時に1つまで
+(新しいピンを立てると前のピンは自動的に消える)。連打防止に`pinCooldownSeconds`秒(既定2)の
+クールダウンがある。**しゃがみながらピンキーを押すと、自分のピンを期限前でも手動で消せる**
+(`/conquest pin clear`、クールダウンの対象外)。JourneyMap未導入環境ではウェイポイントが
+出ないだけで、キー自体は害なく空振りする。
+
 ## 演習場
 
 ラウンドの状態(`WAITING`/`STARTING`/`IN_PROGRESS`/`ENDED`)やゲームモードと完全に独立した、
@@ -468,6 +483,9 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 - `spotRangeBlocks`(既定100) — [索敵マーキング](#索敵マーキングスポット)キーが反応する最大距離
 - `spotDurationSeconds`(既定8) — スポットした敵の位置がJourneyMapに表示され続ける秒数
 - `spotCooldownSeconds`(既定2) — スポットキーの連打防止クールダウン秒数
+- `pinRangeBlocks`(既定100) — [ピン](#ピン)キーが反応する最大距離
+- `pinDurationSeconds`(既定60) — ピンした地点がJourneyMapに表示され続ける秒数(手動で早期消去も可)
+- `pinCooldownSeconds`(既定2) — ピンキー(設置側)の連打防止クールダウン秒数
 - `rangeResetIntervalSeconds`(既定1800=30分) — [演習場](#演習場)の自動地形リセット間隔。
   演習場エリア未設定なら無効
 
@@ -496,7 +514,8 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 (`ConquestCommand.CONFIG_KEYS`に明示登録されたキーだけ)で、`breakthrough`の残り
 (`attackerTickets`・`sectorTimeLimitSeconds`等)・`homeZoneKillSeconds`・`boundaryKillSeconds`・
 `teamBeaconLifetimeSeconds`・`spawnAtOwnedPointsEnabled`・`spotRangeBlocks`・
-`spotDurationSeconds`・`spotCooldownSeconds`・`rangeResetIntervalSeconds`・
+`spotDurationSeconds`・`spotCooldownSeconds`・`pinRangeBlocks`・`pinDurationSeconds`・
+`pinCooldownSeconds`・`rangeResetIntervalSeconds`・
 `terrainDestruction`セクションの項目(リスト・文字列型を含む)は
 `world/serverconfig/squadtpconquest-server.toml`の直接編集が必要(既存の制約で、今回追加した
 項目も同様の扱いにしている)。

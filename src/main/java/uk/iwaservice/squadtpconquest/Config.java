@@ -27,6 +27,9 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue SPOT_RANGE_BLOCKS;
     public static final ForgeConfigSpec.IntValue SPOT_DURATION_SECONDS;
     public static final ForgeConfigSpec.IntValue SPOT_COOLDOWN_SECONDS;
+    public static final ForgeConfigSpec.IntValue PIN_RANGE_BLOCKS;
+    public static final ForgeConfigSpec.IntValue PIN_DURATION_SECONDS;
+    public static final ForgeConfigSpec.IntValue PIN_COOLDOWN_SECONDS;
     public static final ForgeConfigSpec.IntValue ASSIST_WINDOW_SECONDS;
     public static final ForgeConfigSpec.IntValue SCORE_PER_KILL;
     public static final ForgeConfigSpec.IntValue SCORE_PER_ASSIST;
@@ -129,6 +132,18 @@ public final class Config {
         SPOT_COOLDOWN_SECONDS = b
                 .comment("Seconds a player must wait between uses of the spot key.")
                 .defineInRange("spotCooldownSeconds", 2, 0, 30);
+        PIN_RANGE_BLOCKS = b
+                .comment("Max distance (blocks) the pin key can mark a location at. Blocked by line of sight",
+                        "(walls stop it short of this).")
+                .defineInRange("pinRangeBlocks", 100, 10, 300);
+        PIN_DURATION_SECONDS = b
+                .comment("Seconds a pinned location stays visible to the placer's team (JourneyMap waypoint)",
+                        "before it expires on its own. The placer can also remove it early (see the pin key's",
+                        "sneak-to-clear behavior).")
+                .defineInRange("pinDurationSeconds", 60, 5, 600);
+        PIN_COOLDOWN_SECONDS = b
+                .comment("Seconds a player must wait between uses of the pin key.")
+                .defineInRange("pinCooldownSeconds", 2, 0, 30);
         b.pop();
 
         b.push("scoreboard");

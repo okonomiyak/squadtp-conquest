@@ -33,6 +33,7 @@ public final class ClientEvents {
     @SubscribeEvent
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         ConquestClientData.clearSpots();
+        ConquestClientData.clearPins();
         JourneyMapCompat.clear();
     }
 
@@ -62,7 +63,12 @@ public final class ClientEvents {
         while (ClientModEvents.SPOT.consumeClick()) {
             trySpot(mc);
         }
-        if (mc.level != null && ConquestClientData.pruneExpiredSpots(mc.level.getGameTime())) {
+        while (ClientModEvents.PIN.consumeClick()) {
+            tryPin(mc);
+        }
+        boolean expired = mc.level != null && ConquestClientData.pruneExpiredSpots(mc.level.getGameTime());
+        expired |= mc.level != null && ConquestClientData.pruneExpiredPins(mc.level.getGameTime());
+        if (expired) {
             JourneyMapCompat.refresh();
         }
     }
@@ -105,6 +111,36 @@ public final class ClientEvents {
             return; // a wall was in the way before the entity was reached
         }
         player.connection.sendCommand("conquest spot " + target.getName().getString());
+    }
+
+    /**
+     * Sneaking sends {@code /conquest pin clear} (removes the player's own active pin early).
+     * Otherwise raycasts from the crosshair for a block within {@code pinRangeBlocks} and sends
+     * {@code /conquest pin <pos>} if one is hit. The server re-validates everything (round state,
+     * team) — same "don't bother sending a command that couldn't possibly do anything" convention
+     * as {@link #trySpot}.
+     */
+    private static void tryPin(Minecraft mc) {
+        LocalPlayer player = mc.player;
+        if (player == null || mc.level == null) {
+            return;
+        }
+        if (player.isShiftKeyDown()) {
+            player.connection.sendCommand("conquest pin clear");
+            return;
+        }
+        double range = Config.PIN_RANGE_BLOCKS.get();
+        Vec3 eye = player.getEyePosition(1.0f);
+        Vec3 look = player.getViewVector(1.0f);
+        Vec3 end = eye.add(look.scale(range));
+
+        BlockHitResult blockHit = mc.level.clip(
+                new ClipContext(eye, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+        if (blockHit.getType() == HitResult.Type.MISS) {
+            return;
+        }
+        var pos = blockHit.getBlockPos();
+        player.connection.sendCommand("conquest pin " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
     }
 
     /** Like vanilla's Tab player list: opens while held, closes the instant the key is released. */

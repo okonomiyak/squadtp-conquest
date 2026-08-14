@@ -5,6 +5,7 @@ import uk.iwaservice.squadtpconquest.client.gui.ConquestScreen;
 import uk.iwaservice.squadtpconquest.compat.JourneyMapCompat;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
+import uk.iwaservice.squadtpconquest.network.PinPacket;
 import uk.iwaservice.squadtpconquest.network.SpotPacket;
 
 /** Client-only entry point for the S2C packets. Never classloaded on a dedicated server. */
@@ -33,6 +34,17 @@ public final class ClientPacketHandler {
         Minecraft mc = Minecraft.getInstance();
         long now = mc.level != null ? mc.level.getGameTime() : 0;
         ConquestClientData.addSpot(msg.target(), msg.targetName(), msg.dimension(), msg.pos(), now + msg.durationTicks());
+        JourneyMapCompat.refresh();
+    }
+
+    public static void handlePin(PinPacket msg) {
+        if (msg.cleared()) {
+            ConquestClientData.removePin(msg.placer());
+        } else {
+            Minecraft mc = Minecraft.getInstance();
+            long now = mc.level != null ? mc.level.getGameTime() : 0;
+            ConquestClientData.addPin(msg.placer(), msg.placerName(), msg.dimension(), msg.pos(), now + msg.durationTicks());
+        }
         JourneyMapCompat.refresh();
     }
 

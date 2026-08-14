@@ -40,6 +40,7 @@ import uk.iwaservice.squadtpconquest.Config;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 import uk.iwaservice.squadtpconquest.network.NetworkHandler;
+import uk.iwaservice.squadtpconquest.network.PinPacket;
 import uk.iwaservice.squadtpconquest.network.SpotPacket;
 
 import javax.annotation.Nullable;
@@ -151,6 +152,8 @@ public class ConquestManager extends SavedData {
     private final Map<UUID, Integer> boundaryOutsideSeconds = new HashMap<>();
     /** Transient: tick count each player's spot key is next usable at (see {@link #spotPlayer}). */
     private final Map<UUID, Integer> spotCooldownUntilTick = new HashMap<>();
+    /** Transient: tick count each player's pin key is next usable at (see {@link #placePin}). */
+    private final Map<UUID, Integer> pinCooldownUntilTick = new HashMap<>();
 
     /**
      * Transient: a whole-region snapshot of the battlefield boundary (see {@link #getBoundaryMin})
@@ -507,6 +510,40 @@ public class ConquestManager extends SavedData {
             }
         }
         return true;
+    }
+
+    /**
+     * Marks {@code pos} for {@code placer}'s team (see {@link PinPacket}), replacing any pin the
+     * same placer already has active — each player has at most one live pin. Gated by a
+     * per-placer cooldown, same shape as {@link #spotPlayer}. False if still on cooldown (no-op);
+     * the caller has already validated eligibility (round state, team) before calling this.
+     */
+    public boolean placePin(MinecraftServer server, ServerPlayer placer, ResourceKey<Level> dim, BlockPos pos) {
+        int now = server.getTickCount();
+        Integer readyAt = pinCooldownUntilTick.get(placer.getUUID());
+        if (readyAt != null && now < readyAt) {
+            return false;
+        }
+        pinCooldownUntilTick.put(placer.getUUID(), now + Config.PIN_COOLDOWN_SECONDS.get() * 20);
+
+        broadcastPin(server, placer, new PinPacket(placer.getUUID(), placer.getGameProfile().getName(),
+                dim.location(), pos, Config.PIN_DURATION_SECONDS.get() * 20, false));
+        return true;
+    }
+
+    /** Removes {@code placer}'s active pin early, if any, without waiting for it to expire. Not cooldown-gated. */
+    public void clearPin(MinecraftServer server, ServerPlayer placer) {
+        broadcastPin(server, placer, new PinPacket(placer.getUUID(), placer.getGameProfile().getName(),
+                placer.level().dimension().location(), placer.blockPosition(), 0, true));
+    }
+
+    private void broadcastPin(MinecraftServer server, ServerPlayer placer, PinPacket packet) {
+        Team placerTeam = teamOf(placer.getUUID());
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (teamOf(player.getUUID()) == placerTeam) {
+                NetworkHandler.send(player, packet);
+            }
+        }
     }
 
     private int countOwned(Team team) {
@@ -1734,6 +1771,7 @@ public class ConquestManager extends SavedData {
         zoneIntrusionSeconds.clear();
         boundaryOutsideSeconds.clear();
         spotCooldownUntilTick.clear();
+        pinCooldownUntilTick.clear();
         sectorAreaGraceSecondsRemaining = 0;
         teamBeacons.clear();
         if (mode == GameMode.BREAKTHROUGH) {

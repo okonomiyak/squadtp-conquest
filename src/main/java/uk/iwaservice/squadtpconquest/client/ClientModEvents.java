@@ -39,11 +39,20 @@ public final class ClientModEvents {
             GLFW.GLFW_MOUSE_BUTTON_MIDDLE,
             "key.categories.squadtpconquest");
 
+    /** Pings whatever block is under the crosshair for the player's team; sneak+press clears it early. */
+    public static final KeyMapping PIN = new KeyMapping(
+            "key.squadtpconquest.pin",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_N,
+            "key.categories.squadtpconquest");
+
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(OPEN_CONQUEST_SCREEN);
         event.register(OPEN_SCORE_SCREEN);
         event.register(SPOT);
+        event.register(PIN);
     }
 
     @SubscribeEvent

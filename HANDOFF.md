@@ -40,6 +40,27 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **ピン機能を新規実装**(2026-08-14): ユーザーから「ピン機能がほしい」と依頼され、
+  AskUserQuestionで「任意の地点にマーカーを立てる(既存のスポットと同じ仕組みを、地点指定・
+  手動消滅ありで流用)」を選択。既存の[索敵マーキング(スポット)](#索敵マーキングスポット)
+  の配管をほぼそのまま複製した:
+  - 新規キー`key.squadtpconquest.pin`(既定`N`キー)。`ClientEvents.tryPin`がクロスヘアの
+    ブロックレイキャスト(`pinRangeBlocks`)を行い`/conquest pin <x> <y> <z>`を送信。
+    しゃがみながら押すと代わりに`/conquest pin clear`を送信(自分のピンを早期削除)
+  - 新規`PinPacket`(`placer`のUUIDをキーにする点がSpotPacketと違う——1人1ピンなので新しいピンで
+    古いピンを自動置き換えでき、`cleared`フラグで削除も同じパケット型で表現できる)、
+    `NetworkHandler`にID 3で登録、`PROTOCOL_VERSION` 17→18
+  - `ConquestManager.placePin`/`clearPin`(スポットと同じ`Map<UUID, Integer>`クールダウン方式、
+    ただし`clearPin`はクールダウン対象外)、同一チームへのみブロードキャスト
+  - `ConquestClientData`に`Map<UUID, PinEntry>`追加(キーは設置者UUID)、
+    `ConquestJmWaypointHandler`でJourneyMapウェイポイントとして表示(自チーム色、
+    `pin_<placerUUID>`のID)。`pinDurationSeconds`(既定60)経過で自動消滅、または
+    しゃがみ+ピンキーで手動消滅
+  - `Config`に`pinRangeBlocks`(既定100)/`pinDurationSeconds`(既定60)/`pinCooldownSeconds`
+    (既定2)を追加。`/conquest config set`には未登録(スポット関連configと同じ扱い)
+  - ラウンド開始時に`pinCooldownUntilTick`をクリア(スポットと同様)。ラウンド終了時に
+    アクティブなピンを強制消去する処理は無い(スポットも同様に無い——`pinDurationSeconds`が
+    短めなら次ラウンドまでに自然消滅する想定、既存踏襲でスコープ外とした)
 - **ブレイクスルーで地形の自動復元が機能しない穴を修正**(2026-08-14): ユーザーから「地形破壊を
   行けるようにして」と依頼。地形破壊(クレーター化)自体は`TerrainDestructionEvents`が
   `terrainDestructionEnabled`とラウンド状態だけを見ており全モードで機能していたが、

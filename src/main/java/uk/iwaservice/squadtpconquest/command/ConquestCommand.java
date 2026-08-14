@@ -147,6 +147,11 @@ public final class ConquestCommand {
                 .then(Commands.literal("spot")
                         .then(Commands.argument("target", EntityArgument.player())
                                 .executes(ConquestCommand::spot)))
+                .then(Commands.literal("pin")
+                        .then(Commands.argument("pos", BlockPosArgument.blockPos())
+                                .executes(ConquestCommand::pin))
+                        .then(Commands.literal("clear")
+                                .executes(ConquestCommand::pinClear)))
                 .then(Commands.literal("point")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -401,6 +406,29 @@ public final class ConquestCommand {
             return 0;
         }
         return manager.spotPlayer(ctx.getSource().getServer(), spotter, target) ? 1 : 0;
+    }
+
+    /**
+     * Marks a location for the placer's team (see {@link ConquestManager#placePin}). Triggered by
+     * the client's pin key after its own line-of-sight raycast, so failures here are silent (0, no
+     * chat message) rather than user-facing errors — same convention as {@link #spot}.
+     */
+    private static int pin(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer placer = ctx.getSource().getPlayerOrException();
+        BlockPos pos = BlockPosArgument.getBlockPos(ctx, "pos");
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        if (manager.getState() != RoundState.IN_PROGRESS || !manager.teamOf(placer.getUUID()).isCombatant()) {
+            return 0;
+        }
+        return manager.placePin(ctx.getSource().getServer(), placer, placer.serverLevel().dimension(), pos) ? 1 : 0;
+    }
+
+    /** Removes the caller's own active pin early. Triggered by sneak+pin-key on the client. */
+    private static int pinClear(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer placer = ctx.getSource().getPlayerOrException();
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        manager.clearPin(ctx.getSource().getServer(), placer);
+        return 1;
     }
 
     private static int setMode(CommandContext<CommandSourceStack> ctx) {
