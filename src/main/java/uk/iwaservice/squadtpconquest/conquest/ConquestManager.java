@@ -2354,10 +2354,13 @@ public class ConquestManager extends SavedData {
         teleportToGatherPoint(server);
         restoreTerrainSnapshot(server);
 
-        // No per-participant filtering is exposed by squadtp's public API, so
-        // this clears downed/revive state server-wide rather than just for
-        // this round's players.
-        ReviveSystem.clear();
+        // No per-participant filtering is exposed by squadtp's public API, so this resolves
+        // downed/revive state server-wide rather than just for this round's players. Uses
+        // forceReviveAll (not clear()) so anyone still downed when the round ends gets a full
+        // recovery instead of being left permanently stuck (pose/effects never cleared, no longer
+        // revivable) — clear() alone is meant for server shutdown, where there's no player left to
+        // fix up client-side.
+        ReviveSystem.forceReviveAll(server);
     }
 
     /** Announces the round's top scorer (by {@link #totalScore}) in chat. No-op if no combatant is online. */
