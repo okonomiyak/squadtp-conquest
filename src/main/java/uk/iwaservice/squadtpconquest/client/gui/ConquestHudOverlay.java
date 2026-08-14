@@ -89,10 +89,10 @@ public class ConquestHudOverlay implements IGuiOverlay {
     }
 
     /**
-     * Breakthrough: sector progress + role-specific ticket/wave info, then only the active
-     * sector's flags. A spectating admin always sees the attacker info (tickets, next wave) —
-     * "attacker/defender" is meaningless from a neutral viewpoint, so it defaults to whichever
-     * side has the more eventful info to show.
+     * Breakthrough: sector progress + role-specific ticket info, then only the active sector's
+     * flags. A spectating admin always sees the attacker info (tickets) — "attacker/defender" is
+     * meaningless from a neutral viewpoint, so it defaults to whichever side has the more
+     * eventful info to show.
      */
     private void renderBreakthrough(GuiGraphics graphics, Font font, int width, Team yourTeam, boolean spectating) {
         Team attackerTeam = ConquestClientData.getAttackerTeam();
@@ -108,11 +108,6 @@ public class ConquestHudOverlay implements IGuiOverlay {
         graphics.drawCenteredString(font, roleLine, width / 2, barY, attackerTeam.hudColor());
 
         int nextY = barY + 10;
-        if (showAttackerInfo) {
-            graphics.drawCenteredString(font, Component.translatable("conquest.hud.next_wave",
-                    ConquestClientData.getRespawnWaveSecondsRemaining()), width / 2, nextY, 0xAAAAAA);
-            nextY += 10;
-        }
 
         List<ConquestSyncPacket.PointStatus> activePoints = ConquestClientData.getPoints().stream()
                 .filter(ConquestSyncPacket.PointStatus::active).toList();

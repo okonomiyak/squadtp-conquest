@@ -40,6 +40,33 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **ブレイクスルーモードの調整3件**(2026-08-14): ユーザーから「蘇生はあり、間隔スポーンなしで、
+  戦闘区域は0が攻め陣・1が戦闘区域・2が守り陣でセクター攻略ごとに1つずつずれるように」と依頼。
+  (1) **蘇生を有効なままに**: `SquadFeature.REVIVE`の自動無効化条件を`mode != CONQUEST`
+  (TDM・ブレイクスルー両方)から`mode == GameMode.TDM`のみに変更(`start`/`stop`/`endRound`の
+  3箇所)。ブレイクスルーのチケット消費(`handleBreakthroughDeath`)はTDMのキル計上と同じく
+  `LivingDeathEvent`(本当の死亡)にのみフックしているため、蘇生を有効にしても「ダウン中は
+  チケット未消費」になるだけでBFのRush的挙動として自然(TDMのキル計上遅延問題とは事情が違う)。
+  (2) **間隔(ウェーブ)リスポーンを廃止し即時リスポーンに**: 従来は攻撃側が死ぬと
+  `pendingAttackerRespawns`に貯めて`respawnWaveIntervalSeconds`秒ごとに`releaseAttackerWave`で
+  まとめて解放していたが、ユーザー要望で撤廃。`handleBreakthroughRespawn`を「pending なら即座に
+  `teleportToRoleSpawn`」に変更し、`releaseAttackerWave`メソッド・`respawnWaveSecondsRemaining`
+  フィールド・`BT_RESPAWN_WAVE_INTERVAL_SECONDS`configを削除。`ConquestSyncPacket`から
+  `respawnWaveSecondsRemaining`フィールドを削除したため`PROTOCOL_VERSION` 15→16
+  (HUDの「次の出撃まで」表示も削除)。`pendingAttackerRespawns`自体は「チケット消費済みで
+  即時リスポーンが確定している」フラグとして存続(NBT永続化も維持)。
+  (3) **攻め陣/守り陣がセクター前進とともに自動でスライド**: 既存の`Sector.combatArea`
+  (`/conquest sector area set`、javadocに「未設定なら次善としてグローバル境界にフォールバック」
+  とある通り既に戦闘区域=index1相当は実装済みだった)を**そのまま流用**し、新規フィールドを
+  一切増やさずに実現。新規`checkSectorFrontZones`が毎秒、アクティブセクターの
+  `sectors.lowerKey`(1つ前、index0相当=攻め陣)と`sectors.higherKey`(1つ先、index2相当=守り陣)
+  の戦闘エリアに対し、既存の`checkZoneIntrusion`(自陣ゾーン処刑で使っている private ヘルパー、
+  ownerとdim/min/maxを渡すだけの汎用形)をそのまま呼ぶだけ。攻め陣は`owner=attackerTeam`
+  (侵入した防衛側を処刑)、守り陣は`owner=defenderTeam()`(侵入した攻撃側を処刑)。セクターが
+  進むと`sectors.lowerKey`/`higherKey`の結果が自動でずれるため、シフトのための特別なロジックは
+  不要。さらに1つ前(index-1相当、もう攻め陣ですらない)は`tickBoundary`が引き続き
+  「アクティブセクターの戦闘エリアの外」として扱うため、ユーザーが要求した「0は戦闘区域外」も
+  既存の境界処刑ロジックがそのままカバーする。ビルド成功のみ、実プレイでの動作未確認
 - **チームごとの第2スポーン地点**(2026-08-14新規実装): ユーザーから「二個リスポーンポイントを
   設定できるようにして、二個目はテレポートできるだけでいい」と依頼。既存の`spawnA/B`
   (`/conquest spawn set`、ラウンド開始時テレポート先+リスポーン選択肢)とは別に、`spawnA2/B2`を

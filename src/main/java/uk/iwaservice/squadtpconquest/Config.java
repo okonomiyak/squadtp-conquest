@@ -33,7 +33,6 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue SCORE_PER_REVIVE;
 
     public static final ForgeConfigSpec.IntValue BT_ATTACKER_TICKETS;
-    public static final ForgeConfigSpec.IntValue BT_RESPAWN_WAVE_INTERVAL_SECONDS;
     public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_LIMIT_SECONDS;
     public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_EXTENSION_ON_CAPTURE;
     public static final ForgeConfigSpec.IntValue BT_SECTOR_AREA_TRANSITION_GRACE_SECONDS;
@@ -152,10 +151,6 @@ public final class Config {
                 .comment("Total respawn tickets the attacking team starts a Breakthrough round with.",
                         "Each attacker death consumes one; once exhausted, that death is permanent for the round.")
                 .defineInRange("attackerTickets", 30, 1, 100000);
-        BT_RESPAWN_WAVE_INTERVAL_SECONDS = b
-                .comment("Seconds between attacker respawn waves. Dead attackers wait as spectators until the",
-                        "next wave, then deploy together at the active sector's attacker spawn.")
-                .defineInRange("respawnWaveIntervalSeconds", 15, 1, 600);
         BT_SECTOR_TIME_LIMIT_SECONDS = b
                 .comment("Default seconds the attacker has to clear the active sector before the defenders win.",
                         "Overridable per sector with /conquest sector timelimit set.")

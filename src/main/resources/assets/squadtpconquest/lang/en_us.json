@@ -126,7 +126,6 @@
   "conquest.hud.sector": "Sector %s/%s",
   "conquest.hud.attacker_tickets": "Attacker Tickets: %s",
   "conquest.hud.defending": "Defending",
-  "conquest.hud.next_wave": "Next wave: %ss",
 
   "conquest.status.header": "=== Conquest Status ===",
   "conquest.status.mode": "Mode: %s",

@@ -126,7 +126,6 @@
   "conquest.hud.sector": "セクター %s/%s",
   "conquest.hud.attacker_tickets": "攻撃側チケット: %s",
   "conquest.hud.defending": "防衛中",
-  "conquest.hud.next_wave": "次の出撃まで: %s秒",
 
   "conquest.status.header": "=== コンクエスト状況 ===",
   "conquest.status.mode": "モード: %s",

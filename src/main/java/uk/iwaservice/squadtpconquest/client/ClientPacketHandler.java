@@ -14,7 +14,7 @@ public final class ClientPacketHandler {
         ConquestClientData.apply(msg.points(), msg.ticketsA(), msg.ticketsB(), msg.active(), msg.state(),
                 msg.mode(), msg.yourTeam(), msg.canAdmin(),
                 msg.attackerTeam(), msg.sectorIndex(), msg.sectorCount(),
-                msg.attackerTickets(), msg.respawnWaveSecondsRemaining(),
+                msg.attackerTickets(),
                 msg.callIns(), msg.availableScore(), msg.joinableSquads());
         JourneyMapCompat.refresh();
         if (msg.openScreen()) {

@@ -36,7 +36,6 @@ public final class ConquestClientData {
     private static int sectorIndex;
     private static int sectorCount;
     private static int attackerTickets;
-    private static int respawnWaveSecondsRemaining;
     private static List<ConquestSyncPacket.CallInStatus> callIns = List.of();
     private static int availableScore;
     private static List<ConquestSyncPacket.SquadStatus> joinableSquads = List.of();
@@ -47,7 +46,7 @@ public final class ConquestClientData {
                                           int newTicketsA, int newTicketsB, boolean newActive, RoundState newState,
                                           GameMode newMode, Team newYourTeam, boolean newCanAdmin,
                                           Team newAttackerTeam, int newSectorIndex, int newSectorCount,
-                                          int newAttackerTickets, int newRespawnWaveSecondsRemaining,
+                                          int newAttackerTickets,
                                           List<ConquestSyncPacket.CallInStatus> newCallIns, int newAvailableScore,
                                           List<ConquestSyncPacket.SquadStatus> newJoinableSquads) {
         points = List.copyOf(newPoints);
@@ -62,7 +61,6 @@ public final class ConquestClientData {
         sectorIndex = newSectorIndex;
         sectorCount = newSectorCount;
         attackerTickets = newAttackerTickets;
-        respawnWaveSecondsRemaining = newRespawnWaveSecondsRemaining;
         callIns = List.copyOf(newCallIns);
         availableScore = newAvailableScore;
         joinableSquads = List.copyOf(newJoinableSquads);
@@ -163,10 +161,6 @@ public final class ConquestClientData {
 
     public static synchronized int getAttackerTickets() {
         return attackerTickets;
-    }
-
-    public static synchronized int getRespawnWaveSecondsRemaining() {
-        return respawnWaveSecondsRemaining;
     }
 
     public static synchronized List<ConquestSyncPacket.CallInStatus> getCallIns() {
