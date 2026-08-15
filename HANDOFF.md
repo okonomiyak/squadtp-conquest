@@ -40,6 +40,13 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **`/conquest team join <team> <プレイヤー>`で`@a`等の複数対象セレクターに対応**(2026-08-15):
+  ユーザーから「teamで@aを使えるようにして」と依頼。`player`引数が`EntityArgument.player()`
+  (単一ターゲットのみ、`@a`のような複数マッチを構文エラーで拒否)だったのを`EntityArgument.
+  players()`に変更し、`joinTeamOther`は`getPlayer`ではなく`getPlayers`(`Collection<ServerPlayer>`)
+  を受け取って全員をループでチーム参加させるように変更。確認メッセージ
+  (`conquest.msg.team_joined_other`)も対象1名の名前表示から人数表示に変更(`@a`で全員を一括参加
+  させた場合に破綻しないため)
 - **演習場の明示的なスポーン地点を追加**(2026-08-15): ユーザーから「演習場のスポーンを決められる
   ように」と依頼。従来`teleportIntoRange`は常にエリアのボックス中央(X/Z中央、Y最大)に固定
   テレポートしていた。`rangeSpawnDim`/`rangeSpawnPos`を新設(`/conquest range spawn set|remove`、

@@ -36,6 +36,7 @@ import uk.iwaservice.squadtpconquest.conquest.SpawnZone;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 import uk.iwaservice.squadtpconquest.conquest.ZoneSelection;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -138,7 +139,7 @@ public final class ConquestCommand {
                                 .then(Commands.argument("team", StringArgumentType.word())
                                         .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b", "admin", "range", "spectator"}, b))
                                         .executes(ConquestCommand::joinTeam)
-                                        .then(Commands.argument("player", EntityArgument.player())
+                                        .then(Commands.argument("player", EntityArgument.players())
                                                 .requires(src -> src.hasPermission(2))
                                                 .executes(ConquestCommand::joinTeamOther))))
                         .then(Commands.literal("shuffle")
@@ -396,18 +397,24 @@ public final class ConquestCommand {
         return 1;
     }
 
-    /** OP-only: assigns another player to a team, e.g. to fix someone AFK at the team-select screen. */
+    /**
+     * OP-only: assigns other players to a team, e.g. to fix someone AFK at the team-select screen
+     * or bulk-assign everyone at once with a selector like {@code @a}.
+     */
     private static int joinTeamOther(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+        Collection<ServerPlayer> targets = EntityArgument.getPlayers(ctx, "player");
         Team team = Team.byKey(StringArgumentType.getString(ctx, "team"));
         if (team == null) {
             return fail(ctx, Component.translatable("conquest.msg.unknown_team"));
         }
-        ConquestManager.get(ctx.getSource().getServer()).joinTeam(target, team);
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        for (ServerPlayer target : targets) {
+            manager.joinTeam(target, team);
+            target.displayClientMessage(Component.translatable("conquest.msg.team_joined", team.display()), true);
+        }
         ctx.getSource().sendSuccess(() ->
-                Component.translatable("conquest.msg.team_joined_other", target.getName(), team.display()), true);
-        target.displayClientMessage(Component.translatable("conquest.msg.team_joined", team.display()), true);
-        return 1;
+                Component.translatable("conquest.msg.team_joined_other", targets.size(), team.display()), true);
+        return targets.size();
     }
 
     /**
