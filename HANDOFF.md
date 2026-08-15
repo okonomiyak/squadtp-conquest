@@ -40,6 +40,18 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **待機チームで死亡復活してもロードアウトが装備されないように**(2026-08-16): ユーザーから
+  「watingのときロードアウトが死後手に入ってしまって良くない」と報告。原因は
+  classloadout自身の`ServerEvents.onPlayerRespawn`(`PlayerEvent.PlayerRespawnEvent`購読、
+  個人ロードアウト選択済みなら無条件で装備)がconquestのチーム概念を一切知らないこと。
+  `waiting`チームはPvPダメージこそ無効化されているが環境ダメージ(落下・溺水等)では死亡し得るため、
+  死んで復活した瞬間にclassloadoutの自動装備フックが発火し、本来非武装のはずの待機中プレイヤーに
+  武器が渡ってしまっていた。squadtp-conquest側で新しいリスポーンリスナーを追加し、
+  `@SubscribeEvent(priority = EventPriority.LOWEST)`を指定することで他Mod(classloadout含む)の
+  リスポーン処理が全て完了した後に必ず実行されるようにし、その時点で`waiting`チームなら
+  インベントリを再クリアする形で対処(classloadout側は無改造)。既存の
+  `ConquestManager.onRespawn`(ticket消費等を行うメイン処理)とは別の独立したリスナーとして追加、
+  優先度が異なる既存処理への影響を避けた。
 - **キルをダウンさせた瞬間に加算するよう変更**(2026-08-16): ユーザーから
   「キルカウントさダウンさせたらキルカウントしよう」と依頼。調査したところ、squadtpの蘇生システム
   有効時は致死ダメージが`LivingDeathEvent`のキャンセル+ダウン状態変換に置き換わるため、

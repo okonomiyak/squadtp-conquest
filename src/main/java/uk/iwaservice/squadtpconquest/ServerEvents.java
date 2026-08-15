@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import net.minecraft.core.BlockPos;
@@ -38,6 +39,21 @@ public final class ServerEvents {
     public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             ConquestManager.get(player.server).onRespawn(player);
+        }
+    }
+
+    /**
+     * LOWEST priority so this runs after every other mod's respawn hook — in particular
+     * classloadout's own "equip loadout on every respawn" logic, which fires unconditionally and
+     * knows nothing about conquest teams. Without this, a waiting-team player who dies (e.g. to
+     * fall/void damage, which isn't blocked like PvP is) gets re-armed on respawn even though
+     * {@code waiting} is meant to stay unarmed/neutral.
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onPlayerRespawnClearWaiting(PlayerEvent.PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player
+                && ConquestManager.get(player.server).teamOf(player.getUUID()) == Team.WAITING) {
+            player.getInventory().clearContent();
         }
     }
 
