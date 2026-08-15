@@ -114,8 +114,8 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
   (`teleportToSpawns`と同じ理屈: いずれも死亡→リスポーンイベントを経由しない直接テレポートなので、
   classloadout自身の「リスポーンごとに自動装備」フックでは拾えない)
 - **classloadout連携: ラウンド開始時にロードアウトを装備**(2026-08-16): ユーザーから
-  「classloadoutと連携してゲーム開始時にロードアウトを付与させて」と依頼(`C:\Users\tomip\program\
-  java\classloadout`を指定)。Exploreエージェントで調査したところ、classloadoutは
+  「classloadoutと連携してゲーム開始時にロードアウトを付与させて」と依頼(兄弟プロジェクトの
+  ローカルパスを指定)。Exploreエージェントで調査したところ、classloadoutは
   `api`パッケージを持たない(squadtpの`RespawnChoiceProvider`のような正式な連携APIが無い)ので、
   内部クラス`uk.iwaservice.classloadout.ServerEvents.equipLoadout(ServerPlayer)`
   (`/class select`やロードアウト・ステーションが使っているのと同じ「即時装備」経路、

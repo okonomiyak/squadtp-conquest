@@ -8,7 +8,7 @@ squadtp本体のコード・configは一切変更していない(公開APIの読
 
 ## プロジェクト基盤
 
-- `C:\Users\tomip\program\java\squadtp-conquest`。squadtpと同じMDG legacyforge 2.0.141構成
+- プロジェクトルート直下、squadtpと兄弟ディレクトリ。squadtpと同じMDG legacyforge 2.0.141構成
 - squadtp本体のjarへのローカル依存は**ivyリポジトリ(artifact-onlyメタデータ)**経由。
   `flatDir`や`files()`ではModDevGradleのSRG→namedリマップが効かず、これが唯一動く方法だった
   (詳細はメモリ`mdg-legacy-mod-dependency`、経緯は`HANDOFF.md`)
