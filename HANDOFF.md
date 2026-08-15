@@ -40,6 +40,13 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **演習場もclassloadoutのロードアウト装備対象に**(2026-08-16): ユーザーから
+  「rangeくんもリスポーンからtp」と依頼(直前のclassloadout連携がラウンド開始のみ対応だった
+  ことへの追加要望)。`teleportIntoRange`(`range`チーム参加時・演習場内での死亡復帰時・自動/
+  手動リセット時のテレポート、いずれもこの1メソッド経由)の末尾に`ClassLoadoutCompat.equip
+  (player)`を1箇所追加するだけで3つの呼び出し元すべてに反映される形にした
+  (`teleportToSpawns`と同じ理屈: いずれも死亡→リスポーンイベントを経由しない直接テレポートなので、
+  classloadout自身の「リスポーンごとに自動装備」フックでは拾えない)
 - **classloadout連携: ラウンド開始時にロードアウトを装備**(2026-08-16): ユーザーから
   「classloadoutと連携してゲーム開始時にロードアウトを付与させて」と依頼(`C:\Users\tomip\program\
   java\classloadout`を指定)。Exploreエージェントで調査したところ、classloadoutは

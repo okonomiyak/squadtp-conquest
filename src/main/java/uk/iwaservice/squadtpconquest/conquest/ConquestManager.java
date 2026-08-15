@@ -1444,7 +1444,10 @@ public class ConquestManager extends SavedData {
     /**
      * Teleports a player into the training range: the explicit spawn point
      * ({@link #setRangeSpawn}) if one is set, otherwise a safe spot at the middle of the range
-     * area. No-op if neither is available.
+     * area. No-op if neither is available. Also equips their classloadout, if any (see
+     * {@link ClassLoadoutCompat}) — every call site here is a direct teleport of an already-alive
+     * player (join, respawn-into-range, periodic/manual reset), none of which fire classloadout's
+     * own on-death-respawn auto-equip hook, same reasoning as {@link #teleportToSpawns}.
      */
     void teleportIntoRange(ServerPlayer player) {
         ResourceKey<Level> dim;
@@ -1468,6 +1471,7 @@ public class ConquestManager extends SavedData {
         BlockPos safe = TeleportHelper.findSafeSpot(level, target);
         player.teleportTo(level, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
                 Set.of(), player.getYRot(), player.getXRot());
+        ClassLoadoutCompat.equip(player);
     }
 
     /**
