@@ -608,6 +608,12 @@ public class ConquestManager extends SavedData {
         setDirty();
     }
 
+    public void recordCapture(UUID player) {
+        scoreOf(player).captures++;
+        lifetimeScoreOf(player).captures++;
+        setDirty();
+    }
+
     private PlayerScore scoreOf(UUID player) {
         return scores.computeIfAbsent(player, k -> new PlayerScore());
     }
@@ -632,7 +638,8 @@ public class ConquestManager extends SavedData {
         }
         return s.kills * Config.SCORE_PER_KILL.get()
                 + s.assists * Config.SCORE_PER_ASSIST.get()
-                + s.revives * Config.SCORE_PER_REVIVE.get();
+                + s.revives * Config.SCORE_PER_REVIVE.get()
+                + s.captures * Config.SCORE_PER_CAPTURE.get();
     }
 
     /** This round's score minus whatever the player has already spent on call-ins this round. */
@@ -2097,6 +2104,11 @@ public class ConquestManager extends SavedData {
             if (event == CapturePoint.CaptureEvent.CAPTURED) {
                 broadcast(server, Component.translatable("conquest.msg.captured",
                         holder.display(), point.getName()).withStyle(ChatFormatting.GOLD));
+                for (UUID uuid : occ.inZone()) {
+                    if (teamOf(uuid) == holder) {
+                        recordCapture(uuid);
+                    }
+                }
                 if (mode == GameMode.BREAKTHROUGH && holder == attackerTeam) {
                     sectorSecondsRemaining += Config.BT_SECTOR_TIME_EXTENSION_ON_CAPTURE.get();
                 }
@@ -2363,12 +2375,20 @@ public class ConquestManager extends SavedData {
         ReviveSystem.forceReviveAll(server);
     }
 
-    /** Announces the round's top scorer (by {@link #totalScore}) in chat. No-op if no combatant is online. */
+    /**
+     * Announces the round's top scorer (by {@link #totalScore}) in chat, plus each team's own top
+     * scorer. No-op (per announcement) if no combatant of the relevant team(s) is online.
+     */
     private void announceMvp(MinecraftServer server) {
         ServerPlayer mvp = null;
         int mvpScore = 0;
+        ServerPlayer topA = null;
+        int topAScore = 0;
+        ServerPlayer topB = null;
+        int topBScore = 0;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (!teamOf(player.getUUID()).isCombatant()) {
+            Team team = teamOf(player.getUUID());
+            if (!team.isCombatant()) {
                 continue;
             }
             int score = totalScore(player.getUUID());
@@ -2376,10 +2396,25 @@ public class ConquestManager extends SavedData {
                 mvp = player;
                 mvpScore = score;
             }
+            if (team == Team.A && (topA == null || score > topAScore)) {
+                topA = player;
+                topAScore = score;
+            } else if (team == Team.B && (topB == null || score > topBScore)) {
+                topB = player;
+                topBScore = score;
+            }
         }
         if (mvp != null) {
             broadcast(server, Component.translatable("conquest.msg.mvp",
                     mvp.getGameProfile().getName(), mvpScore).withStyle(ChatFormatting.AQUA));
+        }
+        if (topA != null) {
+            broadcast(server, Component.translatable("conquest.msg.team_top",
+                    Team.A.display(), topA.getGameProfile().getName(), topAScore));
+        }
+        if (topB != null) {
+            broadcast(server, Component.translatable("conquest.msg.team_top",
+                    Team.B.display(), topB.getGameProfile().getName(), topBScore));
         }
     }
 
@@ -2643,6 +2678,7 @@ public class ConquestManager extends SavedData {
             score.deaths = s.getInt("Deaths");
             score.assists = s.getInt("Assists");
             score.revives = s.getInt("Revives");
+            score.captures = s.getInt("Captures");
             score.spent = s.getInt("Spent");
             manager.scores.put(s.getUUID("Uuid"), score);
         }
@@ -2654,6 +2690,7 @@ public class ConquestManager extends SavedData {
             score.deaths = s.getInt("Deaths");
             score.assists = s.getInt("Assists");
             score.revives = s.getInt("Revives");
+            score.captures = s.getInt("Captures");
             manager.lifetimeScores.put(s.getUUID("Uuid"), score);
         }
         ListTag presetList = tag.getList("Presets", Tag.TAG_COMPOUND);
@@ -2786,6 +2823,7 @@ public class ConquestManager extends SavedData {
             s.putInt("Deaths", e.getValue().deaths);
             s.putInt("Assists", e.getValue().assists);
             s.putInt("Revives", e.getValue().revives);
+            s.putInt("Captures", e.getValue().captures);
             s.putInt("Spent", e.getValue().spent);
             scoreList.add(s);
         }
@@ -2798,6 +2836,7 @@ public class ConquestManager extends SavedData {
             s.putInt("Deaths", e.getValue().deaths);
             s.putInt("Assists", e.getValue().assists);
             s.putInt("Revives", e.getValue().revives);
+            s.putInt("Captures", e.getValue().captures);
             lifetimeScoreList.add(s);
         }
         tag.put("LifetimeScores", lifetimeScoreList);

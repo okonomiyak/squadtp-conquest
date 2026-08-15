@@ -40,6 +40,15 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **拠点制圧のスコア化+チーム別トップ表示**(2026-08-15): ユーザーから「チームごとの上位プレイヤー
+  表示(A/Bそれぞれのトップ)」「拠点制圧もポイント付けて」と依頼。`PlayerScore`に`captures`
+  フィールドを追加(kills/deaths/assists/revivesと同じ扱い、NBT永続化・lifetime版も対応)、
+  新規`Config.SCORE_PER_CAPTURE`(既定100、`/conquest config set`にも登録)、`weightedScore`に
+  加算。付与タイミングは`tickOnePoint`の`CaptureEvent.CAPTURED`発火時のみ(1tickごとの継続加点
+  ではない)、対象は制圧達成の瞬間にその拠点の半径内にいた制圧チーム側の全プレイヤー
+  (`occ.inZone()`をteam判定でフィルタ、均等付与・傾斜配分は無し)。`announceMvp`を拡張し、
+  全体MVPに加えてチームA/B各自のトップスコアも`conquest.msg.team_top`で別途チャット発表
+  (MVPと重複しても両方表示、該当者がいないチームはスキップ)
 - **試合終了時にダウン中のプレイヤーが蘇生不能のまま固まるバグを修正**(2026-08-15、squadtp本体の
   変更): ユーザーから「試合終了時にダウン状態のときに蘇生できなくなるので強制蘇生で」と報告。
   `endRound`が呼んでいた`ReviveSystem.clear()`はDOWNED/SESSIONSマップを空にするだけで、

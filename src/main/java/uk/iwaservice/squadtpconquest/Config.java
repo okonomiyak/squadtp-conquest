@@ -34,6 +34,7 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue SCORE_PER_KILL;
     public static final ForgeConfigSpec.IntValue SCORE_PER_ASSIST;
     public static final ForgeConfigSpec.IntValue SCORE_PER_REVIVE;
+    public static final ForgeConfigSpec.IntValue SCORE_PER_CAPTURE;
 
     public static final ForgeConfigSpec.IntValue BT_ATTACKER_TICKETS;
     public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_LIMIT_SECONDS;
@@ -159,6 +160,11 @@ public final class Config {
         SCORE_PER_REVIVE = b
                 .comment("Score points awarded per successful revive.")
                 .defineInRange("scorePerRevive", 50, 0, 10000);
+        SCORE_PER_CAPTURE = b
+                .comment("Score points awarded to each player present when a capture point flips to their team",
+                        "(conquest/breakthrough only; awarded once per capture, split among whoever's in the",
+                        "radius at that moment, not per tick).")
+                .defineInRange("scorePerCapture", 100, 0, 10000);
         b.pop();
 
         b.push("breakthrough");

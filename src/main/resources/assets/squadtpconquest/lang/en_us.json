@@ -117,6 +117,7 @@
   "conquest.msg.victory": "%s wins!",
   "conquest.msg.draw": "Round ended in a draw!",
   "conquest.msg.mvp": "MVP: %s (%s pts)",
+  "conquest.msg.team_top": "%s Top: %s (%s pts)",
 
   "conquest.title.get_ready": "Get Ready!",
   "conquest.title.started": "Conquest Started",
