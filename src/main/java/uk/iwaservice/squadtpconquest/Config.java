@@ -18,6 +18,7 @@ public final class Config {
     public static final ForgeConfigSpec.BooleanValue AUTO_RESET_AFTER_RESULT;
     public static final ForgeConfigSpec.IntValue TICKET_COST_PER_RESPAWN;
     public static final ForgeConfigSpec.BooleanValue LOCK_TEAM_CHANGE_DURING_ROUND;
+    public static final ForgeConfigSpec.BooleanValue TEAM_JOIN_REQUIRES_OP;
     public static final ForgeConfigSpec.DoubleValue MAX_HEALTH;
     public static final ForgeConfigSpec.IntValue START_COUNTDOWN_SECONDS;
     public static final ForgeConfigSpec.IntValue TDM_KILL_LIMIT;
@@ -91,8 +92,13 @@ public final class Config {
         LOCK_TEAM_CHANGE_DURING_ROUND = b
                 .comment("If true, non-OP players can't use /conquest team join to change team while a round is",
                         "IN_PROGRESS (OPs, i.e. permission level 2+, are always exempt). Default false: anyone can",
-                        "switch teams at any time.")
+                        "switch teams at any time. Ignored (superseded) if teamJoinRequiresOp is true.")
                 .define("lockTeamChangeDuringRound", false);
+        TEAM_JOIN_REQUIRES_OP = b
+                .comment("If true, only OPs (permission level 2+) can use /conquest team join at all, regardless",
+                        "of round state — for servers that want an admin to assign every team manually. Default",
+                        "false. Takes priority over lockTeamChangeDuringRound when both are true.")
+                .define("teamJoinRequiresOp", false);
         MAX_HEALTH = b
                 .comment("Max health for players on a combatant team (A/B), applied on /conquest team join and",
                         "at round start. Vanilla default is 20.0 (10 hearts); raise this to rebalance time-to-kill",

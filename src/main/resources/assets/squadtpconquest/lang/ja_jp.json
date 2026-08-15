@@ -71,6 +71,7 @@
   "conquest.msg.gather_removed": "試合終了時の集合地点を削除した",
   "conquest.msg.no_gather_point": "集合地点が未設定です",
   "conquest.msg.team_change_locked": "試合進行中はチームを変更できません",
+  "conquest.msg.team_join_requires_op": "チームの変更はOPのみ可能です",
   "conquest.msg.unknown_item": "不明なアイテムです: %s",
   "conquest.msg.callin_added": "コールイン%sを追加した: %sスコア、%s個の%s",
   "conquest.msg.callin_removed": "コールイン%sを削除した",

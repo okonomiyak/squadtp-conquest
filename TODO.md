@@ -67,6 +67,9 @@ devlog/READMEの「既知の制約」と重複する項目は載せていない
   ラウンド進行中、非OPが`/conquest team join`を拒否されるか(拒否メッセージが出るか)、OPは
   変更できるか、`false`(既定)なら従来通り誰でも変更できるか、ラウンド進行中でなければ
   非OPでも変更できるか
+- `teamJoinRequiresOp`config(2026-08-16新規実装、未実プレイ): `true`にした状態でラウンド状態を
+  問わず非OPが`/conquest team join`を拒否されるか、OPは常に変更できるか、`lockTeamChangeDuringRound`
+  も同時にtrueの場合ちゃんとこちらが優先されるか(メッセージが`team_join_requires_op`になるか)
 - 試合中のA/B参加時テレポート(2026-08-16新規実装、未実プレイ): ラウンド進行中に
   `/conquest team join a|b`で参加/移動した瞬間チームスポーンへテレポートされるか、待機中
   (ラウンド開始前)の参加ではテレポートされず従来通りラウンド開始時に一括テレポートされるか、

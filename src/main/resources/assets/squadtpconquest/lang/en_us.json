@@ -71,6 +71,7 @@
   "conquest.msg.gather_removed": "Round-end gather point removed",
   "conquest.msg.no_gather_point": "No round-end gather point set",
   "conquest.msg.team_change_locked": "Team changes are locked while a round is in progress",
+  "conquest.msg.team_join_requires_op": "Only OPs can change team",
   "conquest.msg.unknown_item": "Unknown item: %s",
   "conquest.msg.callin_added": "Call-in %s added: %s score, %sx %s",
   "conquest.msg.callin_removed": "Call-in %s removed",

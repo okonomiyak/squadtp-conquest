@@ -66,6 +66,7 @@ public final class ConquestCommand {
         CONFIG_KEYS.put("autoResetAfterResult", boolEntry(Config.AUTO_RESET_AFTER_RESULT));
         CONFIG_KEYS.put("ticketCostPerRespawn", intEntry(Config.TICKET_COST_PER_RESPAWN));
         CONFIG_KEYS.put("lockTeamChangeDuringRound", boolEntry(Config.LOCK_TEAM_CHANGE_DURING_ROUND));
+        CONFIG_KEYS.put("teamJoinRequiresOp", boolEntry(Config.TEAM_JOIN_REQUIRES_OP));
         CONFIG_KEYS.put("maxHealth", doubleEntry(Config.MAX_HEALTH));
         CONFIG_KEYS.put("startCountdownSeconds", intEntry(Config.START_COUNTDOWN_SECONDS));
         CONFIG_KEYS.put("tdmKillLimit", intEntry(Config.TDM_KILL_LIMIT));
@@ -393,9 +394,13 @@ public final class ConquestCommand {
             return fail(ctx, Component.translatable("conquest.msg.admin_team_requires_op"));
         }
         ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
-        if (Config.LOCK_TEAM_CHANGE_DURING_ROUND.get() && manager.getState() == RoundState.IN_PROGRESS
-                && !ctx.getSource().hasPermission(2)) {
-            return fail(ctx, Component.translatable("conquest.msg.team_change_locked"));
+        if (!ctx.getSource().hasPermission(2)) {
+            if (Config.TEAM_JOIN_REQUIRES_OP.get()) {
+                return fail(ctx, Component.translatable("conquest.msg.team_join_requires_op"));
+            }
+            if (Config.LOCK_TEAM_CHANGE_DURING_ROUND.get() && manager.getState() == RoundState.IN_PROGRESS) {
+                return fail(ctx, Component.translatable("conquest.msg.team_change_locked"));
+            }
         }
         manager.joinTeam(player, team);
         ctx.getSource().sendSuccess(() ->

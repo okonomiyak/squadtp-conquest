@@ -40,6 +40,14 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **チーム参加を常時OP限定にできるconfigを追加**(2026-08-16): ユーザーから
+  「OP権限なしでチームに移れないようにしたい」と依頼。既存の`lockTeamChangeDuringRound`
+  (ラウンド進行中のみOP以外禁止)との違いをAskUserQuestionで確認したところ「常時OP限定に
+  したい」との回答だったため、別のconfig`teamJoinRequiresOp`(既定false)を新設。
+  `joinTeam`コマンド実行時、非OPなら`teamJoinRequiresOp`を先にチェックし、trueなら即拒否
+  (ラウンド状態を問わない)。falseの場合のみ従来通り`lockTeamChangeDuringRound`のラウンド中
+  チェックに進む、という優先順位にして両configが独立して意味を持つようにした
+  (`teamJoinRequiresOp`が`lockTeamChangeDuringRound`を包含する関係)。
 - **待機チームで死亡復活してもロードアウトが装備されないように**(2026-08-16): ユーザーから
   「watingのときロードアウトが死後手に入ってしまって良くない」と報告。原因は
   classloadout自身の`ServerEvents.onPlayerRespawn`(`PlayerEvent.PlayerRespawnEvent`購読、

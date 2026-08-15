@@ -14,7 +14,7 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 
 | コマンド | 説明 | 権限 |
 |---|---|---|
-| `/conquest team join <a\|b\|admin\|range\|spectator\|waiting>` | チームA/Bに参加。同時にバニラチーム`conquest_a`/`conquest_b`にも自動参加(フレンドリーファイア無効・チーム色設定)。ラウンドが進行中(`IN_PROGRESS`)なら参加した瞬間そのチームのスポーン地点へテレポートされる(2026-08-16追加、待機中に参加した場合や試合開始時は従来通りラウンド開始時のテレポートに任せる)。`admin`は観戦用の第3チームでOP限定。`range`は[演習場](#演習場)に参加(誰でも可、参加した瞬間エリア内へテレポート)。`spectator`は誰でも参加できる観戦専用チーム(`admin`と同様に試合には一切影響しないが、OP不要な代わりにバニラのスペクテイターモードへ強制切り替え)。`waiting`は誰でも参加できる[待機チーム](#待機チーム)(通常のサバイバルのままだがPvPダメージを一切与えられず・受けられず、参加した瞬間インベントリが空になり、スポーン地点が設定されていればそこへテレポートされる)。`lockTeamChangeDuringRound`が`true`の場合、ラウンド進行中はOP以外このコマンドでのチーム変更ができなくなる(2026-08-16追加、OPは常に可能) | 通常は誰でも可(`admin`のみ常にOP限定。`lockTeamChangeDuringRound`有効時はラウンド中さらにOP限定) |
+| `/conquest team join <a\|b\|admin\|range\|spectator\|waiting>` | チームA/Bに参加。同時にバニラチーム`conquest_a`/`conquest_b`にも自動参加(フレンドリーファイア無効・チーム色設定)。ラウンドが進行中(`IN_PROGRESS`)なら参加した瞬間そのチームのスポーン地点へテレポートされる(2026-08-16追加、待機中に参加した場合や試合開始時は従来通りラウンド開始時のテレポートに任せる)。`admin`は観戦用の第3チームでOP限定。`range`は[演習場](#演習場)に参加(誰でも可、参加した瞬間エリア内へテレポート)。`spectator`は誰でも参加できる観戦専用チーム(`admin`と同様に試合には一切影響しないが、OP不要な代わりにバニラのスペクテイターモードへ強制切り替え)。`waiting`は誰でも参加できる[待機チーム](#待機チーム)(通常のサバイバルのままだがPvPダメージを一切与えられず・受けられず、参加した瞬間インベントリが空になり、スポーン地点が設定されていればそこへテレポートされる)。`lockTeamChangeDuringRound`が`true`の場合、ラウンド進行中はOP以外このコマンドでのチーム変更ができなくなる(2026-08-16追加、OPは常に可能)。`teamJoinRequiresOp`が`true`の場合はラウンド状態に関係なく常にOP以外このコマンドを使えなくなる(2026-08-16追加、`lockTeamChangeDuringRound`より優先) | 通常は誰でも可(`admin`のみ常にOP限定。`lockTeamChangeDuringRound`有効時はラウンド中さらにOP限定、`teamJoinRequiresOp`有効時は常時OP限定) |
 | `/conquest team join <a\|b\|admin\|range\|spectator\|waiting> <プレイヤー\|セレクター>` | 指定したプレイヤーをそのチームに参加させる(自分以外も指定可)。`@a`・`@e[team=...]`等の複数対象セレクターにも対応(該当者全員をまとめて参加させる)。対象にも参加したことがアクションバーで通知される | OP |
 | `/conquest spot <プレイヤー>` | 対象を[索敵マーキング](#索敵マーキングスポット)する。通常は専用キーで自動送信されるため手動実行の必要はない | - |
 | `/conquest pin <x> <y> <z>` | [ピン](#ピン)を立てる。通常は専用キーで自動送信されるため手動実行の必要はない | - |
@@ -636,7 +636,10 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 - `autoResetAfterResult`(既定true) — falseなら`/conquest reset`必須
 - `ticketCostPerRespawn`(既定1) — リスポーンごとに自チームのチケットから消費する数。0で無効(TDMでは無効)
 - `lockTeamChangeDuringRound`(既定false) — trueにすると、ラウンド進行中(`IN_PROGRESS`)はOP以外
-  `/conquest team join`でチームを変更できなくなる(OPは常に変更可能)
+  `/conquest team join`でチームを変更できなくなる(OPは常に変更可能)。`teamJoinRequiresOp`が
+  trueの場合はこちらの設定は無視される(常時OP限定の方が優先)
+- `teamJoinRequiresOp`(既定false) — trueにすると、ラウンド状態に関係なく常にOP以外
+  `/conquest team join`が使えなくなる(全チームの割り当てを管理者だけが行う運用向け)
 - `maxHealth`(既定20.0、バニラと同じ) — チームA/Bに所属中の最大HP。`/conquest team join`時・
   ラウンド開始時・リスポーン時に反映(その都度フルヒールもされる)。管理人チームに移るとバニラの20に戻る。
   銃Mod(TACZ・SuperbWarfare等)のダメージ量に合わせたTTK調整用
