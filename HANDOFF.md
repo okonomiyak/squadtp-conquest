@@ -40,6 +40,13 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **演習場の明示的なスポーン地点を追加**(2026-08-15): ユーザーから「演習場のスポーンを決められる
+  ように」と依頼。従来`teleportIntoRange`は常にエリアのボックス中央(X/Z中央、Y最大)に固定
+  テレポートしていた。`rangeSpawnDim`/`rangeSpawnPos`を新設(`/conquest range spawn set|remove`、
+  `/conquest spawn set`と同じく実行者の足元を使う単一点方式、ワンド不要)、`teleportIntoRange`は
+  設定されていればそちらを優先、未設定なら従来通りエリア中央にフォールバック。エリア本体
+  (`rangePos1/2`)とは独立して管理しているため、`/conquest range set`でエリアを再設定しても
+  スポーン地点は消えない(逆に`removeRange`でエリアを削除してもスポーン地点は残る)。NBT永続化対応
 - **拠点制圧のスコア化+チーム別トップ表示**(2026-08-15): ユーザーから「チームごとの上位プレイヤー
   表示(A/Bそれぞれのトップ)」「拠点制圧もポイント付けて」と依頼。`PlayerScore`に`captures`
   フィールドを追加(kills/deaths/assists/revivesと同じ扱い、NBT永続化・lifetime版も対応)、

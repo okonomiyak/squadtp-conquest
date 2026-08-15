@@ -180,6 +180,11 @@ public class ConquestManager extends SavedData {
     private BlockPos rangePos1;
     @Nullable
     private BlockPos rangePos2;
+    /** Optional explicit spawn point; falls back to the area's box center (see {@link #teleportIntoRange}) if unset. */
+    @Nullable
+    private ResourceKey<Level> rangeSpawnDim;
+    @Nullable
+    private BlockPos rangeSpawnPos;
     /**
      * Transient: the range's clean-state snapshot, taken by {@link #setRange} and pasted back
      * every {@code rangeResetIntervalSeconds} (see {@link #tickRange}) — not saved to NBT, so a
@@ -1275,6 +1280,34 @@ public class ConquestManager extends SavedData {
         return true;
     }
 
+    /** Sets an explicit spawn point for the range, overriding the default box-center teleport. */
+    public void setRangeSpawn(ServerLevel level, BlockPos pos) {
+        rangeSpawnDim = level.dimension();
+        rangeSpawnPos = pos.immutable();
+        setDirty();
+    }
+
+    /** Clears the explicit range spawn point (falls back to the box center). False if none was set. */
+    public boolean removeRangeSpawn() {
+        if (rangeSpawnPos == null) {
+            return false;
+        }
+        rangeSpawnDim = null;
+        rangeSpawnPos = null;
+        setDirty();
+        return true;
+    }
+
+    @Nullable
+    public ResourceKey<Level> getRangeSpawnDim() {
+        return rangeSpawnDim;
+    }
+
+    @Nullable
+    public BlockPos getRangeSpawnPos() {
+        return rangeSpawnPos;
+    }
+
     @Nullable
     public ResourceKey<Level> getRangeDim() {
         return rangeDim;
@@ -1361,21 +1394,30 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Teleports a player to a safe spot in the middle of the training range. No-op if no range
-     * area is set.
+     * Teleports a player into the training range: the explicit spawn point
+     * ({@link #setRangeSpawn}) if one is set, otherwise a safe spot at the middle of the range
+     * area. No-op if neither is available.
      */
     void teleportIntoRange(ServerPlayer player) {
-        BlockPos min = getRangeMin();
-        BlockPos max = getRangeMax();
-        if (rangeDim == null || min == null || max == null) {
-            return;
+        ResourceKey<Level> dim;
+        BlockPos target;
+        if (rangeSpawnDim != null && rangeSpawnPos != null) {
+            dim = rangeSpawnDim;
+            target = rangeSpawnPos;
+        } else {
+            BlockPos min = getRangeMin();
+            BlockPos max = getRangeMax();
+            if (rangeDim == null || min == null || max == null) {
+                return;
+            }
+            dim = rangeDim;
+            target = new BlockPos((min.getX() + max.getX()) / 2, max.getY(), (min.getZ() + max.getZ()) / 2);
         }
-        ServerLevel level = player.server.getLevel(rangeDim);
+        ServerLevel level = player.server.getLevel(dim);
         if (level == null) {
             return;
         }
-        BlockPos center = new BlockPos((min.getX() + max.getX()) / 2, max.getY(), (min.getZ() + max.getZ()) / 2);
-        BlockPos safe = TeleportHelper.findSafeSpot(level, center);
+        BlockPos safe = TeleportHelper.findSafeSpot(level, target);
         player.teleportTo(level, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
                 Set.of(), player.getYRot(), player.getXRot());
     }
@@ -2670,6 +2712,10 @@ public class ConquestManager extends SavedData {
                 manager.rangePos2 = NbtUtils.readBlockPos(tag.getCompound("RangePos2"));
             }
         }
+        if (tag.contains("RangeSpawnDim")) {
+            manager.rangeSpawnDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("RangeSpawnDim")));
+            manager.rangeSpawnPos = NbtUtils.readBlockPos(tag.getCompound("RangeSpawnPos"));
+        }
         ListTag scoreList = tag.getList("Scores", Tag.TAG_COMPOUND);
         for (int i = 0; i < scoreList.size(); i++) {
             CompoundTag s = scoreList.getCompound(i);
@@ -2814,6 +2860,10 @@ public class ConquestManager extends SavedData {
             if (rangePos2 != null) {
                 tag.put("RangePos2", NbtUtils.writeBlockPos(rangePos2));
             }
+        }
+        if (rangeSpawnDim != null && rangeSpawnPos != null) {
+            tag.putString("RangeSpawnDim", rangeSpawnDim.location().toString());
+            tag.put("RangeSpawnPos", NbtUtils.writeBlockPos(rangeSpawnPos));
         }
         ListTag scoreList = new ListTag();
         for (Map.Entry<UUID, PlayerScore> e : scores.entrySet()) {

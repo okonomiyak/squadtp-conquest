@@ -66,6 +66,8 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 | `/conquest range remove` | 演習場エリアとスナップショットを削除 | OP |
 | `/conquest range list` | 設定済みの演習場エリア(角1〜角2の座標)と次回自動リセットまでの残り秒数を表示 | - |
 | `/conquest range reset` | 演習場エリアを今すぐ手動リセット(地形復元+在室プレイヤーのテレポート・全回復)。通常は`rangeResetIntervalSeconds`(既定1800=30分)ごとに自動実行される | OP |
+| `/conquest range spawn set` | 実行者の足元を演習場の**スポーン地点**として設定。設定するとエリアの中央ではなくこの地点にテレポートされるようになる | OP |
+| `/conquest range spawn remove` | 演習場のスポーン地点を削除(エリアの中央にテレポートする従来の挙動に戻る) | OP |
 | `/conquest callin add <名前> <必要スコア> <アイテムID> [個数]` | **コールイン**(スコアストリーク的な報酬)を登録。個数省略時は1個 | OP |
 | `/conquest callin remove <名前>` | コールインを削除 | OP |
 | `/conquest callin list` | 登録済みコールイン一覧(名前・必要スコア・アイテム)を表示 | - |
@@ -372,10 +374,14 @@ Waypoint経由で別途表示されるので、この非表示化と競合しな
 ラウンドの状態(`WAITING`/`STARTING`/`IN_PROGRESS`/`ENDED`)やゲームモードと完全に独立した、
 武器や動きを試すための専用エリア。`/conquest range set`(または`corner1 set`/`corner2 set`)で
 2点座標のエリアを設定すると、その時点の状態が「きれいな状態」としてスナップショットされる。
-誰でも`/conquest team join range`で参加でき(OP限定の`admin`とは異なる)、参加した瞬間エリア中央の
+誰でも`/conquest team join range`で参加でき(OP限定の`admin`とは異なる)、参加した瞬間
 安全な位置にテレポートされる。死亡してリスポーンした時もエリア内に戻る(ラウンドの状態に関係なく
-常時)。`rangeResetIntervalSeconds`(既定1800秒=30分)ごとに自動で地形がスナップショットの状態へ
-復元され、その時エリア内にいる`range`チームの全プレイヤーもエリア中央へテレポート+全回復される。
+常時)。テレポート先は既定でエリアの中央だが、`/conquest range spawn set`で明示的なスポーン地点を
+指定できる(2026-08-15追加、`/conquest range spawn remove`で解除すれば中央に戻る。エリア設定とは
+独立した設定なので、エリアを再設定してもスポーン地点は消えない)。`rangeResetIntervalSeconds`
+(既定1800秒=30分)ごとに自動で地形がスナップショットの状態へ復元され、その時エリア内にいる
+`range`チームの全プレイヤーも(スポーン地点があればそこへ、無ければエリア中央へ)テレポート+
+全回復される。
 `/conquest range reset`で今すぐ手動リセットも可能。`range`チームは自陣ゾーン処刑・戦場境界処刑・
 チケット・キル/デス集計など通常の対戦要素からは完全に除外される(`admin`と同じ扱い)。
 自動再編成の対象にもならない(`/conquest team shuffle`はA/B間のみ)。同じ`range`チーム同士は

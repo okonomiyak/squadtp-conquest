@@ -276,7 +276,10 @@ public final class ConquestCommand {
                                 .then(Commands.literal("set").executes(ctx -> setRangeCorner(ctx, false))))
                         .then(Commands.literal("remove").executes(ConquestCommand::removeRange))
                         .then(Commands.literal("list").executes(ConquestCommand::rangeList))
-                        .then(Commands.literal("reset").executes(ConquestCommand::rangeReset)))
+                        .then(Commands.literal("reset").executes(ConquestCommand::rangeReset))
+                        .then(Commands.literal("spawn")
+                                .then(Commands.literal("set").executes(ConquestCommand::setRangeSpawn))
+                                .then(Commands.literal("remove").executes(ConquestCommand::removeRangeSpawn))))
                 .then(Commands.literal("callin")
                         .then(Commands.literal("add")
                                 .requires(src -> src.hasPermission(2))
@@ -937,6 +940,22 @@ public final class ConquestCommand {
             return fail(ctx, Component.translatable("conquest.msg.no_range"));
         }
         ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.range_removed"), true);
+        return 1;
+    }
+
+    private static int setRangeSpawn(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        ConquestManager.get(ctx.getSource().getServer())
+                .setRangeSpawn(player.serverLevel(), player.blockPosition());
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.range_spawn_set"), true);
+        return 1;
+    }
+
+    private static int removeRangeSpawn(CommandContext<CommandSourceStack> ctx) {
+        if (!ConquestManager.get(ctx.getSource().getServer()).removeRangeSpawn()) {
+            return fail(ctx, Component.translatable("conquest.msg.no_range_spawn"));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.range_spawn_removed"), true);
         return 1;
     }
 
