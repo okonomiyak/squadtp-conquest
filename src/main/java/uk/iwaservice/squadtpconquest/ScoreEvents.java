@@ -7,6 +7,7 @@ import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import uk.iwaservice.squadtp.api.PlayerDownedEvent;
 import uk.iwaservice.squadtp.squad.ReviveSystem;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.DamageLog;
@@ -19,9 +20,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Kill/death/assist scoring, hooked off vanilla Forge combat events only —
- * squadtp is not touched. Revive scoring is fed separately via
- * {@link ReviveAttribution}, written here and consumed by
+ * Kill/death/assist scoring, hooked off vanilla Forge combat events plus squadtp's public
+ * {@link PlayerDownedEvent} (kill crediting only, see {@link #onPlayerDowned}). Revive scoring is
+ * fed separately via {@link ReviveAttribution}, written here and consumed by
  * {@link ConquestManager}'s per-second tick.
  */
 public final class ScoreEvents {
@@ -45,6 +46,35 @@ public final class ScoreEvents {
             return;
         }
         DamageLog.record(victim.getUUID(), attacker.getUUID(), server.getTickCount());
+    }
+
+    /**
+     * Credits the kill the moment a player gets downed instead of waiting for their eventual real
+     * death, which either never happens (revived) or, when it does (bleed-out timeout), fires
+     * through a sourceless generic-kill damage source that no longer identifies the attacker. This
+     * is also what makes TDM's kill limit reachable at all with squad revive enabled — without it,
+     * a downed-but-revived player would never register as a kill for either mechanic.
+     */
+    @SubscribeEvent
+    public static void onPlayerDowned(PlayerDownedEvent event) {
+        ServerPlayer victim = event.getPlayer();
+        MinecraftServer server = victim.server;
+        ConquestManager manager = ConquestManager.get(server);
+        if (manager.getState() != RoundState.IN_PROGRESS) {
+            return;
+        }
+        Team victimTeam = manager.teamOf(victim.getUUID());
+        if (!victimTeam.isCombatant()) {
+            return;
+        }
+        if (!(event.getSource().getEntity() instanceof ServerPlayer attacker)) {
+            return;
+        }
+        Team attackerTeam = manager.teamOf(attacker.getUUID());
+        if (!attackerTeam.isCombatant() || attackerTeam == victimTeam) {
+            return;
+        }
+        manager.recordKill(server, attacker.getUUID());
     }
 
     @SubscribeEvent

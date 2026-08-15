@@ -40,6 +40,23 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **キルをダウンさせた瞬間に加算するよう変更**(2026-08-16): ユーザーから
+  「キルカウントさダウンさせたらキルカウントしよう」と依頼。調査したところ、squadtpの蘇生システム
+  有効時は致死ダメージが`LivingDeathEvent`のキャンセル+ダウン状態変換に置き換わるため、
+  squadtp-conquestが従来頼っていた「`LivingDeathEvent`発火時にキル加算」方式では、(1)蘇生された
+  場合は永久にキルが記録されない、(2)力尽きて本当に死亡した場合もタイムアウト処理が
+  攻撃者情報の無い`genericKill`ダメージソース経由で死なせるため加害者を特定できない、という
+  二重の理由でPvPキルがほぼ一切記録されていなかった実質的なバグと判明(TDMの`tdmKillLimit`
+  勝利条件が事実上機能していなかったことも意味する——「TDMで蘇生アリがいい」でrevive常時有効に
+  した際に埋め込まれていた副作用)。squadtp本体に3件目の変更として新しい公開API
+  `uk.iwaservice.squadtp.api.PlayerDownedEvent`(被害者+元のダメージソースを持つ、ダウン移行の
+  瞬間に発火するイベント)を追加してもらい、`ServerEvents.onLivingDeath`の
+  `event.setCanceled(true); ReviveSystem.enterDowned(player);`の直後で
+  `MinecraftForge.EVENT_BUS.post`するだけの最小追加。squadtp-conquest側は`ScoreEvents`に
+  `onPlayerDowned`を追加し、このイベントでキルを記録(`recordKill`)。蘇生無効時や即死ダメージは
+  従来通り`onDeath`(`LivingDeathEvent`)側でキルを記録するので、パスは排他的で二重加算は無い。
+  (squadtp側の変更方針は`RespawnChoiceProvider`・AED追加時と同じ「ユーザー明示許可のうえ、
+  公開APIとして切り出す」パターンを踏襲)
 - **待機チーム参加時のテレポートを撤回**(2026-08-16): ユーザーから「watingのときのtpはなし」
   と依頼(直前の「戦闘中と演習中でのみロードアウトが反映されるようにして」の流れを受け、
   tpも同じ方針——combat/trainingの直接テレポートのみ——に統一したいという意図と確認)。
