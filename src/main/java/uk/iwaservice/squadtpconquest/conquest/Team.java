@@ -11,9 +11,11 @@ import javax.annotation.Nullable;
  * The two fighting teams, NEUTRAL (= no team / unowned point), ADMIN (an OP-only spectator side:
  * joinable like A/B but excluded from capture occupancy, ticket/respawn cost and kill/death/assist
  * scoring), RANGE (the training range: same exclusions as ADMIN, open to anyone, tied to its own
- * area instead of the match — see {@link ConquestManager#setRange}), and SPECTATOR (same match
+ * area instead of the match — see {@link ConquestManager#setRange}), SPECTATOR (same match
  * exclusions and HUD visibility as ADMIN, but open to anyone and forced into vanilla spectator
- * gamemode instead of relying on OP trust not to interfere).
+ * gamemode instead of relying on OP trust not to interfere), and WAITING (a neutral holding team,
+ * open to anyone: stays in normal survival — unlike SPECTATOR — but can neither deal nor take PvP
+ * damage, and has its inventory cleared the moment it joins).
  */
 public enum Team implements StringRepresentable {
     A("a", ChatFormatting.BLUE),
@@ -21,6 +23,7 @@ public enum Team implements StringRepresentable {
     ADMIN("admin", ChatFormatting.GOLD),
     RANGE("range", ChatFormatting.GREEN),
     SPECTATOR("spectator", ChatFormatting.AQUA),
+    WAITING("waiting", ChatFormatting.GRAY),
     NEUTRAL("neutral", ChatFormatting.WHITE);
 
     private final String key;
@@ -51,6 +54,7 @@ public enum Team implements StringRepresentable {
             case ADMIN -> 0xFFFFC83B;
             case RANGE -> 0xFF3BE05E;
             case SPECTATOR -> 0xFF3BC8E0;
+            case WAITING -> 0xFFA0A0A0;
             case NEUTRAL -> 0xFF808080;
         };
     }
@@ -64,7 +68,7 @@ public enum Team implements StringRepresentable {
         return this == A ? B : this == B ? A : NEUTRAL;
     }
 
-    /** True for the two fighting sides; false for NEUTRAL, ADMIN, RANGE and SPECTATOR. */
+    /** True for the two fighting sides; false for NEUTRAL, ADMIN, RANGE, SPECTATOR and WAITING. */
     public boolean isCombatant() {
         return this == A || this == B;
     }

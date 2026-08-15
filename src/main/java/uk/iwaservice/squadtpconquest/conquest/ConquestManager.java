@@ -762,6 +762,9 @@ public class ConquestManager extends SavedData {
             } else if (previous == Team.SPECTATOR) {
                 player.setGameMode(GameType.SURVIVAL);
             }
+            if (team == Team.WAITING) {
+                player.getInventory().clearContent();
+            }
         }
     }
 
@@ -812,7 +815,7 @@ public class ConquestManager extends SavedData {
         List<ServerPlayer> players = new ArrayList<>();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             Team current = teamOf(player.getUUID());
-            if (current != Team.ADMIN && current != Team.RANGE && current != Team.SPECTATOR) {
+            if (current != Team.ADMIN && current != Team.RANGE && current != Team.SPECTATOR && current != Team.WAITING) {
                 players.add(player);
             }
         }
@@ -895,7 +898,7 @@ public class ConquestManager extends SavedData {
     private static boolean isConquestTeam(PlayerTeam team) {
         return team.getName().equals(vanillaTeamName(Team.A)) || team.getName().equals(vanillaTeamName(Team.B))
                 || team.getName().equals(vanillaTeamName(Team.ADMIN)) || team.getName().equals(vanillaTeamName(Team.RANGE))
-                || team.getName().equals(vanillaTeamName(Team.SPECTATOR));
+                || team.getName().equals(vanillaTeamName(Team.SPECTATOR)) || team.getName().equals(vanillaTeamName(Team.WAITING));
     }
 
     private static String vanillaTeamName(Team team) {
