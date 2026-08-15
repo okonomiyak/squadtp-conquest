@@ -40,6 +40,17 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **コンクエスト/TDMもリスポーン時に自動テレポートするように**(2026-08-16): ユーザーから
+  「コンクエストやTDMでも復活後ブレイクスルーのようにtpされるようなしくみに」と依頼。
+  AskUserQuestionで「squadtpのリスポーン選択画面(チームスポーン/スポーン2/ビーコン/拠点)は
+  残しつつ、リスポーン直後にまず自動でチームスポーンへテレポートする」を選択(選択画面自体を
+  廃止する案もあったが不採用)。従来`onRespawn`はコンクエスト/TDMの場合チケット消費のみ行い
+  テレポートは一切せず、squadtpの選択画面で何も選ばなければバニラのワールドスポーンのまま放置
+  されていた(ブレイクスルーだけ`handleBreakthroughRespawn`で`teleportToRoleSpawn`を呼び自動配置
+  していた)。`onRespawn`のCONQUEST/TDM分岐(elseブロックとしてTDMもカバー)に
+  `teleportToRoleSpawn(player, team)`を追加しただけで、既存の選択画面(squadtp本体の
+  `RespawnChoiceScreen`)との共存は無改造。選択画面はこの自動テレポートの**後**に開くため、
+  ビーコン等の別の場所を選べばそこへ再テレポートされる(何も選ばなければ最初の自動配置のまま)
 - **TDMでも蘇生を有効なままに**(2026-08-16): ユーザーから「TDMで蘇生アリがいい」と依頼。
   `ConquestManager`の`start`/`stop`/`endRound`にあった`mode == GameMode.TDM`時の
   `SquadManager.setFeatureEnabled(SquadFeature.REVIVE, false/true)`(TDM開始時に無効化・

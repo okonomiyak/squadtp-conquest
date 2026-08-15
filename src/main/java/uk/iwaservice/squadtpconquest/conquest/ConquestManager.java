@@ -2566,12 +2566,16 @@ public class ConquestManager extends SavedData {
             if (cost > 0) {
                 drainTickets(player.server, team, cost);
             }
+            teleportToRoleSpawn(player, team);
         } else if (mode == GameMode.BREAKTHROUGH) {
             handleBreakthroughRespawn(player, team);
+        } else {
+            teleportToRoleSpawn(player, team);
         }
-        // Conquest and TDM don't otherwise teleport on respawn (only at round start). The team
-        // beacon and (in conquest) owned points are offered as player choices via
-        // ConquestRespawnChoiceProvider instead of being placed automatically here.
+        // Conquest/TDM now auto-teleport to the team spawn on respawn, same as Breakthrough,
+        // instead of leaving the player at the vanilla world spawn until they act. squadtp's
+        // respawn-choice screen (team beacon and, in conquest, owned points) still opens right
+        // after and can move them again if they pick something else.
     }
 
     /**
