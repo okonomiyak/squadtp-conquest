@@ -70,6 +70,9 @@
   "conquest.msg.gather_set": "試合終了時の集合地点をここに設定した",
   "conquest.msg.gather_removed": "試合終了時の集合地点を削除した",
   "conquest.msg.no_gather_point": "集合地点が未設定です",
+  "conquest.msg.waiting_spawn_set": "待機チームのスポーン地点をここに設定した",
+  "conquest.msg.waiting_spawn_removed": "待機チームのスポーン地点を削除した",
+  "conquest.msg.no_waiting_spawn": "待機チームのスポーン地点が未設定です",
   "conquest.msg.unknown_item": "不明なアイテムです: %s",
   "conquest.msg.callin_added": "コールイン%sを追加した: %sスコア、%s個の%s",
   "conquest.msg.callin_removed": "コールイン%sを削除した",
@@ -170,6 +173,7 @@
   "conquest.status.boundary": "%s 〜 %s",
   "conquest.status.range": "%s 〜 %s(次のリセットまで%s秒)",
   "conquest.status.gather": "集合地点: %s",
+  "conquest.status.waiting_spawn": "待機チームのスポーン地点: %s",
   "conquest.status.callin": "%s: %sスコア = %s個の%s",
 
   "conquest.gui.title": "コンクエスト",
