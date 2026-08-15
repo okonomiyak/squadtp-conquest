@@ -73,6 +73,7 @@
   "conquest.msg.waiting_spawn_set": "待機チームのスポーン地点をここに設定した",
   "conquest.msg.waiting_spawn_removed": "待機チームのスポーン地点を削除した",
   "conquest.msg.no_waiting_spawn": "待機チームのスポーン地点が未設定です",
+  "conquest.msg.team_change_locked": "試合進行中はチームを変更できません",
   "conquest.msg.unknown_item": "不明なアイテムです: %s",
   "conquest.msg.callin_added": "コールイン%sを追加した: %sスコア、%s個の%s",
   "conquest.msg.callin_removed": "コールイン%sを削除した",

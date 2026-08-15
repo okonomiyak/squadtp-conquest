@@ -40,6 +40,13 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **OP以外はラウンド中チーム変更不可にできるconfig**(2026-08-16): ユーザーから
+  「あとop以外途中でチーム変更無しにできるconfigを」と依頼(直前の「試合中にA/B参加でtp」機能の
+  延長で、逆に試合中の出入りを制限したい運用向け)。`lockTeamChangeDuringRound`(既定`false`)を
+  追加し、`true`の間は`/conquest team join`(自分自身のチーム変更コマンド)がラウンド
+  `IN_PROGRESS`中は`ctx.getSource().hasPermission(2)`が偽なら拒否するようにした。OPが他人を
+  動かす`/conquest team join <player> <team>`(元々OP限定)や`/conquest team shuffle`
+  (同じくOP限定)はこの制限の対象外(元々権限で守られているため)。
 - **試合中にA/Bへ参加したらスポーンにtp**(2026-08-16): ユーザーから「試合中にa,bのチームに
   入ったらスポーンにtp」と依頼。それまで`joinTeam`はA/B参加時にteam自体は切り替えるものの
   テレポートは一切行わず(ラウンド開始時の一括テレポート`teleportToSpawns`や死亡復帰時の

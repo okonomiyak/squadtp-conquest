@@ -73,6 +73,7 @@
   "conquest.msg.waiting_spawn_set": "Waiting-team spawn point set here",
   "conquest.msg.waiting_spawn_removed": "Waiting-team spawn point removed",
   "conquest.msg.no_waiting_spawn": "No waiting-team spawn point set",
+  "conquest.msg.team_change_locked": "Team changes are locked while a round is in progress",
   "conquest.msg.unknown_item": "Unknown item: %s",
   "conquest.msg.callin_added": "Call-in %s added: %s score, %sx %s",
   "conquest.msg.callin_removed": "Call-in %s removed",

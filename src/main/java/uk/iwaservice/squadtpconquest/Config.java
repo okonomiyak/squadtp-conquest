@@ -17,6 +17,7 @@ public final class Config {
     public static final ForgeConfigSpec.BooleanValue END_ON_TEAM_EMPTY;
     public static final ForgeConfigSpec.BooleanValue AUTO_RESET_AFTER_RESULT;
     public static final ForgeConfigSpec.IntValue TICKET_COST_PER_RESPAWN;
+    public static final ForgeConfigSpec.BooleanValue LOCK_TEAM_CHANGE_DURING_ROUND;
     public static final ForgeConfigSpec.DoubleValue MAX_HEALTH;
     public static final ForgeConfigSpec.IntValue START_COUNTDOWN_SECONDS;
     public static final ForgeConfigSpec.IntValue TDM_KILL_LIMIT;
@@ -87,6 +88,11 @@ public final class Config {
         TICKET_COST_PER_RESPAWN = b
                 .comment("Tickets removed from a player's own team each time they respawn. 0 disables this.")
                 .defineInRange("ticketCostPerRespawn", 1, 0, 100);
+        LOCK_TEAM_CHANGE_DURING_ROUND = b
+                .comment("If true, non-OP players can't use /conquest team join to change team while a round is",
+                        "IN_PROGRESS (OPs, i.e. permission level 2+, are always exempt). Default false: anyone can",
+                        "switch teams at any time.")
+                .define("lockTeamChangeDuringRound", false);
         MAX_HEALTH = b
                 .comment("Max health for players on a combatant team (A/B), applied on /conquest team join and",
                         "at round start. Vanilla default is 20.0 (10 hearts); raise this to rebalance time-to-kill",
