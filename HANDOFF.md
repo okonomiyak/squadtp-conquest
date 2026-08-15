@@ -40,6 +40,13 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **`/conquest team shuffle`に演習場/待機チームも対象に含める**(2026-08-16): ユーザーから
+  「waitingとrangeもteamshuffleでa_bにわかれるようにして」と依頼(それまでは`ADMIN`/`RANGE`/
+  `SPECTATOR`/`WAITING`の4チームを一律で対象外にしていた)。`shuffleTeams`の除外条件を
+  `Team.ADMIN`と`Team.SPECTATOR`のみに縮小し、`range`/`waiting`のプレイヤーもA/Bへ振り分け
+  対象にした(招待制分隊の維持ロジックはそのまま両チームにも適用される)。`joinTeam`は元々
+  `range`→A/B、`waiting`→A/Bのチーム変更(`/conquest team join`経由)を問題なく処理できていた
+  ため、シャッフル側のフィルタ変更のみで対応。
 - **`/conquest team shuffle`で招待制の分隊を維持**(2026-08-16): ユーザーから「team shuffleする
   とき分隊リセットされるやん でも分隊を招待制にしたらリセットしないで同じチームにして」と依頼
   (それまでは対象プレイヤー全員の分隊を一律解散→新チームで再結成していたため、リーダー承認制の

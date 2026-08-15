@@ -816,20 +816,21 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Randomly splits every online player who isn't on the admin, training-range, spectator or
-     * waiting team into Team A / Team B as evenly as possible. Invite-only squads (see
-     * {@code Squad#isOpenJoin}) are kept intact and moved onto the same new team together as a
-     * single unit, since their membership was deliberately curated rather than randomly formed.
-     * Everyone else (squadless players, and members of an open-join squad) is shuffled
-     * individually: their old squad, if any, is disbanded first, and fresh same-team squads are
-     * formed afterward (chunked to squadtp's maxSquadSize) so nobody needs to manually reform.
-     * Returns the number of players reassigned.
+     * Randomly splits every online player who isn't on the admin or spectator team into Team A /
+     * Team B as evenly as possible (this pulls in training-range and waiting-room players too,
+     * putting them into the actual match). Invite-only squads (see {@code Squad#isOpenJoin}) are
+     * kept intact and moved onto the same new team together as a single unit, since their
+     * membership was deliberately curated rather than randomly formed. Everyone else (squadless
+     * players, and members of an open-join squad) is shuffled individually: their old squad, if
+     * any, is disbanded first, and fresh same-team squads are formed afterward (chunked to
+     * squadtp's maxSquadSize) so nobody needs to manually reform. Returns the number of players
+     * reassigned.
      */
     public int shuffleTeams(MinecraftServer server) {
         List<ServerPlayer> players = new ArrayList<>();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             Team current = teamOf(player.getUUID());
-            if (current != Team.ADMIN && current != Team.RANGE && current != Team.SPECTATOR && current != Team.WAITING) {
+            if (current != Team.ADMIN && current != Team.SPECTATOR) {
                 players.add(player);
             }
         }
