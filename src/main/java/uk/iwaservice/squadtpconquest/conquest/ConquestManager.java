@@ -2594,6 +2594,7 @@ public class ConquestManager extends SavedData {
         return new ConquestSyncPacket(statuses, ticketsA, ticketsB, isActive(), state, mode,
                 teamOf(viewer.getUUID()), viewer.hasPermissions(2), openScreen,
                 attackerTeam, sectorIndex(), sectorCount(), attackerTickets, attackerTicketsMax,
+                Config.TDM_KILL_LIMIT.get(),
                 callInStatuses, availableScore(viewer.getUUID()), joinableSquadsFor(viewer));
     }
 

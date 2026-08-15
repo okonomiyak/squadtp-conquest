@@ -74,8 +74,9 @@ public class ConquestHudOverlay implements IGuiOverlay {
         graphics.fill(barX, barY, barX + split, barY + BAR_HEIGHT, leftColor);
         graphics.fill(barX + split, barY, barX + BAR_WIDTH, barY + BAR_HEIGHT, rightColor);
 
-        String leftText = String.valueOf(leftTickets);
-        String rightText = String.valueOf(rightTickets);
+        int tdmKillLimit = ConquestClientData.getMode() == GameMode.TDM ? ConquestClientData.getTdmKillLimit() : 0;
+        String leftText = tdmKillLimit > 0 ? leftTickets + "/" + tdmKillLimit : String.valueOf(leftTickets);
+        String rightText = tdmKillLimit > 0 ? rightTickets + "/" + tdmKillLimit : String.valueOf(rightTickets);
         graphics.drawString(font, leftText, barX - font.width(leftText) - 4, barY + 1, 0xFFFFFF);
         graphics.drawString(font, rightText, barX + BAR_WIDTH + 4, barY + 1, 0xFFFFFF);
 

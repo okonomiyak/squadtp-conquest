@@ -143,6 +143,7 @@
   "conquest.status.header": "=== コンクエスト状況 ===",
   "conquest.status.mode": "モード: %s",
   "conquest.status.tickets": "チケット  A: %s / B: %s (%s)",
+  "conquest.status.kills": "キル数  A: %s / B: %s (%s)",
   "conquest.status.waiting": "待機中",
   "conquest.status.starting": "開始準備中",
   "conquest.status.running": "進行中",

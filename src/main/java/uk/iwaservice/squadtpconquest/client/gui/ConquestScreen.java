@@ -328,7 +328,8 @@ public class ConquestScreen extends Screen {
         cursor += 20;
 
         GameMode currentMode = ConquestClientData.getMode();
-        GameMode nextMode = currentMode == GameMode.CONQUEST ? GameMode.BREAKTHROUGH : GameMode.CONQUEST;
+        GameMode[] modes = GameMode.values();
+        GameMode nextMode = modes[(currentMode.ordinal() + 1) % modes.length];
         Button modeToggle = Button.builder(Component.translatable("conquest.gui.mode_toggle", currentMode.display()),
                 b -> command("conquest mode set " + nextMode.key()))
                 .bounds(panelLeft + PAD, 0, panelWidth - 2 * PAD, 18).build();

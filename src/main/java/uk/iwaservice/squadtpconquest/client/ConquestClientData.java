@@ -42,6 +42,7 @@ public final class ConquestClientData {
     private static int sectorCount;
     private static int attackerTickets;
     private static int attackerTicketsMax;
+    private static int tdmKillLimit;
     private static List<ConquestSyncPacket.CallInStatus> callIns = List.of();
     private static int availableScore;
     private static List<ConquestSyncPacket.SquadStatus> joinableSquads = List.of();
@@ -52,7 +53,7 @@ public final class ConquestClientData {
                                           int newTicketsA, int newTicketsB, boolean newActive, RoundState newState,
                                           GameMode newMode, Team newYourTeam, boolean newCanAdmin,
                                           Team newAttackerTeam, int newSectorIndex, int newSectorCount,
-                                          int newAttackerTickets, int newAttackerTicketsMax,
+                                          int newAttackerTickets, int newAttackerTicketsMax, int newTdmKillLimit,
                                           List<ConquestSyncPacket.CallInStatus> newCallIns, int newAvailableScore,
                                           List<ConquestSyncPacket.SquadStatus> newJoinableSquads) {
         points = List.copyOf(newPoints);
@@ -68,6 +69,7 @@ public final class ConquestClientData {
         sectorCount = newSectorCount;
         attackerTickets = newAttackerTickets;
         attackerTicketsMax = newAttackerTicketsMax;
+        tdmKillLimit = newTdmKillLimit;
         callIns = List.copyOf(newCallIns);
         availableScore = newAvailableScore;
         joinableSquads = List.copyOf(newJoinableSquads);
@@ -195,6 +197,11 @@ public final class ConquestClientData {
 
     public static synchronized int getAttackerTicketsMax() {
         return attackerTicketsMax;
+    }
+
+    /** 0 means no kill limit (TDM runs to the time limit only). */
+    public static synchronized int getTdmKillLimit() {
+        return tdmKillLimit;
     }
 
     public static synchronized List<ConquestSyncPacket.CallInStatus> getCallIns() {

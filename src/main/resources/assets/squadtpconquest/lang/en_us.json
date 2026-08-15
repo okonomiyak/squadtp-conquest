@@ -143,6 +143,7 @@
   "conquest.status.header": "=== Conquest Status ===",
   "conquest.status.mode": "Mode: %s",
   "conquest.status.tickets": "Tickets  A: %s / B: %s (%s)",
+  "conquest.status.kills": "Kills  A: %s / B: %s (%s)",
   "conquest.status.waiting": "waiting",
   "conquest.status.starting": "starting",
   "conquest.status.running": "running",

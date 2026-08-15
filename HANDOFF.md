@@ -40,6 +40,29 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **TDMモードの作り込み不足を解消**(2026-08-15): ユーザーから「TDMをちゃんと作ろう」と依頼され、
+  Exploreエージェントでコード全体を監査。TDM自体のコアロジック(キル計上・キルリミット勝利・
+  蘇生自動無効化)は既に動いていたが、GUI/HUD/コマンド周りがコンクエスト用の配管に相乗りしたまま
+  TDM向けの調整を受けていなかった。見つかった6件のうちユーザーが選んだ3件を対応:
+  - **GUIのモード切替ボタンがTDMに届かなかったバグを修正**(`ConquestScreen.java`):
+    `currentMode == CONQUEST ? BREAKTHROUGH : CONQUEST`という決め打ちの2値切替になっており、
+    TDMへは`/conquest mode set tdm`コマンドでしか到達できなかった。`GameMode.values()`の
+    `ordinal()`を使った汎用の巡回に変更(conquest→tdm→breakthrough→conquest…、将来モードが
+    増えても自動対応)
+  - **`tdmKillLimit`をクライアントに同期しHUDへ常時表示**: 従来はラウンド開始時のタイトル表示
+    1回きりで、キル目標を確認する手段が無かった。`ConquestSyncPacket`に`tdmKillLimit`フィールドを
+    追加(`PROTOCOL_VERSION` 18→19)、`ConquestHudOverlay`のTDM表示(通常のticketバーを流用)で
+    左右の数値を`現在/目標`形式に変更(`tdmKillLimit`が0=無制限の場合は従来通り数値のみ)。
+    バー自体の見た目(K/D比率の色分割)はそのまま維持——2チームが同じ目標に向かって競り合う
+    構図では「どちらが優勢か」を示す現行のバーの方が「単独チームの目標達成度バー」
+    (ブレイクスルーの攻撃側チケットバーと同じ形)より意味が通ると判断し、バーの再設計は見送った
+  - **`/conquest status`がTDM中もキル数を「Tickets」とラベル表示していたのを修正**: `ticketsA/B`
+    フィールドを内部でキル数として流用している都合で発生していた表記ミス。TDMの時だけ新規
+    `conquest.status.kills`キーを使うように分岐(`ConquestCommand.status`)
+  - スコープ外にした3件(GUIから見送り): TDMのHUDバーをブレイクスルー式の単独目標達成度バーに
+    再設計すること(上記の理由で見送り)、ラウンド開始の前提条件としてスポーン地点設定を促す仕組み
+    (拠点/セクターが無くても始められるTDMの気軽さを損なうため見送り)、実プレイでの動作確認
+    (TODO.md参照、まだ未実施)
 - **開始前カウントダウン中、自陣ゾーンの外に出られないように**(2026-08-15): ユーザーから
   「最初の準備の5秒間は自陣から出れないようにしたい」と依頼(`startCountdownSeconds`の既定値が
   ちょうど5)。新規`confineToHomeZones`/`confineToHomeZone`を`tickSecond`の`STARTING`分岐に追加し、

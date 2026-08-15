@@ -1232,7 +1232,8 @@ public final class ConquestCommand {
         MutableComponent msg = Component.translatable("conquest.status.header").withStyle(ChatFormatting.GOLD);
         msg.append("\n").append(Component.translatable("conquest.status.mode", manager.getMode().display())
                 .withStyle(ChatFormatting.GRAY));
-        msg.append("\n").append(Component.translatable("conquest.status.tickets",
+        String countsKey = manager.getMode() == GameMode.TDM ? "conquest.status.kills" : "conquest.status.tickets";
+        msg.append("\n").append(Component.translatable(countsKey,
                 Component.literal(String.valueOf(manager.tickets(Team.A))).withStyle(ChatFormatting.BLUE),
                 Component.literal(String.valueOf(manager.tickets(Team.B))).withStyle(ChatFormatting.RED),
                 Component.translatable(stateKey)));
