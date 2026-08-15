@@ -794,6 +794,7 @@ public class ConquestManager extends SavedData {
             }
             if (team.isCombatant() && state == RoundState.IN_PROGRESS) {
                 teleportToRoleSpawn(player, team);
+                ClassLoadoutCompat.equip(player);
             }
         }
     }
