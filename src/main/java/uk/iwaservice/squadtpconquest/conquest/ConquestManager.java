@@ -748,12 +748,24 @@ public class ConquestManager extends SavedData {
      * conquest side, and so team-colored nameplates/glow come for free.
      */
     public void joinTeam(ServerPlayer player, Team team) {
+        joinTeam(player, team, true);
+    }
+
+    /**
+     * {@code leaveSquad} is false only for {@link #shuffleTeams} moving an invite-only squad's
+     * members together onto the same new team — there every member ends up on the same team as
+     * their squadmates, so there's no cross-team squad to break up, and {@link #leaveSquadIfAny}
+     * would otherwise strip them out of the squad one by one as each member is processed.
+     */
+    private void joinTeam(ServerPlayer player, Team team, boolean leaveSquad) {
         Team previous = playerTeams.put(player.getUUID(), team);
         setDirty();
         syncVanillaTeam(player, team);
         if (previous != team) {
             applyMaxHealth(player, team);
-            leaveSquadIfAny(player);
+            if (leaveSquad) {
+                leaveSquadIfAny(player);
+            }
             if (team == Team.RANGE) {
                 teleportIntoRange(player);
             }
@@ -804,11 +816,13 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Randomly splits every online player who isn't on the admin, training-range or spectator
-     * team into Team A / Team B as evenly as possible. Since a shuffle can freely split
-     * up existing squads across the two new teams, every squad touched by it
-     * is disbanded first and fresh same-team squads are formed afterward
-     * (chunked to squadtp's maxSquadSize) so nobody needs to manually reform.
+     * Randomly splits every online player who isn't on the admin, training-range, spectator or
+     * waiting team into Team A / Team B as evenly as possible. Invite-only squads (see
+     * {@code Squad#isOpenJoin}) are kept intact and moved onto the same new team together as a
+     * single unit, since their membership was deliberately curated rather than randomly formed.
+     * Everyone else (squadless players, and members of an open-join squad) is shuffled
+     * individually: their old squad, if any, is disbanded first, and fresh same-team squads are
+     * formed afterward (chunked to squadtp's maxSquadSize) so nobody needs to manually reform.
      * Returns the number of players reassigned.
      */
     public int shuffleTeams(MinecraftServer server) {
@@ -819,18 +833,66 @@ public class ConquestManager extends SavedData {
                 players.add(player);
             }
         }
-        Collections.shuffle(players);
-
+        Set<ServerPlayer> eligible = new HashSet<>(players);
         SquadManager squadManager = SquadManager.get(server);
-        disbandSquadsOf(server, squadManager, players);
+
+        // First pass: every invite-only squad becomes one unit, claiming all its eligible members.
+        List<List<ServerPlayer>> lockedUnits = new ArrayList<>();
+        Set<ServerPlayer> lockedPlayers = new HashSet<>();
+        Set<UUID> seenLockedSquads = new HashSet<>();
+        for (ServerPlayer player : players) {
+            Squad squad = squadManager.getSquadOf(player.getUUID());
+            if (squad == null || squad.isOpenJoin() || !seenLockedSquads.add(squad.getId())) {
+                continue;
+            }
+            List<ServerPlayer> unit = new ArrayList<>();
+            for (UUID memberId : squad.getMembers().keySet()) {
+                ServerPlayer member = server.getPlayerList().getPlayer(memberId);
+                if (member != null && eligible.contains(member)) {
+                    unit.add(member);
+                    lockedPlayers.add(member);
+                }
+            }
+            lockedUnits.add(unit);
+        }
+
+        // Second pass: everyone not claimed by a locked unit shuffles individually as before.
+        List<ServerPlayer> freePlayers = new ArrayList<>();
+        for (ServerPlayer player : players) {
+            if (!lockedPlayers.contains(player)) {
+                freePlayers.add(player);
+            }
+        }
+        Collections.shuffle(lockedUnits);
+        Collections.shuffle(freePlayers);
+
+        disbandSquadsOf(server, squadManager, freePlayers);
+
+        int countA = 0;
+        int countB = 0;
+        for (List<ServerPlayer> unit : lockedUnits) {
+            Team team = countA <= countB ? Team.A : Team.B;
+            for (ServerPlayer player : unit) {
+                joinTeam(player, team, false);
+            }
+            if (team == Team.A) {
+                countA += unit.size();
+            } else {
+                countB += unit.size();
+            }
+        }
 
         List<ServerPlayer> teamA = new ArrayList<>();
         List<ServerPlayer> teamB = new ArrayList<>();
-        for (int i = 0; i < players.size(); i++) {
-            ServerPlayer player = players.get(i);
-            Team team = i % 2 == 0 ? Team.A : Team.B;
+        for (ServerPlayer player : freePlayers) {
+            Team team = countA <= countB ? Team.A : Team.B;
             joinTeam(player, team);
             (team == Team.A ? teamA : teamB).add(player);
+            if (team == Team.A) {
+                countA++;
+            } else {
+                countB++;
+            }
         }
 
         formSquads(server, squadManager, teamA);
