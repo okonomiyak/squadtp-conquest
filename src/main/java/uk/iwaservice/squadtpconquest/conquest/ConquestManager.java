@@ -1156,6 +1156,35 @@ public class ConquestManager extends SavedData {
         }
     }
 
+    /**
+     * During the pre-round countdown ({@code startCountdownSeconds}), teleports any combatant
+     * caught outside their own team's home zone back to their spawn — a soft "you can't leave
+     * yet" barrier so teams can't rush out during preparation. No-op for a team with no home zone
+     * set (the restriction is opt-in, same as the zone's execution behavior during the round).
+     */
+    private void confineToHomeZones(MinecraftServer server) {
+        confineToHomeZone(server, Team.A, zoneADim, getZoneMin(Team.A), getZoneMax(Team.A));
+        confineToHomeZone(server, Team.B, zoneBDim, getZoneMin(Team.B), getZoneMax(Team.B));
+    }
+
+    private void confineToHomeZone(MinecraftServer server, Team team, @Nullable ResourceKey<Level> dim,
+                                    @Nullable BlockPos min, @Nullable BlockPos max) {
+        if (dim == null || min == null || max == null) {
+            return;
+        }
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (teamOf(player.getUUID()) != team || !player.isAlive()) {
+                continue;
+            }
+            boolean inside = player.level().dimension() == dim && containsPos(min, max, player.blockPosition());
+            if (!inside) {
+                teleportToRoleSpawn(player, team);
+                player.displayClientMessage(Component.translatable("conquest.msg.starting_zone_warning")
+                        .withStyle(ChatFormatting.RED), true);
+            }
+        }
+    }
+
     // --- battlefield boundary (single global box; outside it too long = executed) ---
 
     /** Defines/relocates the battlefield boundary as the box between two corners. */
@@ -2282,6 +2311,7 @@ public class ConquestManager extends SavedData {
 
         if (state == RoundState.STARTING) {
             countdownSecondsRemaining--;
+            confineToHomeZones(server);
             if (countdownSecondsRemaining <= 0) {
                 state = RoundState.IN_PROGRESS;
                 setDirty();

@@ -46,6 +46,7 @@
   "conquest.msg.no_zone_any": "No home zones set (/conquest zone set a|b)",
   "conquest.msg.zone_list_header": "=== Home Zones ===",
   "conquest.msg.zone_warning": "⚠ Enemy territory! %ss until elimination",
+  "conquest.msg.starting_zone_warning": "⚠ Stay in your home zone until the round starts!",
   "conquest.msg.boundary_set": "Battlefield boundary set: %s to %s",
   "conquest.msg.boundary_corner1_set": "Boundary corner 1 set here",
   "conquest.msg.boundary_corner2_set": "Boundary corner 2 set here",

@@ -46,6 +46,7 @@
   "conquest.msg.no_zone_any": "自陣ゾーンが未設定です (/conquest zone set a|b)",
   "conquest.msg.zone_list_header": "=== 自陣ゾーン ===",
   "conquest.msg.zone_warning": "⚠ 敵陣にいます! あと%s秒で処刑されます",
+  "conquest.msg.starting_zone_warning": "⚠ ラウンド開始まで自陣から出ないでください!",
   "conquest.msg.boundary_set": "戦場境界を設定した: %s 〜 %s",
   "conquest.msg.boundary_corner1_set": "境界の角1をここに設定した",
   "conquest.msg.boundary_corner2_set": "境界の角2をここに設定した",
