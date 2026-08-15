@@ -748,14 +748,23 @@ public class ConquestManager extends SavedData {
      * conquest side, and so team-colored nameplates/glow come for free.
      */
     public void joinTeam(ServerPlayer player, Team team) {
-        joinTeam(player, team, true);
+        boolean leaveSquad = true;
+        if (team == Team.WAITING) {
+            Squad squad = SquadManager.get(player.server).getSquadOf(player.getUUID());
+            leaveSquad = squad == null || squad.isOpenJoin();
+        }
+        joinTeam(player, team, leaveSquad);
     }
 
     /**
-     * {@code leaveSquad} is false only for {@link #shuffleTeams} moving an invite-only squad's
-     * members together onto the same new team — there every member ends up on the same team as
-     * their squadmates, so there's no cross-team squad to break up, and {@link #leaveSquadIfAny}
-     * would otherwise strip them out of the squad one by one as each member is processed.
+     * {@code leaveSquad} is false for {@link #shuffleTeams} moving an invite-only squad's members
+     * together onto the same new team — there every member ends up on the same team as their
+     * squadmates, so there's no cross-team squad to break up, and {@link #leaveSquadIfAny} would
+     * otherwise strip them out of the squad one by one as each member is processed. It's also
+     * false when an invite-only squad member parks themselves on the non-combatant
+     * {@link Team#WAITING} team: {@code waiting} can't revive/teleport/fight anyone, so there's no
+     * cross-team-squad exploit to guard against, and disbanding them out just to let them rejoin
+     * later is needless churn.
      */
     private void joinTeam(ServerPlayer player, Team team, boolean leaveSquad) {
         Team previous = playerTeams.put(player.getUUID(), team);

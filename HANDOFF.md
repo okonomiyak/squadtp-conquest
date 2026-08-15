@@ -40,6 +40,15 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **`waiting`チームへの個別移動でも招待制の分隊を維持**(2026-08-16): ユーザーから
+  「waitingになっても招待制の分隊はリセットしないで」と依頼。`/conquest team join waiting`
+  (個別コマンド、シャッフルとは別経路)は公開の`joinTeam(player, team)`を通るため、これまでは
+  移動のたびに`leaveSquadIfAny`が無条件で呼ばれ、招待制の分隊メンバーでも`waiting`に移動した
+  瞬間に分隊から外れてしまっていた。`joinTeam(player, team)`に、移動先が`WAITING`かつ本人の
+  分隊が招待制(`isOpenJoin() == false`)の場合だけ`leaveSquad=false`で3引数版を呼ぶ分岐を追加。
+  `waiting`は非戦闘チーム(`isCombatant() == false`、PvP不可)なので、`leaveSquadIfAny`が本来
+  防いでいた「A/Bをまたいだ分隊機能の悪用」は起こり得ず、外す理由が無いと判断。A/B間の移動や
+  オープン参加の分隊は従来通り(移動のたびに分隊を外れる)。
 - **`/conquest team shuffle`に演習場/待機チームも対象に含める**(2026-08-16): ユーザーから
   「waitingとrangeもteamshuffleでa_bにわかれるようにして」と依頼(それまでは`ADMIN`/`RANGE`/
   `SPECTATOR`/`WAITING`の4チームを一律で対象外にしていた)。`shuffleTeams`の除外条件を
