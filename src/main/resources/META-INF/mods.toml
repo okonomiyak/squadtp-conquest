@@ -28,3 +28,10 @@ description='''Battlefield-style conquest game mode built on top of the squadtp 
     versionRange="[0.1.0,)"
     ordering="AFTER"
     side="BOTH"
+
+[[dependencies.squadtpconquest]]
+    modId="classloadout"
+    mandatory=false
+    versionRange="[0.5.0,)"
+    ordering="AFTER"
+    side="BOTH"

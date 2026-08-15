@@ -62,6 +62,16 @@ repositories {
         metadataSources { artifact() }
         content { includeModule('uk.iwaservice', 'squadtp') }
     }
+    // classloadout jar built by the sibling project (optional soft dependency, see
+    // compat/ClassLoadoutCompat). Its archivesName has no MC-version/loader suffix
+    // (unlike squadtp's), so the pattern is the bare default.
+    ivy {
+        name = 'classloadoutLocal'
+        url = uri(file('../classloadout/build/libs'))
+        patternLayout { artifact "[module]-[revision].[ext]" }
+        metadataSources { artifact() }
+        content { includeModule('uk.iwaservice', 'classloadout') }
+    }
     // JourneyMap API (v1.x for MC 1.20.x)
     maven {
         name = 'JourneyMap'
@@ -85,6 +95,14 @@ dependencies {
     // JourneyMap 1.20.1-5.10.3-forge, remapped SRG->named for the dev runtime only.
     // Production jars must NOT go into run/mods: their mixins fail against named MC classes.
     modRuntimeOnly 'curse.maven:journeymap-32274:5789363'
+
+    // classloadout: compile-time only soft dependency, never shipped or required (see
+    // compat/classloadout). No separate thin "API" jar exists (unlike JourneyMap), so this is
+    // the full mod jar; modCompileOnly (not plain compileOnly) so MDG remaps it like squadtp.
+    modCompileOnly "uk.iwaservice:classloadout:${classloadout_version}"
+    // Same jar again, for runClient/runServer only, so the integration is actually exercisable
+    // in the dev environment without classloadout being a real project dependency.
+    modRuntimeOnly "uk.iwaservice:classloadout:${classloadout_version}"
 }
 
 // mods.toml's version="${file.jarVersion}" reads this manifest attribute; without it Forge has

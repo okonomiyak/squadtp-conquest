@@ -40,6 +40,32 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **classloadout連携: ラウンド開始時にロードアウトを装備**(2026-08-16): ユーザーから
+  「classloadoutと連携してゲーム開始時にロードアウトを付与させて」と依頼(`C:\Users\tomip\program\
+  java\classloadout`を指定)。Exploreエージェントで調査したところ、classloadoutは
+  `api`パッケージを持たない(squadtpの`RespawnChoiceProvider`のような正式な連携APIが無い)ので、
+  内部クラス`uk.iwaservice.classloadout.ServerEvents.equipLoadout(ServerPlayer)`
+  (`/class select`やロードアウト・ステーションが使っているのと同じ「即時装備」経路、
+  設定次第でインベントリクリア+5スロット装備+弾薬支給まで行う)を直接呼ぶ形で実装。
+  classloadout側には一切手を入れていない。
+  - 既存の[JourneyMap連携](#拠点のウェイポイント表示journeymap連携)と全く同じ「隔離パターン」を
+    踏襲: `compat.ClassLoadoutCompat`(`ModList.isLoaded("classloadout")`チェックのみ、
+    classloadoutのクラスを一切参照しない)→ `compat.classloadout.ConquestLoadoutHandler`
+    (実際にclassloadoutのクラスを参照する側、`isLoaded`がfalseなら絶対にクラスロードされない)。
+    呼び出し失敗時は例外キャッチして以後そのセッション中は自動無効化(`broken`フラグ)
+  - `teleportToSpawns`(ラウンド開始時に全参加者をスポーンへ運ぶ既存メソッド)の末尾で
+    各プレイヤーに`ClassLoadoutCompat.equip(player)`を呼ぶだけ。ラウンド中の通常リスポーンは
+    classloadout自身の「リスポーンごとに自動装備」機能がそのまま働くので変更不要——ラウンド開始は
+    「既に生存しているプレイヤーをテレポートするだけ」で死亡イベントを経由しないため、
+    ここだけ明示的に呼ぶ必要があった
+  - `build.gradle`にsquadtpと同じivyローカルリポジトリパターンを追加(`../classloadout/build/libs`、
+    ただしclassloadoutのjar名にはMCバージョン/ローダー接尾辞が無いので`patternLayout`は
+    `[module]-[revision].[ext]`のまま)。依存スコープは`modCompileOnly`+`modRuntimeOnly`
+    (JourneyMap APIと同じ考え方だが、classloadoutに専用の薄いAPI jarが無いためフルの本体jarを
+    参照——実行時は`mods.toml`で`mandatory=false`なので問題ないが、**ビルド時はGradleの依存解決が
+    必ず走るため`../classloadout`が存在しビルド済みである必要がある**、squadtpと同じ制約)。
+    `gradle.properties`に`classloadout_version=0.5.2`、`mods.toml`に
+    `[[dependencies.squadtpconquest]]`ブロック(`modId="classloadout"`, `mandatory=false`)を追加
 - **コンクエスト/TDMもリスポーン時に自動テレポートするように**(2026-08-16): ユーザーから
   「コンクエストやTDMでも復活後ブレイクスルーのようにtpされるようなしくみに」と依頼。
   AskUserQuestionで「squadtpのリスポーン選択画面(チームスポーン/スポーン2/ビーコン/拠点)は

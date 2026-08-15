@@ -423,6 +423,32 @@ Waypoint経由で別途表示されるので、この非表示化と競合しな
 キル/デス集計などその他の対戦要素からも`range`/`spectator`と同様に除外される。試合のHUD/GUIは
 表示されない(`spectator`/`admin`とは違い「観戦」目的のチームではないため)。
 
+## classloadout連携
+
+[classloadout](../classloadout)(OPが編集する装備クラス+死亡画面での選択+リスポーン時自動装備を
+提供する別Mod)が導入されている場合、**ラウンド開始(`/conquest start`)の瞬間、全参加者
+(チームA/B)に対して各自が最後に選んだ個人ロードアウトを装備させる**(2026-08-16追加)。
+
+- **実行時は完全な任意依存**(`mods.toml`で`mandatory=false`): サーバー/クライアントに
+  classloadoutが入っていなくても一切エラーにならず、この機能が黙ってスキップされるだけ
+  (squadtp-conquest単体でも今まで通り動く)。ただし**ビルド時は`../classloadout`の存在が必要**
+  (詳細は[ビルド・実行](#ビルド実行)参照、"実行時は任意"と"ビルド時は必須"は別の話)
+- classloadoutの公開メソッドではない内部クラス(`api`パッケージ非公開のため)を直接参照する形なので、
+  squadtp-conquest側でも[JourneyMap連携](#拠点のウェイポイント表示journeymap連携)と同じ「別クラス+
+  例外キャッチで隔離」方式(`compat.ClassLoadoutCompat` → `compat.classloadout.
+  ConquestLoadoutHandler`)を採用。呼び出しが失敗してもそのセッション中は自動的に連携を無効化し、
+  ラウンド開始処理自体は止まらない
+- 呼び出しているのは`uk.iwaservice.classloadout.ServerEvents.equipLoadout(ServerPlayer)`——
+  classloadout本体の`/class select`やロードアウト・ステーションが使っているのと同じ「即時装備」
+  経路(死亡してから復活した時と同じ扱いで、`death.clearInventoryOnDeath`設定が有効ならインベントリの
+  保護対象外アイテムを先にクリアしてから5スロット分を装備し、スロットごとの弾薬支給まで行う)
+- 個人ロードアウトを一度も選んだことがないプレイヤーには何もしない(classloadout側の仕様。
+  インベントリは一切変更されない)
+- ラウンド中の通常のリスポーンでは、classloadout自身が持つ「リスポーンのたびに自動装備」機能が
+  そのまま働く(squadtp-conquest側の変更は不要)。今回の変更は**ラウンド開始**という、死亡を
+  経由しないタイミング(既に生存しているプレイヤーがスポーン地点へテレポートされるだけ)を
+  カバーするためのもの
+
 ## ラウンドの流れ
 
 状態は `WAITING`(待機中) → `STARTING`(開始カウントダウン中) → `IN_PROGRESS`(進行中) →
@@ -431,7 +457,8 @@ Waypoint経由で別途表示されるので、この非表示化と競合しな
 1. OPが拠点(`/conquest point set|add`)・必要ならスポーン地点(`/conquest spawn set`)を設置
 2. プレイヤーが `/conquest team join a|b` でチーム参加
 3. OPが `/conquest start` を実行。この時点で全拠点のチケット/占領状態がリセットされ、
-   各プレイヤーはチームのスポーン地点へ移動、`STARTING`へ。以後`startCountdownSeconds`秒間、
+   各プレイヤーはチームのスポーン地点へ移動([classloadout](#classloadout連携)導入時はこの瞬間に
+   個人ロードアウトも装備)、`STARTING`へ。以後`startCountdownSeconds`秒間、
    タイトルで残り秒数の「Get Ready!」カウントダウンが表示される(0で無効化しすぐ開始)。
    この間に`/conquest stop`で開始をキャンセルできる
 4. カウントダウン終了で`IN_PROGRESS`へ。拠点の範囲内に片方のチームだけがいると占領進行度が変化。
@@ -624,6 +651,16 @@ squadtp本体は`../squadtp/build/libs/`のjarをローカルivyリポジトリ�
 変わったら、`squadtp_version`をそれに合わせて更新すること**(合っていないと
 `Could not find uk.iwaservice:squadtp:x.x.x`でビルドが失敗する)。実際にどのjarが
 解決されているかは`gradlew printSquadtpCp`で確認できる。
+
+[classloadout](#classloadout連携)も同様に`../classloadout/build/libs/`をローカルivyリポジトリ
+経由で参照する(`gradle.properties`の`classloadout_version`、ivyパターンは
+`[module]-[revision].[ext]`——squadtpと違いclassloadoutのjar名にはMCバージョン/ローダーの
+接尾辞が付かないため)。**注意**: `modCompileOnly`/`modRuntimeOnly`(実行時は`mandatory=false`の
+任意Mod連携)ではあるが、Gradleの依存解決自体はビルド時に必ず走るため、squadtpと同様に
+`../classloadout`が存在しビルド済み(`gradlew build`済み)である必要がある——**無いとsquadtpの
+場合と同じく`Could not find uk.iwaservice:classloadout:x.x.x`でビルド自体が失敗する**
+(「実行時は任意」と「ビルド時に必須」は別の話なので注意)。classloadout本体をリビルドして
+バージョンが変わったら`classloadout_version`も更新すること。
 
 ### 2プレイヤーテスト手順
 

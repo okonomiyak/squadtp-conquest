@@ -36,6 +36,7 @@ import uk.iwaservice.squadtp.squad.Squad;
 import uk.iwaservice.squadtp.squad.SquadManager;
 import uk.iwaservice.squadtp.squad.TeleportHelper;
 import uk.iwaservice.squadtpconquest.Config;
+import uk.iwaservice.squadtpconquest.compat.ClassLoadoutCompat;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 import uk.iwaservice.squadtpconquest.network.NetworkHandler;
@@ -1982,6 +1983,11 @@ public class ConquestManager extends SavedData {
                 Component.translatable("conquest.title.started_sub", Config.STARTING_TICKETS.get()));
     }
 
+    /**
+     * Every combatant, at round start: full HP for the mode, teleport to their team spawn, and
+     * (if classloadout is installed) equip whatever personal loadout they last selected — see
+     * {@link ClassLoadoutCompat}. No-op for a player who never set one.
+     */
     private void teleportToSpawns(MinecraftServer server) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             Team team = teamOf(player.getUUID());
@@ -1990,6 +1996,7 @@ public class ConquestManager extends SavedData {
             }
             applyMaxHealth(player, team);
             teleportToRoleSpawn(player, team);
+            ClassLoadoutCompat.equip(player);
         }
     }
 
