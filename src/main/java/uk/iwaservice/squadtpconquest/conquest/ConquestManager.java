@@ -187,11 +187,6 @@ public class ConquestManager extends SavedData {
     private ResourceKey<Level> rangeSpawnDim;
     @Nullable
     private BlockPos rangeSpawnPos;
-    /** Optional teleport destination for players joining {@link Team#WAITING}; no-op if unset. */
-    @Nullable
-    private ResourceKey<Level> waitingSpawnDim;
-    @Nullable
-    private BlockPos waitingSpawnPos;
     /**
      * Transient: the range's clean-state snapshot, taken by {@link #setRange} and pasted back
      * every {@code rangeResetIntervalSeconds} (see {@link #tickRange}) — not saved to NBT, so a
@@ -790,27 +785,12 @@ public class ConquestManager extends SavedData {
             }
             if (team == Team.WAITING) {
                 player.getInventory().clearContent();
-                teleportToWaiting(player);
             }
             if (team.isCombatant() && state == RoundState.IN_PROGRESS) {
                 teleportToRoleSpawn(player, team);
                 ClassLoadoutCompat.equip(player);
             }
         }
-    }
-
-    /** Teleports a player to the waiting-team spawn point ({@link #setWaitingSpawn}); no-op if unset. */
-    private void teleportToWaiting(ServerPlayer player) {
-        if (waitingSpawnDim == null || waitingSpawnPos == null) {
-            return;
-        }
-        ServerLevel level = player.server.getLevel(waitingSpawnDim);
-        if (level == null) {
-            return;
-        }
-        BlockPos safe = TeleportHelper.findSafeSpot(level, waitingSpawnPos);
-        player.teleportTo(level, safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5,
-                Set.of(), player.getYRot(), player.getXRot());
     }
 
     /**
@@ -1438,34 +1418,6 @@ public class ConquestManager extends SavedData {
     @Nullable
     public BlockPos getRangeSpawnPos() {
         return rangeSpawnPos;
-    }
-
-    /** Sets the teleport destination for players joining {@link Team#WAITING}. */
-    public void setWaitingSpawn(ServerLevel level, BlockPos pos) {
-        waitingSpawnDim = level.dimension();
-        waitingSpawnPos = pos.immutable();
-        setDirty();
-    }
-
-    /** Clears the waiting-team teleport destination. False if none was set. */
-    public boolean removeWaitingSpawn() {
-        if (waitingSpawnPos == null) {
-            return false;
-        }
-        waitingSpawnDim = null;
-        waitingSpawnPos = null;
-        setDirty();
-        return true;
-    }
-
-    @Nullable
-    public ResourceKey<Level> getWaitingSpawnDim() {
-        return waitingSpawnDim;
-    }
-
-    @Nullable
-    public BlockPos getWaitingSpawnPos() {
-        return waitingSpawnPos;
     }
 
     @Nullable
@@ -2918,10 +2870,6 @@ public class ConquestManager extends SavedData {
             manager.rangeSpawnDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("RangeSpawnDim")));
             manager.rangeSpawnPos = NbtUtils.readBlockPos(tag.getCompound("RangeSpawnPos"));
         }
-        if (tag.contains("WaitingSpawnDim")) {
-            manager.waitingSpawnDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("WaitingSpawnDim")));
-            manager.waitingSpawnPos = NbtUtils.readBlockPos(tag.getCompound("WaitingSpawnPos"));
-        }
         ListTag scoreList = tag.getList("Scores", Tag.TAG_COMPOUND);
         for (int i = 0; i < scoreList.size(); i++) {
             CompoundTag s = scoreList.getCompound(i);
@@ -3070,10 +3018,6 @@ public class ConquestManager extends SavedData {
         if (rangeSpawnDim != null && rangeSpawnPos != null) {
             tag.putString("RangeSpawnDim", rangeSpawnDim.location().toString());
             tag.put("RangeSpawnPos", NbtUtils.writeBlockPos(rangeSpawnPos));
-        }
-        if (waitingSpawnDim != null && waitingSpawnPos != null) {
-            tag.putString("WaitingSpawnDim", waitingSpawnDim.location().toString());
-            tag.put("WaitingSpawnPos", NbtUtils.writeBlockPos(waitingSpawnPos));
         }
         ListTag scoreList = new ListTag();
         for (Map.Entry<UUID, PlayerScore> e : scores.entrySet()) {

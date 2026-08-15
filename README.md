@@ -43,9 +43,6 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 | `/conquest gather set` | 実行者の足元を[試合終了時の集合地点](#試合終了時の集合)に設定 | OP |
 | `/conquest gather remove` | 集合地点の設定を解除(未設定なら試合終了時のテレポートは行われない) | OP |
 | `/conquest gather list` | 現在の集合地点の座標を表示 | - |
-| `/conquest waiting spawn set` | 実行者の足元を[待機チーム](#待機チーム)のスポーン地点に設定。設定すると`waiting`に参加した瞬間この地点にテレポートされる | OP |
-| `/conquest waiting spawn remove` | 待機チームのスポーン地点を削除(未設定ならテレポートは行われない) | OP |
-| `/conquest waiting spawn list` | 現在の待機チームスポーン地点の座標を表示 | - |
 | `/conquest zone set <a\|b> [<x1 y1 z1> <x2 y2 z2>]` | 2点の座標(`~`による相対座標も可)を対角線とする直方体を、そのチームの**自陣ゾーン**として設定。座標省略時は**ゾーンワンド**(下記)での選択範囲を使用。敵チームのプレイヤーが`homeZoneKillSeconds`秒連続で滞在すると処刑される(ゾーンを出た瞬間カウントはリセット)。ゲームモード共通、ラウンド進行中のみ判定 | OP |
 | `/conquest zone corner1 set <a\|b>` / `/conquest zone corner2 set <a\|b>` | 実行者の足元をそのチームのゾーンの角1/角2に設定(両方設定されて初めてゾーンが有効になる) | OP |
 | `/conquest zone remove <a\|b>` | 自陣ゾーンを削除 | OP |
@@ -424,10 +421,10 @@ Waypoint経由で別途表示されるので、この非表示化と競合しな
 まま**(移動・視点操作は普通にできる)だが、**PvPダメージを一切与えられず・受けられない**
 (`SpawnZoneEvents`が攻撃者・被害者どちらかが`waiting`チームなら`LivingAttackEvent`をキャンセル。
 環境ダメージ(落下・溺水等)は対象外)。参加した瞬間に**インベントリが空になる**
-(`joinTeam`で`Inventory.clearContent()`、復元機能は無し・片道のみ)。`/conquest waiting spawn
-set`でスポーン地点を設定しておくと、参加した瞬間そこへテレポートされる(2026-08-16追加、
-`range`の[明示的なスポーン地点](#演習場)と同じ`TeleportHelper.findSafeSpot`方式。未設定なら
-テレポートは行われず、その場に留まる)。拠点占領・チケット・
+(`joinTeam`で`Inventory.clearContent()`、復元機能は無し・片道のみ)。参加してもテレポートは
+行われず、その場に留まる(2026-08-16、一度専用スポーン地点へのテレポートを実装したが
+「waitingのときのtpはなし」というユーザー指示で撤回。tpが起きるのは戦闘中・演習中の直接
+テレポートのみ、という方針に統一)。拠点占領・チケット・
 キル/デス集計などその他の対戦要素からも`range`/`spectator`と同様に除外される。試合のHUD/GUIは
 表示されない(`spectator`/`admin`とは違い「観戦」目的のチームではないため)。
 `/conquest team shuffle`の対象には含まれる(2026-08-16変更、詳細は

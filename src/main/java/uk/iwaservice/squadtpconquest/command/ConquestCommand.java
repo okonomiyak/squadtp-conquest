@@ -192,12 +192,6 @@ public final class ConquestCommand {
                         .then(Commands.literal("set").executes(ConquestCommand::setGatherPoint))
                         .then(Commands.literal("remove").executes(ConquestCommand::removeGatherPoint))
                         .then(Commands.literal("list").executes(ConquestCommand::gatherList)))
-                .then(Commands.literal("waiting")
-                        .requires(src -> src.hasPermission(2))
-                        .then(Commands.literal("spawn")
-                                .then(Commands.literal("set").executes(ConquestCommand::setWaitingSpawn))
-                                .then(Commands.literal("remove").executes(ConquestCommand::removeWaitingSpawn))
-                                .then(Commands.literal("list").executes(ConquestCommand::waitingSpawnList))))
                 .then(Commands.literal("zone")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -975,32 +969,6 @@ public final class ConquestCommand {
             return fail(ctx, Component.translatable("conquest.msg.no_range_spawn"));
         }
         ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.range_spawn_removed"), true);
-        return 1;
-    }
-
-    private static int setWaitingSpawn(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        ServerPlayer player = ctx.getSource().getPlayerOrException();
-        ConquestManager.get(ctx.getSource().getServer())
-                .setWaitingSpawn(player.serverLevel(), player.blockPosition());
-        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.waiting_spawn_set"), true);
-        return 1;
-    }
-
-    private static int removeWaitingSpawn(CommandContext<CommandSourceStack> ctx) {
-        if (!ConquestManager.get(ctx.getSource().getServer()).removeWaitingSpawn()) {
-            return fail(ctx, Component.translatable("conquest.msg.no_waiting_spawn"));
-        }
-        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.waiting_spawn_removed"), true);
-        return 1;
-    }
-
-    private static int waitingSpawnList(CommandContext<CommandSourceStack> ctx) {
-        BlockPos pos = ConquestManager.get(ctx.getSource().getServer()).getWaitingSpawnPos();
-        if (pos == null) {
-            return fail(ctx, Component.translatable("conquest.msg.no_waiting_spawn"));
-        }
-        ctx.getSource().sendSuccess(() ->
-                Component.translatable("conquest.status.waiting_spawn", pos.toShortString()), false);
         return 1;
     }
 
