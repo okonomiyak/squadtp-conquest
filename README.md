@@ -177,9 +177,10 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
     をそのまま使い回して、セクターが進むたびに攻め陣→戦闘エリア→守り陣の帯が1つずつ後ろへ
     ずれていく仕組み(さらに1つ前の、既に「攻め陣」ですらなくなったセクターは通常の戦闘エリア外
     判定に従う)。前後のセクターに戦闘エリアが設定されていなければ何も起きない(任意機能)
-  - **squadtpの蘇生システムはTDM中のみ自動的に無効化**され、ラウンド終了時に元へ戻される
-    (キル自体が即座にスコアへ反映される必要があるため)。ブレイクスルーでは有効なままなので、
-    ダウンした味方をAED等で蘇生できる
+  - **squadtpの蘇生システムはTDMでも有効**(2026-08-16変更、以前はキル計上のため自動無効化
+    していたが、ユーザー要望で蘇生を優先)。致死ダメージを受けたプレイヤーはダウン状態になり、
+    蘇生されなければ`downedTimeoutSeconds`後に本当に死亡してそこで初めてキルが計上される
+    (ブレイクスルーのチケット消費と同じ仕組み・同じ遅延特性。詳細は「設計メモ」参照)
 
 ## 旗ブロック
 
@@ -511,18 +512,17 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
   `/conquest team join`が自動作成する`conquest_a`/`conquest_b`バニラチームと自然に整合する
 - squadtpの公開APIには「誰が蘇生したか」も「戦闘タグのクリア」も手段がなく、前者は独自推定、
   後者は実装を諦めている(詳細はdevlog参照)
-- **TDMでのみsquadtp蘇生システムを自動無効化**: squadtpは同一分隊メンバーへの致死ダメージを、
-  `SquadFeature.REVIVE`が有効な限り即死ではなく「ダウン状態」に変換する(`ReviveSystem`)。
-  TDMのキル計上は`LivingDeathEvent`(本当の死亡)にのみフックしているため、分隊内で戦っている
-  場合にダウン変換が挟まると本来の死亡タイミングより大幅に遅延する(蘇生され続ける限り実質
-  発生しない)問題がある。これを避けるため、`ConquestManager`はTDMでラウンドを開始する際に
-  `SquadManager.setFeatureEnabled(SquadFeature.REVIVE, false)`
-  (squadtpの公開API、`/squad feature revive disable`と同じもの)を呼び、ラウンド終了時に
-  `true`へ戻す。squadtp本体のコード・configには一切手を入れていない。**ブレイクスルーでは
-  蘇生を有効なままにしている**(2026-08-14、ユーザー要望): チケット消費(`handleBreakthroughDeath`)
-  も同じく`LivingDeathEvent`にのみフックしているため、ダウンした攻撃側を蘇生できている間は
-  チケットを消費しない——これはBFのRush/Breakthroughとして自然な挙動であり、TDMのキル計上のような
-  問題は生じない(いずれ本当に死亡すればチケットは正しく消費される)
+- **全モードでsquadtp蘇生システムは有効なまま**(2026-08-16、TDMもユーザー要望で追加): squadtpは
+  致死ダメージを`SquadFeature.REVIVE`が有効な限り即死ではなく「ダウン状態」に変換する
+  (`ReviveSystem`)。TDMのキル計上・ブレイクスルーのチケット消費(`handleBreakthroughDeath`)は
+  どちらも`LivingDeathEvent`(本当の死亡)にのみフックしているため、蘇生できている間はキル/
+  チケット消費が発生しない(蘇生され続ける限り遅延し続ける)——これはBFのRush/TDMとして自然な
+  挙動と割り切っている(いずれ本当に死亡すれば正しく計上される)。**以前はTDMのみ
+  `SquadManager.setFeatureEnabled(SquadFeature.REVIVE, false)`でラウンド中自動的に無効化していたが
+  (2026-08-14にブレイクスルーは先行して有効化、2026-08-16にTDMも同様に変更)、ユーザーから
+  「TDMで蘇生アリがいい」と明示的に依頼されたため撤去した**。この結果、`ConquestManager`が
+  `SquadFeature.REVIVE`をトグルする箇所は無くなり(元々CONQUESTは触っていなかった)、squadtp本体の
+  コード・configには一切手を入れていない
 - **squadtp本体に`ReviveSystem.forceReviveAll(MinecraftServer)`を追加**(2026-08-15、
   「squadtp本体は無改造」の方針の例外): ラウンド終了時、まだダウン中のプレイヤーを正常なHP・
   見た目に戻してから内部状態をクリアする。既存の`ReviveSystem.clear()`はサーバー停止時専用

@@ -40,6 +40,15 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **TDMでも蘇生を有効なままに**(2026-08-16): ユーザーから「TDMで蘇生アリがいい」と依頼。
+  `ConquestManager`の`start`/`stop`/`endRound`にあった`mode == GameMode.TDM`時の
+  `SquadManager.setFeatureEnabled(SquadFeature.REVIVE, false/true)`(TDM開始時に無効化・
+  終了/停止時に再有効化)を3箇所とも削除。これで`SquadFeature.REVIVE`をトグルする箇所が
+  コード全体から無くなった(ブレイクスルーは2026-08-14に、CONQUESTは元々無効化していなかった)ため、
+  未使用になった`SquadFeature`のimportも削除。副作用として、squadmateを撃破しても即座には
+  キルカウントされず、相手が蘇生されずに`downedTimeoutSeconds`後に本当に死亡した時点で計上される
+  ようになる(ブレイクスルーのチケット消費と全く同じ遅延特性——ユーザーが把握した上での選択と
+  判断し、そのまま反映)
 - **待機チームを新規追加**(2026-08-16): ユーザーから「待機チームを追加してインベントリクリア
   PVP禁止」と依頼(同じメッセージで「演習場チームに入ったとき演習場スポーンに強制移動されるように」
   とも言われたが、コードを再確認したところ`joinTeam`が`team == Team.RANGE`で
