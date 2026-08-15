@@ -45,6 +45,7 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue RANGE_RESET_INTERVAL_SECONDS;
 
     public static final ForgeConfigSpec.BooleanValue TERRAIN_DESTRUCTION_ENABLED;
+    public static final ForgeConfigSpec.IntValue TERRAIN_RESTORE_DELAY_SECONDS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> INDESTRUCTIBLE_BLOCKS;
     public static final ForgeConfigSpec.ConfigValue<String> CRATER_RUBBLE_BLOCK;
     public static final ForgeConfigSpec.DoubleValue CRATER_RUBBLE_RING_RATIO;
@@ -206,6 +207,11 @@ public final class Config {
                         "a round is STARTING (countdown) or IN_PROGRESS carve a crater instead of vanilla's block",
                         "removal, and the damage is restored the next time /conquest start runs.")
                 .define("terrainDestructionEnabled", true);
+        TERRAIN_RESTORE_DELAY_SECONDS = b
+                .comment("Seconds between running /conquest boundary restore or /conquest range reset and the",
+                        "terrain actually being pasted back. A chat warning is broadcast the instant the command",
+                        "runs, giving players time to clear the area first. 0 restores instantly with no warning.")
+                .defineInRange("terrainRestoreDelaySeconds", 5, 0, 60);
         INDESTRUCTIBLE_BLOCKS = b
                 .comment("Block registry names that are never destroyed by conquest terrain destruction,",
                         "regardless of blast resistance. Format: \"modid:block_id\".")

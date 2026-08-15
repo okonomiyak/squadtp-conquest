@@ -168,6 +168,8 @@ public class ConquestManager extends SavedData {
     private ResourceKey<Level> terrainSnapshotDim;
     @Nullable
     private BlockPos terrainSnapshotOrigin;
+    /** Seconds until a manually-triggered {@code /conquest boundary restore} actually pastes back; 0 = none pending. */
+    private int pendingTerrainRestoreSeconds;
 
     /**
      * The training range: a single axis-aligned box, independent of the match (round state,
@@ -199,6 +201,8 @@ public class ConquestManager extends SavedData {
     private BlockPos rangeSnapshotOrigin;
     /** Transient: seconds until the next automatic range reset. Not persisted. */
     private int rangeResetSecondsRemaining = Config.RANGE_RESET_INTERVAL_SECONDS.get();
+    /** Seconds until a manually-triggered {@code /conquest range reset} actually pastes back; 0 = none pending. */
+    private int pendingRangeResetSeconds;
 
     /** Transient: seconds since the last ticket bleed. */
     private int bleedCounter;
@@ -1413,13 +1417,25 @@ public class ConquestManager extends SavedData {
         return true;
     }
 
-    /** OP escape hatch (`/conquest range reset`) to trigger the automatic reset immediately. */
+    /**
+     * OP escape hatch (`/conquest range reset`) to trigger the automatic reset early. Broadcasts a
+     * warning immediately, then actually pastes back the terrain (and teleports/heals whoever's in
+     * the range) {@code terrainRestoreDelaySeconds} later — see {@link #tickRange}. False if no
+     * snapshot is held.
+     */
     public boolean resetRangeNow(MinecraftServer server) {
-        boolean reset = restoreRangeSnapshot(server);
-        if (reset) {
-            rangeResetSecondsRemaining = Config.RANGE_RESET_INTERVAL_SECONDS.get();
+        if (rangeSnapshot == null || rangeSnapshotDim == null || rangeSnapshotOrigin == null) {
+            return false;
         }
-        return reset;
+        pendingRangeResetSeconds = Config.TERRAIN_RESTORE_DELAY_SECONDS.get();
+        if (pendingRangeResetSeconds <= 0) {
+            restoreRangeSnapshot(server);
+            rangeResetSecondsRemaining = Config.RANGE_RESET_INTERVAL_SECONDS.get();
+        } else {
+            broadcast(server, Component.translatable("conquest.msg.range_reset_warning", pendingRangeResetSeconds)
+                    .withStyle(ChatFormatting.YELLOW));
+        }
+        return true;
     }
 
     /**
@@ -1453,9 +1469,10 @@ public class ConquestManager extends SavedData {
 
     /**
      * Once per second, unconditionally (independent of round state — see {@link #tickSecond}):
-     * counts down to the next automatic range reset. Self-heals a missing snapshot (e.g. after a
-     * server restart, since it isn't persisted) by capturing one from the area's current state
-     * instead of restoring anything, so resets keep working without an admin re-running
+     * counts down to the next automatic range reset, and separately to any pending manual reset
+     * from {@link #resetRangeNow}. Self-heals a missing snapshot (e.g. after a server restart,
+     * since it isn't persisted) by capturing one from the area's current state instead of
+     * restoring anything, so resets keep working without an admin re-running
      * {@code /conquest range set}. No-op if no range area is set.
      */
     private void tickRange(MinecraftServer server) {
@@ -1464,6 +1481,12 @@ public class ConquestManager extends SavedData {
         }
         if (rangeSnapshot == null) {
             captureRangeSnapshot(server);
+            rangeResetSecondsRemaining = Config.RANGE_RESET_INTERVAL_SECONDS.get();
+            pendingRangeResetSeconds = 0;
+            return;
+        }
+        if (pendingRangeResetSeconds > 0 && --pendingRangeResetSeconds <= 0) {
+            restoreRangeSnapshot(server);
             rangeResetSecondsRemaining = Config.RANGE_RESET_INTERVAL_SECONDS.get();
             return;
         }
@@ -1707,19 +1730,35 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Manually pastes back the current terrain snapshot, e.g. after {@code /conquest stop} — which,
-     * unlike {@link #endRound}, deliberately skips the automatic restore so admins can inspect the
-     * damage first. Repeatable any number of times (the snapshot isn't consumed — break it, restore
-     * it, break it again, as many times as needed for testing); a fresh snapshot only replaces it at
-     * the next {@code /conquest start}. Returns false if no snapshot is held (never captured this
-     * round, or no boundary/sector combat area was set to capture from).
+     * Manually schedules the current terrain snapshot to be pasted back, e.g. after
+     * {@code /conquest stop} — which, unlike {@link #endRound}, deliberately skips the automatic
+     * restore so admins can inspect the damage first. Broadcasts a warning immediately, then
+     * actually pastes back {@code terrainRestoreDelaySeconds} later (see {@link #tickSecond}),
+     * giving players time to clear the area. Repeatable any number of times (the snapshot isn't
+     * consumed — break it, restore it, break it again, as many times as needed for testing); a
+     * fresh snapshot only replaces it at the next {@code /conquest start}. Returns false if no
+     * snapshot is held (never captured this round, or no boundary/sector combat area was set to
+     * capture from).
      */
     public boolean restoreTerrain(MinecraftServer server) {
         if (terrainSnapshot == null) {
             return false;
         }
-        restoreTerrainSnapshot(server);
+        pendingTerrainRestoreSeconds = Config.TERRAIN_RESTORE_DELAY_SECONDS.get();
+        if (pendingTerrainRestoreSeconds <= 0) {
+            restoreTerrainSnapshot(server);
+        } else {
+            broadcast(server, Component.translatable("conquest.msg.terrain_restore_warning", pendingTerrainRestoreSeconds)
+                    .withStyle(ChatFormatting.YELLOW));
+        }
         return true;
+    }
+
+    /** Once per second, unconditionally: pastes back the terrain if a manual restore is pending. */
+    private void tickPendingTerrainRestore(MinecraftServer server) {
+        if (pendingTerrainRestoreSeconds > 0 && --pendingTerrainRestoreSeconds <= 0) {
+            restoreTerrainSnapshot(server);
+        }
     }
 
     /** Pastes back the snapshot taken by {@link #captureTerrainSnapshot}, if any, undoing all terrain changes since. */
@@ -2306,6 +2345,7 @@ public class ConquestManager extends SavedData {
      */
     public void tickSecond(MinecraftServer server) {
         tickRange(server);
+        tickPendingTerrainRestore(server);
 
         Map<String, PointOccupancy> occupancyByPoint = new HashMap<>();
 
