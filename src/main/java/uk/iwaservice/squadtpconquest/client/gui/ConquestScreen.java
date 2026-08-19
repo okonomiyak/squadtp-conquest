@@ -24,9 +24,10 @@ import java.util.UUID;
 
 /**
  * Conquest status window, opened by right-clicking a flag block. Player
- * actions (team join, admin radius/start/stop) simply send the corresponding
- * /conquest command, so server-side validation stays the single source of
- * truth exactly like squadtp's GUI.
+ * actions (admin radius/start/stop; team join is chat-command-only, see
+ * {@link #buildStatusTab}) simply send the corresponding /conquest command,
+ * so server-side validation stays the single source of truth exactly like
+ * squadtp's GUI.
  *
  * Tabbed: everyone sees STATUS (tickets/points/team/squad); admins additionally
  * get SETUP (point/spawn/zone/mode/round controls) and, only in breakthrough
@@ -179,7 +180,12 @@ public class ConquestScreen extends Screen {
         panelTop = Math.max(12, (this.height - panelHeight) / 2 - 8);
     }
 
-    /** Tickets/point list (read-only to everyone) + team join + squad roster. */
+    /**
+     * Tickets/point list + current-team status (read-only to everyone) + squad roster. No team
+     * join buttons here (2026-08-19 removed) — team assignment is `/conquest team join` only, so
+     * this can't get out of sync with the {@code teamJoinRequiresOp}/{@code lockTeamChangeDuringRound}
+     * server-side gates without duplicating that logic client-side.
+     */
     private int buildStatusTab(int cursor) {
         ticketsY = cursor;
         cursor += 16;
@@ -191,18 +197,7 @@ public class ConquestScreen extends Screen {
         cursor += pointRows * 11 + 6;
 
         teamY = cursor;
-        int half = (panelWidth - 2 * PAD - 4) / 2;
-        Button teamA = Button.builder(Component.translatable("conquest.gui.team_a"),
-                b -> command("conquest team join a"))
-                .bounds(panelLeft + PAD, 0, half, 20).build();
-        placeAt(teamA, teamY + 12);
-        addRenderableWidget(teamA);
-        Button teamB = Button.builder(Component.translatable("conquest.gui.team_b"),
-                b -> command("conquest team join b"))
-                .bounds(panelLeft + PAD + half + 4, 0, half, 20).build();
-        placeAt(teamB, teamY + 12);
-        addRenderableWidget(teamB);
-        cursor = teamY + 36;
+        cursor = teamY + 16;
 
         squadY = cursor;
         boolean inSquad = SquadClientData.isInSquad();

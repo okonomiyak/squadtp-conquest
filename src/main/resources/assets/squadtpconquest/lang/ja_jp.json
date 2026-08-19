@@ -203,8 +203,6 @@
   "conquest.gui.cancel": "開始をキャンセル",
   "conquest.gui.stop": "ラウンド停止",
   "conquest.gui.reset": "ラウンドリセット",
-  "conquest.gui.team_a": "チームAに参加",
-  "conquest.gui.team_b": "チームBに参加",
   "conquest.gui.squad_section": "所属分隊",
   "conquest.gui.squad_joinable_section": "参加可能な分隊",
   "conquest.gui.squad_join": "参加",

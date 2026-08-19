@@ -203,8 +203,6 @@
   "conquest.gui.cancel": "Cancel Start",
   "conquest.gui.stop": "Stop Round",
   "conquest.gui.reset": "Reset Round",
-  "conquest.gui.team_a": "Join Team A",
-  "conquest.gui.team_b": "Join Team B",
   "conquest.gui.squad_section": "Your Squad",
   "conquest.gui.squad_joinable_section": "Squads You Could Join",
   "conquest.gui.squad_join": "Join",
