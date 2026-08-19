@@ -1270,18 +1270,25 @@ public class ConquestManager extends SavedData {
 
     // --- battlefield boundary (single global box; outside it too long = executed) ---
 
-    /** Defines/relocates the battlefield boundary as the box between two corners. */
+    /**
+     * Defines/relocates the battlefield boundary as the box between two corners, and immediately
+     * captures its current contents as the clean state {@code /conquest boundary restore} pastes
+     * back — same rule as the training range's {@link #setRange}, so the restore always reverts to
+     * the terrain as it was when the boundary was defined, not to whatever state the last round
+     * happened to leave it in.
+     */
     public void setBoundary(ServerLevel level, BlockPos pos1, BlockPos pos2) {
         boundaryDim = level.dimension();
         boundaryPos1 = pos1.immutable();
         boundaryPos2 = pos2.immutable();
         setDirty();
+        captureTerrainSnapshot(level.getServer());
     }
 
     /**
      * Sets one corner of the boundary to the given position, leaving the other corner untouched
-     * (the boundary only becomes active once both are set). Switching dimension resets both
-     * corners first, same rule as the home zone's corner1/corner2 set.
+     * (the boundary only becomes active, and gets a fresh snapshot, once both are set). Switching
+     * dimension resets both corners first, same rule as the home zone's corner1/corner2 set.
      */
     public void setBoundaryCorner(ServerLevel level, boolean corner1, BlockPos pos) {
         ResourceKey<Level> dim = level.dimension();
@@ -1296,6 +1303,9 @@ public class ConquestManager extends SavedData {
             boundaryPos2 = pos.immutable();
         }
         setDirty();
+        if (boundaryPos1 != null && boundaryPos2 != null) {
+            captureTerrainSnapshot(level.getServer());
+        }
     }
 
     /** Clears the battlefield boundary. False if neither corner was set. */
@@ -1818,10 +1828,12 @@ public class ConquestManager extends SavedData {
      * restore so admins can inspect the damage first. Broadcasts a warning immediately, then
      * actually pastes back {@code terrainRestoreDelaySeconds} later (see {@link #tickSecond}),
      * giving players time to clear the area. Repeatable any number of times (the snapshot isn't
-     * consumed — break it, restore it, break it again, as many times as needed for testing); a
-     * fresh snapshot only replaces it at the next {@code /conquest start}. Returns false if no
-     * snapshot is held (never captured this round, or no boundary/sector combat area was set to
-     * capture from).
+     * consumed — break it, restore it, break it again, as many times as needed for testing); it's
+     * only replaced by a fresh one when the boundary (or a sector combat area) is redefined via
+     * {@link #setBoundary}/{@link #setBoundaryCorner}, not merely by starting another round — so
+     * repeated rounds always revert to the same original baseline instead of drifting round to
+     * round. Returns false if no snapshot is held (never captured, or no boundary/sector combat
+     * area was set to capture from).
      */
     public boolean restoreTerrain(MinecraftServer server) {
         if (terrainSnapshot == null) {
@@ -1989,7 +2001,14 @@ public class ConquestManager extends SavedData {
             return StartResult.TEAM_B_EMPTY;
         }
 
-        captureTerrainSnapshot(server);
+        // The snapshot is normally captured once, when the boundary (or, in breakthrough without a
+        // global boundary, a sector combat area) is defined — see setBoundary/setBoundaryCorner —
+        // so restores always revert to that baseline rather than drifting round to round. Only
+        // capture here as a fallback: sector-only setups that never call setBoundary, or a snapshot
+        // lost to a server restart (it isn't persisted, same as the range's).
+        if (terrainSnapshot == null) {
+            captureTerrainSnapshot(server);
+        }
 
         if (mode == GameMode.CONQUEST || mode == GameMode.BREAKTHROUGH) {
             for (CapturePoint point : points.values()) {
