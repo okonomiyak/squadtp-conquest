@@ -121,10 +121,7 @@ public class ConquestScoreScreen extends Screen {
             graphics.fill(l + PAD, cursor, r - PAD, cursor + 1, COLOR_SEPARATOR);
             cursor += 8;
 
-            List<ConquestScoreboardPacket.Entry> teamA = sortedTeamLifetime(all, Team.A);
-            List<ConquestScoreboardPacket.Entry> teamB = sortedTeamLifetime(all, Team.B);
-            renderLifetimeColumn(graphics, leftColX, cursor, colWidth, Team.A, teamA);
-            renderLifetimeColumn(graphics, rightColX, cursor, colWidth, Team.B, teamB);
+            renderLifetimeColumn(graphics, leftColX, cursor, panelWidth - 2 * PAD, sortedLifetime(all));
         }
 
         // Admins and spectators are shown here, separately from the team tally above — they
@@ -281,14 +278,14 @@ public class ConquestScoreScreen extends Screen {
         }
     }
 
-    /** Same layout as {@link #renderColumn}, but ranked by cumulative (cross-round) score with a K/D ratio. */
-    private void renderLifetimeColumn(GuiGraphics graphics, int x, int y, int width, Team team,
+    /**
+     * Single ranked list (no team split — a player's team affiliation may well have changed across
+     * the rounds these totals span, so splitting by their *current* team would be misleading),
+     * ranked by cumulative (cross-round) score even though the score itself isn't shown, with K/D
+     * counts, K/D ratio and revive count instead.
+     */
+    private void renderLifetimeColumn(GuiGraphics graphics, int x, int y, int width,
                                        List<ConquestScoreboardPacket.Entry> entries) {
-        MutableComponent header = team.display().copy()
-                .append(Component.literal("  (" + entries.size() + ")").withStyle(ChatFormatting.GRAY));
-        graphics.drawString(this.font, header, x, y, COLOR_TEXT);
-        y += 12;
-
         graphics.drawString(this.font, Component.translatable("conquest.score.col_header_lifetime"), x, y, COLOR_TEXT_FAINT);
         y += 11;
 
@@ -329,8 +326,8 @@ public class ConquestScoreScreen extends Screen {
     private void drawLifetimeRow(GuiGraphics graphics, int x, int y, int width, int rank, ConquestScoreboardPacket.Entry e) {
         graphics.drawString(this.font, "#" + rank, x, y, COLOR_TEXT_DIM);
         graphics.drawString(this.font, e.name(), x + 22, y, COLOR_TEXT);
-        String stats = e.lifetimeScore() + "  " + e.lifetimeKills() + "/" + e.lifetimeDeaths()
-                + "  " + formatKd(e.lifetimeKills(), e.lifetimeDeaths());
+        String stats = e.lifetimeKills() + "/" + e.lifetimeDeaths()
+                + "  " + formatKd(e.lifetimeKills(), e.lifetimeDeaths()) + "  " + e.lifetimeRevives();
         graphics.drawString(this.font, stats, x + width - this.font.width(stats), y, COLOR_TEXT_DIM);
     }
 
@@ -339,11 +336,11 @@ public class ConquestScoreScreen extends Screen {
         return String.format("(%.2f)", ratio);
     }
 
-    private static List<ConquestScoreboardPacket.Entry> sortedTeamLifetime(
-            List<ConquestScoreboardPacket.Entry> all, Team team) {
+    /** Everyone except admins/spectators (who never accrue kills/deaths/revives), regardless of current team. */
+    private static List<ConquestScoreboardPacket.Entry> sortedLifetime(List<ConquestScoreboardPacket.Entry> all) {
         List<ConquestScoreboardPacket.Entry> list = new ArrayList<>();
         for (ConquestScoreboardPacket.Entry e : all) {
-            if (e.team() == team) {
+            if (e.team() != Team.ADMIN && e.team() != Team.SPECTATOR) {
                 list.add(e);
             }
         }

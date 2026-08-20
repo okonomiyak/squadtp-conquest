@@ -226,7 +226,7 @@
   "conquest.score.your_kdr": "自分: %s/%s/%s (スコア %s)",
   "conquest.score.col_header": "#   名前                        スコア  K/D/蘇生",
   "conquest.score.lifetime_header": "通算成績(このセッションの全ラウンド合計)",
-  "conquest.score.col_header_lifetime": "#   名前                        スコア  K/D  (比率)",
+  "conquest.score.col_header_lifetime": "#   名前                        K/D  (比率)  蘇生数",
   "conquest.score.spectating": "観戦中",
 
   "conquest.capture.capturing": "占領中",
