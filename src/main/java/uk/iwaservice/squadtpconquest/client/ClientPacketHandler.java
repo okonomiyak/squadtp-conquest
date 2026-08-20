@@ -5,6 +5,7 @@ import uk.iwaservice.squadtpconquest.client.gui.ConquestScreen;
 import uk.iwaservice.squadtpconquest.compat.JourneyMapCompat;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
+import uk.iwaservice.squadtpconquest.network.KillFeedPacket;
 import uk.iwaservice.squadtpconquest.network.PinPacket;
 import uk.iwaservice.squadtpconquest.network.SpotPacket;
 
@@ -46,6 +47,12 @@ public final class ClientPacketHandler {
             ConquestClientData.addPin(msg.placer(), msg.placerName(), msg.dimension(), msg.pos(), now + msg.durationTicks());
         }
         JourneyMapCompat.refresh();
+    }
+
+    public static void handleKillFeed(KillFeedPacket msg) {
+        Minecraft mc = Minecraft.getInstance();
+        long now = mc.level != null ? mc.level.getGameTime() : 0;
+        ConquestClientData.addKillFeedEntry(msg.attackerName(), msg.victimName(), now + msg.durationTicks());
     }
 
     private ClientPacketHandler() {}

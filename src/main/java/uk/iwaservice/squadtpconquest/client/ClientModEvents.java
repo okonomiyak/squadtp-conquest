@@ -11,6 +11,7 @@ import org.lwjgl.glfw.GLFW;
 import uk.iwaservice.squadtpconquest.SquadTpConquest;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestCaptureOverlay;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestHudOverlay;
+import uk.iwaservice.squadtpconquest.client.gui.KillFeedOverlay;
 
 /** Mod-bus client events: keybind and HUD overlay registration. */
 @Mod.EventBusSubscriber(modid = SquadTpConquest.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
@@ -59,6 +60,7 @@ public final class ClientModEvents {
     public static void onRegisterGuiOverlays(net.minecraftforge.client.event.RegisterGuiOverlaysEvent event) {
         event.registerAboveAll("conquest_hud", ConquestHudOverlay.INSTANCE);
         event.registerAboveAll("conquest_capture", ConquestCaptureOverlay.INSTANCE);
+        event.registerAboveAll("conquest_kill_feed", KillFeedOverlay.INSTANCE);
     }
 
     private ClientModEvents() {}

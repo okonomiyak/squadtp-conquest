@@ -15,6 +15,8 @@ import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.ReviveAttribution;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.conquest.Team;
+import uk.iwaservice.squadtpconquest.network.KillFeedPacket;
+import uk.iwaservice.squadtpconquest.network.NetworkHandler;
 
 import java.util.List;
 import java.util.UUID;
@@ -75,6 +77,7 @@ public final class ScoreEvents {
             return;
         }
         manager.recordKill(server, attacker.getUUID());
+        broadcastKillFeed(attacker, victim);
     }
 
     @SubscribeEvent
@@ -101,6 +104,7 @@ public final class ScoreEvents {
             Team killerTeam = manager.teamOf(killer.getUUID());
             if (killerTeam.isCombatant() && killerTeam != victimTeam) {
                 manager.recordKill(server, killer.getUUID());
+                broadcastKillFeed(killer, victim);
                 killerUuid = killer.getUUID();
             }
         }
@@ -114,6 +118,12 @@ public final class ScoreEvents {
             }
         }
         DamageLog.clear(victim.getUUID());
+    }
+
+    /** Feeds the top-right kill feed overlay ("Attacker → Victim"), visible to every online player. */
+    private static void broadcastKillFeed(ServerPlayer attacker, ServerPlayer victim) {
+        NetworkHandler.broadcast(new KillFeedPacket(attacker.getGameProfile().getName(),
+                victim.getGameProfile().getName(), Config.KILL_FEED_DURATION_SECONDS.get() * 20));
     }
 
     /** Records the last player to hold right-click on a downed player (see ReviveAttribution). */

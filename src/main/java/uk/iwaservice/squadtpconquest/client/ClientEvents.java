@@ -34,6 +34,7 @@ public final class ClientEvents {
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         ConquestClientData.clearSpots();
         ConquestClientData.clearPins();
+        ConquestClientData.clearKillFeed();
         JourneyMapCompat.clear();
     }
 
@@ -70,6 +71,9 @@ public final class ClientEvents {
         expired |= mc.level != null && ConquestClientData.pruneExpiredPins(mc.level.getGameTime());
         if (expired) {
             JourneyMapCompat.refresh();
+        }
+        if (mc.level != null) {
+            ConquestClientData.pruneExpiredKillFeed(mc.level.getGameTime());
         }
     }
 

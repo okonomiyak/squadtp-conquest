@@ -37,6 +37,7 @@ public final class Config {
     public static final ForgeConfigSpec.IntValue SCORE_PER_ASSIST;
     public static final ForgeConfigSpec.IntValue SCORE_PER_REVIVE;
     public static final ForgeConfigSpec.IntValue SCORE_PER_CAPTURE;
+    public static final ForgeConfigSpec.IntValue KILL_FEED_DURATION_SECONDS;
 
     public static final ForgeConfigSpec.IntValue BT_ATTACKER_TICKETS;
     public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_LIMIT_SECONDS;
@@ -178,6 +179,10 @@ public final class Config {
                         "(conquest/breakthrough only; awarded once per capture, split among whoever's in the",
                         "radius at that moment, not per tick).")
                 .defineInRange("scorePerCapture", 100, 0, 10000);
+        KILL_FEED_DURATION_SECONDS = b
+                .comment("Seconds a kill feed entry (\"Attacker -> Victim\", top-right) stays on screen after",
+                        "a kill is credited (see the down-time crediting in ScoreEvents.onPlayerDowned).")
+                .defineInRange("killFeedDurationSeconds", 5, 1, 60);
         b.pop();
 
         b.push("breakthrough");

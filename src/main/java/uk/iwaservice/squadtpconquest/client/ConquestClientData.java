@@ -23,9 +23,15 @@ public final class ConquestClientData {
     /** A teammate's pinned location (see {@link uk.iwaservice.squadtpconquest.network.PinPacket}). */
     public record PinEntry(String placerName, ResourceLocation dimension, BlockPos pos, long expiryGameTime) {}
 
+    /** One kill feed line (see {@link uk.iwaservice.squadtpconquest.network.KillFeedPacket}). */
+    public record KillFeedEntry(String attackerName, String victimName, long expiryGameTime) {}
+
     private static final Map<UUID, SpotEntry> spots = new HashMap<>();
     /** Keyed by placer UUID — each player has at most one active pin. */
     private static final Map<UUID, PinEntry> pins = new HashMap<>();
+    /** Oldest first; capped in {@link #addKillFeedEntry} so a burst of kills can't grow this unbounded. */
+    private static final java.util.List<KillFeedEntry> killFeed = new java.util.ArrayList<>();
+    private static final int MAX_KILL_FEED_ENTRIES = 5;
 
     private static List<ConquestSyncPacket.PointStatus> points = List.of();
     private static int ticketsA;
@@ -149,6 +155,28 @@ public final class ConquestClientData {
     /** Called on logout: pin expiry is measured in absolute world time, meaningless across sessions/servers. */
     public static synchronized void clearPins() {
         pins.clear();
+    }
+
+    public static synchronized void addKillFeedEntry(String attackerName, String victimName, long expiryGameTime) {
+        killFeed.add(new KillFeedEntry(attackerName, victimName, expiryGameTime));
+        while (killFeed.size() > MAX_KILL_FEED_ENTRIES) {
+            killFeed.remove(0);
+        }
+    }
+
+    /** Drops expired kill feed entries. Returns true if anything was removed, so the caller knows to redraw. */
+    public static synchronized boolean pruneExpiredKillFeed(long currentGameTime) {
+        return killFeed.removeIf(e -> e.expiryGameTime() <= currentGameTime);
+    }
+
+    /** Oldest first. */
+    public static synchronized List<KillFeedEntry> getKillFeed() {
+        return List.copyOf(killFeed);
+    }
+
+    /** Called on logout: kill feed expiry is measured in absolute world time, meaningless across sessions/servers. */
+    public static synchronized void clearKillFeed() {
+        killFeed.clear();
     }
 
     public static synchronized int getTicketsA() {
