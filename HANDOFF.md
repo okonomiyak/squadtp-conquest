@@ -40,6 +40,17 @@ TOML編集なしで地形破壊の対象外ブロックを追加/削除)を追�
 
 ## 実装済み機能(要約、詳細はREADME参照)
 
+- **スコア画面のK/D/AをK/D/蘇生数に変更**(2026-08-20): ユーザーから
+  「アシストの代わりに蘇生回数を乗せて」と依頼。`PlayerScore.assists`自体やアシストの
+  スコア計算(`scorePerAssist`・MVP計算・コールイン等)は一切変更していない——変更したのは
+  純粋に`/conquest`スコア画面(右Alt)の表示のみ。`ConquestScoreboardPacket.Entry`の
+  `assists`/`lifetimeAssists`フィールドを`revives`/`lifetimeRevives`に改名し、
+  `ConquestManager.buildScoreboardPacket`で`s.assists`の代わりに`s.revives`
+  (`PlayerScore`には元々存在していたが、この画面には表示されていなかったフィールド)を
+  詰めるように変更。ワイヤーフォーマット(intの位置・個数)自体は変わらないので
+  `PROTOCOL_VERSION`のバンプは不要と判断。画面ヘッダー「K/D/A」→「K/D/蘇生」、自分の統計行
+  (`conquest.score.your_kda`→`your_kdr`にキー名変更)、各プレイヤー行の3つ目の数値も
+  アシスト数→蘇生数に切り替え。
 - **ダウン時キル加算が二重計上されるバグを修正**(2026-08-20): ユーザーから
   「二回同時に加算される」と報告。原因はイベント優先度の競合: squadtpの`LivingDeathEvent`
   リスナー(蘇生システム有効時にこのイベントをキャンセルしてダウン状態に変換する側)と

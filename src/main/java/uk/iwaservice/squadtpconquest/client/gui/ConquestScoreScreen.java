@@ -207,7 +207,7 @@ public class ConquestScoreScreen extends Screen {
         UUID self = selfUuid();
         int selfKills = 0;
         int selfDeaths = 0;
-        int selfAssists = 0;
+        int selfRevives = 0;
         int selfScore = 0;
         for (ConquestScoreboardPacket.Entry e : ConquestClientData.getScoreboard()) {
             if (e.team() == Team.A) {
@@ -218,7 +218,7 @@ public class ConquestScoreScreen extends Screen {
             if (e.uuid().equals(self)) {
                 selfKills = e.kills();
                 selfDeaths = e.deaths();
-                selfAssists = e.assists();
+                selfRevives = e.revives();
                 selfScore = e.score();
             }
         }
@@ -231,7 +231,7 @@ public class ConquestScoreScreen extends Screen {
         }
         line.append(Component.translatable("conquest.score.deaths", deathsA, deathsB).withStyle(ChatFormatting.GRAY))
                 .append("   ")
-                .append(Component.translatable("conquest.score.your_kda", selfKills, selfDeaths, selfAssists, selfScore)
+                .append(Component.translatable("conquest.score.your_kdr", selfKills, selfDeaths, selfRevives, selfScore)
                         .withStyle(ChatFormatting.YELLOW));
         graphics.drawString(this.font, line, panelLeft + PAD, y, COLOR_TEXT);
         return y + this.font.lineHeight;
@@ -370,7 +370,7 @@ public class ConquestScoreScreen extends Screen {
     private void drawRow(GuiGraphics graphics, int x, int y, int width, int rank, ConquestScoreboardPacket.Entry e) {
         graphics.drawString(this.font, "#" + rank, x, y, COLOR_TEXT_DIM);
         graphics.drawString(this.font, e.name(), x + 22, y, COLOR_TEXT);
-        String stats = e.score() + "  " + e.kills() + "/" + e.deaths() + "/" + e.assists();
+        String stats = e.score() + "  " + e.kills() + "/" + e.deaths() + "/" + e.revives();
         graphics.drawString(this.font, stats, x + width - this.font.width(stats), y, COLOR_TEXT_DIM);
     }
 

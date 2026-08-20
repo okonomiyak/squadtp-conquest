@@ -13,12 +13,14 @@ import java.util.UUID;
 
 /**
  * Full player roster for the scoreboard screen (Right Alt by default),
- * broadcast once per second alongside {@link ConquestSyncPacket}.
+ * broadcast once per second alongside {@link ConquestSyncPacket}. Shows revives rather than
+ * assists (2026-08-20) — assists are still tracked and scored server-side
+ * ({@code PlayerScore.assists}, {@code scorePerAssist}), just not displayed on this screen.
  */
 public record ConquestScoreboardPacket(int roundElapsedSeconds, List<Entry> entries) {
 
-    public record Entry(UUID uuid, String name, Team team, int kills, int deaths, int assists, int score,
-                         int lifetimeKills, int lifetimeDeaths, int lifetimeAssists, int lifetimeScore) {}
+    public record Entry(UUID uuid, String name, Team team, int kills, int deaths, int revives, int score,
+                         int lifetimeKills, int lifetimeDeaths, int lifetimeRevives, int lifetimeScore) {}
 
     public static void encode(ConquestScoreboardPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.roundElapsedSeconds);
@@ -29,11 +31,11 @@ public record ConquestScoreboardPacket(int roundElapsedSeconds, List<Entry> entr
             buf.writeEnum(e.team());
             buf.writeVarInt(e.kills());
             buf.writeVarInt(e.deaths());
-            buf.writeVarInt(e.assists());
+            buf.writeVarInt(e.revives());
             buf.writeVarInt(e.score());
             buf.writeVarInt(e.lifetimeKills());
             buf.writeVarInt(e.lifetimeDeaths());
-            buf.writeVarInt(e.lifetimeAssists());
+            buf.writeVarInt(e.lifetimeRevives());
             buf.writeVarInt(e.lifetimeScore());
         }
     }

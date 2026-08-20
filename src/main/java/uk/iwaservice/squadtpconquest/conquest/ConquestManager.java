@@ -2527,7 +2527,7 @@ public class ConquestManager extends SavedData {
         }
     }
 
-    /** Full online-player roster with kills/deaths/assists/score, for the scoreboard screen. */
+    /** Full online-player roster with kills/deaths/revives/score, for the scoreboard screen. */
     private ConquestScoreboardPacket buildScoreboardPacket(MinecraftServer server) {
         List<ConquestScoreboardPacket.Entry> entries = new ArrayList<>();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
@@ -2538,14 +2538,14 @@ public class ConquestManager extends SavedData {
             PlayerScore s = scores.get(player.getUUID());
             int kills = s == null ? 0 : s.kills;
             int deaths = s == null ? 0 : s.deaths;
-            int assists = s == null ? 0 : s.assists;
+            int revives = s == null ? 0 : s.revives;
             PlayerScore lifetime = lifetimeScores.get(player.getUUID());
             int lifetimeKills = lifetime == null ? 0 : lifetime.kills;
             int lifetimeDeaths = lifetime == null ? 0 : lifetime.deaths;
-            int lifetimeAssists = lifetime == null ? 0 : lifetime.assists;
+            int lifetimeRevives = lifetime == null ? 0 : lifetime.revives;
             entries.add(new ConquestScoreboardPacket.Entry(player.getUUID(), player.getGameProfile().getName(),
-                    team, kills, deaths, assists, totalScore(player.getUUID()),
-                    lifetimeKills, lifetimeDeaths, lifetimeAssists, totalLifetimeScore(player.getUUID())));
+                    team, kills, deaths, revives, totalScore(player.getUUID()),
+                    lifetimeKills, lifetimeDeaths, lifetimeRevives, totalLifetimeScore(player.getUUID())));
         }
         return new ConquestScoreboardPacket(roundElapsedSeconds, entries);
     }
