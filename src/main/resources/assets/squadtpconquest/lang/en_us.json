@@ -226,7 +226,7 @@
   "conquest.score.your_kdr": "You: %s/%s/%s (Score %s)",
   "conquest.score.col_header": "#   Name                        Score  K/D/Revives",
   "conquest.score.lifetime_header": "Lifetime Stats (all rounds this session)",
-  "conquest.score.col_header_lifetime": "#   Name                        K/D  (Ratio)  Revives",
+  "conquest.score.col_header_lifetime": "#   Name                        K  D  K/D  Revives",
   "conquest.score.spectating": "Spectating",
 
   "conquest.capture.capturing": "CAPTURING",
