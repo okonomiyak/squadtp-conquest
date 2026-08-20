@@ -1,25 +1,16 @@
 package uk.iwaservice.squadtpconquest.block;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
-import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.Team;
-import uk.iwaservice.squadtpconquest.network.NetworkHandler;
 
 /**
  * The capture point flag: a fixed 1x3 base-plate/pole/banner structure
@@ -28,7 +19,9 @@ import uk.iwaservice.squadtpconquest.network.NetworkHandler;
  * SEGMENT: 0 = base plate + pole, 1 = pure pole passthrough, 2 = pole + banner.
  * Placed and recolored exclusively by
  * {@link uk.iwaservice.squadtpconquest.conquest.FlagPole}, so it never needs
- * to be player-placeable; right-clicking any segment opens the conquest GUI.
+ * to be player-placeable. Purely visual/collision geometry — no interaction
+ * (right-click used to open the conquest GUI, removed 2026-08-20 since the
+ * L keybind already does that without risking an accidental click mid-fight).
  */
 public class ConquestFlagBlock extends Block {
     public static final IntegerProperty SEGMENT = IntegerProperty.create("segment", 0, 2);
@@ -57,23 +50,5 @@ public class ConquestFlagBlock extends Block {
             case 1 -> MID_SHAPE;
             default -> TOP_SHAPE;
         };
-    }
-
-    @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                  InteractionHand hand, BlockHitResult hit) {
-        if (level.isClientSide) {
-            return InteractionResult.SUCCESS;
-        }
-        if (hand != InteractionHand.MAIN_HAND || !(player instanceof ServerPlayer serverPlayer)) {
-            return InteractionResult.PASS;
-        }
-        MinecraftServer server = serverPlayer.server;
-        ConquestManager manager = ConquestManager.get(server);
-        if (!manager.hasPoints()) {
-            return InteractionResult.PASS;
-        }
-        NetworkHandler.send(serverPlayer, manager.buildSyncPacketForOpen(server, serverPlayer));
-        return InteractionResult.CONSUME;
     }
 }
