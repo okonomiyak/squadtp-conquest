@@ -6,6 +6,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import uk.iwaservice.squadtp.api.PlayerDownedEvent;
 import uk.iwaservice.squadtp.squad.ReviveSystem;
@@ -80,7 +81,19 @@ public final class ScoreEvents {
         broadcastKillFeed(attacker, victim);
     }
 
-    @SubscribeEvent
+    /**
+     * {@code LOW} priority — squadtp's own {@code LivingDeathEvent} listener (default/{@code
+     * NORMAL} priority) is the one that cancels this event and converts it to a downed state when
+     * revive is enabled. Both mods' listeners being unspecified/{@code NORMAL} priority left their
+     * relative order effectively unspecified (registration order between two different mods), so
+     * this handler could sometimes run — and credit a kill — *before* squadtp's cancellation, then
+     * {@link #onPlayerDowned} credited the same kill again once the downed conversion posted its
+     * event: a double count on every down. Running strictly after squadtp's {@code NORMAL} tier
+     * guarantees {@code event.isCanceled()} is already true whenever a downed conversion happens,
+     * so Forge skips this listener entirely for that hit (the default {@code receiveCanceled =
+     * false}) and only the down-time credit applies.
+     */
+    @SubscribeEvent(priority = EventPriority.LOW)
     public static void onDeath(LivingDeathEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer victim)) {
             return;
