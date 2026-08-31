@@ -2550,13 +2550,15 @@ public class ConquestManager extends SavedData {
             int kills = s == null ? 0 : s.kills;
             int deaths = s == null ? 0 : s.deaths;
             int revives = s == null ? 0 : s.revives;
+            int captures = s == null ? 0 : s.captures;
             PlayerScore lifetime = lifetimeScores.get(player.getUUID());
             int lifetimeKills = lifetime == null ? 0 : lifetime.kills;
             int lifetimeDeaths = lifetime == null ? 0 : lifetime.deaths;
             int lifetimeRevives = lifetime == null ? 0 : lifetime.revives;
+            int lifetimeCaptures = lifetime == null ? 0 : lifetime.captures;
             entries.add(new ConquestScoreboardPacket.Entry(player.getUUID(), player.getGameProfile().getName(),
-                    team, kills, deaths, revives, totalScore(player.getUUID()),
-                    lifetimeKills, lifetimeDeaths, lifetimeRevives, totalLifetimeScore(player.getUUID())));
+                    team, kills, deaths, revives, captures, totalScore(player.getUUID()),
+                    lifetimeKills, lifetimeDeaths, lifetimeRevives, lifetimeCaptures, totalLifetimeScore(player.getUUID())));
         }
         return new ConquestScoreboardPacket(roundElapsedSeconds, entries);
     }

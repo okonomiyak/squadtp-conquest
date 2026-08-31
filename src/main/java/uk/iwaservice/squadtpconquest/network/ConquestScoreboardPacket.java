@@ -19,8 +19,9 @@ import java.util.UUID;
  */
 public record ConquestScoreboardPacket(int roundElapsedSeconds, List<Entry> entries) {
 
-    public record Entry(UUID uuid, String name, Team team, int kills, int deaths, int revives, int score,
-                         int lifetimeKills, int lifetimeDeaths, int lifetimeRevives, int lifetimeScore) {}
+    public record Entry(UUID uuid, String name, Team team, int kills, int deaths, int revives, int captures, int score,
+                         int lifetimeKills, int lifetimeDeaths, int lifetimeRevives, int lifetimeCaptures,
+                         int lifetimeScore) {}
 
     public static void encode(ConquestScoreboardPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.roundElapsedSeconds);
@@ -32,10 +33,12 @@ public record ConquestScoreboardPacket(int roundElapsedSeconds, List<Entry> entr
             buf.writeVarInt(e.kills());
             buf.writeVarInt(e.deaths());
             buf.writeVarInt(e.revives());
+            buf.writeVarInt(e.captures());
             buf.writeVarInt(e.score());
             buf.writeVarInt(e.lifetimeKills());
             buf.writeVarInt(e.lifetimeDeaths());
             buf.writeVarInt(e.lifetimeRevives());
+            buf.writeVarInt(e.lifetimeCaptures());
             buf.writeVarInt(e.lifetimeScore());
         }
     }
@@ -46,8 +49,8 @@ public record ConquestScoreboardPacket(int roundElapsedSeconds, List<Entry> entr
         List<Entry> entries = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             entries.add(new Entry(buf.readUUID(), buf.readUtf(), buf.readEnum(Team.class),
-                    buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                    buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
+                    buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
+                    buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
         }
         return new ConquestScoreboardPacket(elapsed, entries);
     }

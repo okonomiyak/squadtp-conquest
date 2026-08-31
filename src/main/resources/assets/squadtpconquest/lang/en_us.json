@@ -223,10 +223,10 @@
   "conquest.score.title": "Conquest",
   "conquest.score.sectors": "Sectors A:%s / B:%s",
   "conquest.score.deaths": "Deaths A:%s / B:%s",
-  "conquest.score.your_kdr": "You: %s/%s/%s (Score %s)",
-  "conquest.score.col_header": "#   Name                        Score  K/D/Revives",
+  "conquest.score.your_kdr": "You: %s/%s/%s/%s (Score %s)",
+  "conquest.score.col_header": "#   Name                        Score  K/D/Revives/Captures",
   "conquest.score.lifetime_header": "Lifetime Stats (all rounds this session)",
-  "conquest.score.col_header_lifetime": "#   Name                        K  D  K/D  Revives",
+  "conquest.score.col_header_lifetime": "#   Name                        K  D  K/D  Revives  Captures",
   "conquest.score.spectating": "Spectating",
 
   "conquest.capture.capturing": "CAPTURING",

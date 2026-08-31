@@ -205,6 +205,7 @@ public class ConquestScoreScreen extends Screen {
         int selfKills = 0;
         int selfDeaths = 0;
         int selfRevives = 0;
+        int selfCaptures = 0;
         int selfScore = 0;
         for (ConquestScoreboardPacket.Entry e : ConquestClientData.getScoreboard()) {
             if (e.team() == Team.A) {
@@ -216,6 +217,7 @@ public class ConquestScoreScreen extends Screen {
                 selfKills = e.kills();
                 selfDeaths = e.deaths();
                 selfRevives = e.revives();
+                selfCaptures = e.captures();
                 selfScore = e.score();
             }
         }
@@ -228,7 +230,8 @@ public class ConquestScoreScreen extends Screen {
         }
         line.append(Component.translatable("conquest.score.deaths", deathsA, deathsB).withStyle(ChatFormatting.GRAY))
                 .append("   ")
-                .append(Component.translatable("conquest.score.your_kdr", selfKills, selfDeaths, selfRevives, selfScore)
+                .append(Component.translatable("conquest.score.your_kdr",
+                                selfKills, selfDeaths, selfRevives, selfCaptures, selfScore)
                         .withStyle(ChatFormatting.YELLOW));
         graphics.drawString(this.font, line, panelLeft + PAD, y, COLOR_TEXT);
         return y + this.font.lineHeight;
@@ -327,7 +330,8 @@ public class ConquestScoreScreen extends Screen {
         graphics.drawString(this.font, "#" + rank, x, y, COLOR_TEXT_DIM);
         graphics.drawString(this.font, e.name(), x + 22, y, COLOR_TEXT);
         String stats = e.lifetimeKills() + "  " + e.lifetimeDeaths()
-                + "  " + formatKd(e.lifetimeKills(), e.lifetimeDeaths()) + "  " + e.lifetimeRevives();
+                + "  " + formatKd(e.lifetimeKills(), e.lifetimeDeaths()) + "  " + e.lifetimeRevives()
+                + "  " + e.lifetimeCaptures();
         graphics.drawString(this.font, stats, x + width - this.font.width(stats), y, COLOR_TEXT_DIM);
     }
 
@@ -367,7 +371,7 @@ public class ConquestScoreScreen extends Screen {
     private void drawRow(GuiGraphics graphics, int x, int y, int width, int rank, ConquestScoreboardPacket.Entry e) {
         graphics.drawString(this.font, "#" + rank, x, y, COLOR_TEXT_DIM);
         graphics.drawString(this.font, e.name(), x + 22, y, COLOR_TEXT);
-        String stats = e.score() + "  " + e.kills() + "/" + e.deaths() + "/" + e.revives();
+        String stats = e.score() + "  " + e.kills() + "/" + e.deaths() + "/" + e.revives() + "/" + e.captures();
         graphics.drawString(this.font, stats, x + width - this.font.width(stats), y, COLOR_TEXT_DIM);
     }
 
