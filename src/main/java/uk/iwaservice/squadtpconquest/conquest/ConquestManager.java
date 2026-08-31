@@ -2295,6 +2295,17 @@ public class ConquestManager extends SavedData {
     }
 
     /**
+     * True unless a hostile mob or an opposing-team player is near {@code pos} (squadtp's
+     * {@link TeleportHelper#isDestinationDangerous}). Used to keep the team spawn/spawn 2/beacon
+     * options off the respawn choice list when they'd drop the player into active combat, same
+     * purpose as {@link #isPointSpawnSafe} for capture points.
+     */
+    public boolean isDestinationSafe(ServerPlayer player, ResourceKey<Level> dim, BlockPos pos) {
+        ServerLevel level = player.server.getLevel(dim);
+        return level == null || !TeleportHelper.isDestinationDangerous(level, pos, player);
+    }
+
+    /**
      * Runs one point's capture tick: occupancy, flag advance/neutralize/capture, flag-pole
      * recolor. Shared by conquest (every point) and breakthrough (only the active sector's
      * points). Null if the point's dimension isn't loaded.

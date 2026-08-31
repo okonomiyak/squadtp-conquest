@@ -39,19 +39,20 @@ public final class ConquestRespawnChoiceProvider implements RespawnChoiceProvide
 
         List<RespawnChoiceEntry> choices = new ArrayList<>();
         ConquestManager.RoleSpawn roleSpawn = manager.resolveRoleSpawn(team);
-        if (roleSpawn.isSet()) {
+        if (roleSpawn.isSet() && manager.isDestinationSafe(player, roleSpawn.dim(), roleSpawn.pos())) {
             choices.add(new RespawnChoiceEntry(TEAM_SPAWN_CHOICE,
                     Component.translatable("conquest.gui.respawn_choice_team_spawn"),
                     roleSpawn.dim().location(), roleSpawn.pos()));
         }
-        if (manager.getSpawn2Dim(team) != null && manager.getSpawn2Pos(team) != null) {
+        if (manager.getSpawn2Dim(team) != null && manager.getSpawn2Pos(team) != null
+                && manager.isDestinationSafe(player, manager.getSpawn2Dim(team), manager.getSpawn2Pos(team))) {
             choices.add(new RespawnChoiceEntry(TEAM_SPAWN2_CHOICE,
                     Component.translatable("conquest.gui.respawn_choice_team_spawn2"),
                     manager.getSpawn2Dim(team).location(), manager.getSpawn2Pos(team)));
         }
         var beaconDim = manager.getTeamBeaconDim(team);
         var beaconPos = manager.getTeamBeaconPos(team);
-        if (beaconDim != null && beaconPos != null) {
+        if (beaconDim != null && beaconPos != null && manager.isDestinationSafe(player, beaconDim, beaconPos)) {
             choices.add(new RespawnChoiceEntry(BEACON_CHOICE,
                     Component.translatable("conquest.gui.respawn_choice_beacon"), beaconDim.location(), beaconPos));
         }
