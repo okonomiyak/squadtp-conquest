@@ -3,11 +3,11 @@ package uk.iwaservice.squadtpconquest;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.event.entity.living.LivingDamageEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
 import uk.iwaservice.squadtp.api.PlayerDownedEvent;
 import uk.iwaservice.squadtp.squad.ReviveSystem;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
@@ -31,7 +31,7 @@ import java.util.UUID;
 public final class ScoreEvents {
 
     @SubscribeEvent
-    public static void onDamage(LivingDamageEvent event) {
+    public static void onDamage(LivingDamageEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer victim)) {
             return;
         }

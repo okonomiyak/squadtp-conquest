@@ -126,9 +126,9 @@ public class CapturePoint {
     }
 
     public static CapturePoint load(CompoundTag tag) {
-        ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("Dim")));
+        ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("Dim")));
         CapturePoint point = new CapturePoint(tag.getString("Name"), dim,
-                NbtUtils.readBlockPos(tag.getCompound("Pos")), tag.getInt("Radius"));
+                NbtUtils.readBlockPos(tag, "Pos").orElse(null), tag.getInt("Radius"));
         point.owner = Team.valueOf(tag.getString("Owner"));
         point.capturingTeam = Team.valueOf(tag.getString("Capturing"));
         point.flagLevel = tag.getDouble("FlagLevel");

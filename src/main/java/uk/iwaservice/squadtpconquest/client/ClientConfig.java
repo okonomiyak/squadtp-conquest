@@ -1,15 +1,15 @@
 package uk.iwaservice.squadtpconquest.client;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 /** Client-only preferences (never loaded on a dedicated server). */
 public final class ClientConfig {
-    public static final ForgeConfigSpec SPEC;
+    public static final ModConfigSpec SPEC;
 
-    public static final ForgeConfigSpec.BooleanValue HOLD_TO_OPEN_SCOREBOARD;
+    public static final ModConfigSpec.BooleanValue HOLD_TO_OPEN_SCOREBOARD;
 
     static {
-        ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder b = new ModConfigSpec.Builder();
 
         b.push("gui");
         HOLD_TO_OPEN_SCOREBOARD = b

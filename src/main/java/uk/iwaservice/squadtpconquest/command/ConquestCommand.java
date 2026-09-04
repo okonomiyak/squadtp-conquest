@@ -1,5 +1,6 @@
 package uk.iwaservice.squadtpconquest.command;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -19,8 +20,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.ModConfigSpec;
 import uk.iwaservice.squadtp.squad.Squad;
 import uk.iwaservice.squadtp.squad.SquadManager;
 import uk.iwaservice.squadtpconquest.Config;
@@ -79,7 +79,7 @@ public final class ConquestCommand {
         CONFIG_KEYS.put("ticketsPerSectorCapture", intEntry(Config.BT_TICKETS_PER_SECTOR_CAPTURE));
     }
 
-    private static ConfigEntry intEntry(ForgeConfigSpec.IntValue value) {
+    private static ConfigEntry intEntry(ModConfigSpec.IntValue value) {
         return new ConfigEntry(raw -> {
             try {
                 value.set(Integer.parseInt(raw));
@@ -90,7 +90,7 @@ public final class ConquestCommand {
         }, () -> String.valueOf(value.get()));
     }
 
-    private static ConfigEntry doubleEntry(ForgeConfigSpec.DoubleValue value) {
+    private static ConfigEntry doubleEntry(ModConfigSpec.DoubleValue value) {
         return new ConfigEntry(raw -> {
             try {
                 value.set(Double.parseDouble(raw));
@@ -101,7 +101,7 @@ public final class ConquestCommand {
         }, () -> String.valueOf(value.get()));
     }
 
-    private static ConfigEntry boolEntry(ForgeConfigSpec.BooleanValue value) {
+    private static ConfigEntry boolEntry(ModConfigSpec.BooleanValue value) {
         return new ConfigEntry(raw -> {
             if (!raw.equalsIgnoreCase("true") && !raw.equalsIgnoreCase("false")) {
                 return false;
@@ -1004,7 +1004,7 @@ public final class ConquestCommand {
         String name = StringArgumentType.getString(ctx, "name");
         int cost = IntegerArgumentType.getInteger(ctx, "cost");
         ResourceLocation itemId = ResourceLocationArgument.getId(ctx, "item");
-        if (!ForgeRegistries.ITEMS.containsKey(itemId)) {
+        if (!BuiltInRegistries.ITEM.containsKey(itemId)) {
             return fail(ctx, Component.translatable("conquest.msg.unknown_item", itemId.toString()));
         }
         ConquestManager.get(ctx.getSource().getServer()).addCallIn(name, cost, itemId, count);
@@ -1162,7 +1162,7 @@ public final class ConquestCommand {
 
     private static int protectBlockAdd(CommandContext<CommandSourceStack> ctx) {
         ResourceLocation blockId = ResourceLocationArgument.getId(ctx, "block");
-        if (!ForgeRegistries.BLOCKS.containsKey(blockId)) {
+        if (!BuiltInRegistries.BLOCK.containsKey(blockId)) {
             return fail(ctx, Component.translatable("conquest.msg.unknown_block", blockId.toString()));
         }
         if (!ConquestManager.get(ctx.getSource().getServer()).addProtectedBlock(blockId.toString())) {

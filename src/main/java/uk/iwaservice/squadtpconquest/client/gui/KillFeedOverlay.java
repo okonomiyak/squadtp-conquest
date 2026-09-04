@@ -1,11 +1,11 @@
 package uk.iwaservice.squadtpconquest.client.gui;
 
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import uk.iwaservice.squadtpconquest.client.ConquestClientData;
 
 import java.util.List;
@@ -16,7 +16,7 @@ import java.util.List;
  * disappear once their {@code killFeedDurationSeconds} expires — no fade animation, same as the
  * spot/pin markers this mirrors.
  */
-public class KillFeedOverlay implements IGuiOverlay {
+public class KillFeedOverlay implements LayeredDraw.Layer {
 
     public static final KillFeedOverlay INSTANCE = new KillFeedOverlay();
 
@@ -25,11 +25,12 @@ public class KillFeedOverlay implements IGuiOverlay {
     private static final int TOP_Y = 4;
 
     @Override
-    public void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int width, int height) {
+    public void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui) {
             return;
         }
+        int width = graphics.guiWidth();
         List<ConquestClientData.KillFeedEntry> entries = ConquestClientData.getKillFeed();
         if (entries.isEmpty()) {
             return;

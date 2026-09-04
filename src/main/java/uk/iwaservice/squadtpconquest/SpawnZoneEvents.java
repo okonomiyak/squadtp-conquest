@@ -1,8 +1,8 @@
 package uk.iwaservice.squadtpconquest;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.conquest.Team;
@@ -21,7 +21,7 @@ import uk.iwaservice.squadtpconquest.conquest.Team;
 public final class SpawnZoneEvents {
 
     @SubscribeEvent
-    public static void onAttack(LivingAttackEvent event) {
+    public static void onAttack(LivingIncomingDamageEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer victim)) {
             return;
         }

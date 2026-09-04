@@ -2,10 +2,9 @@ package uk.iwaservice.squadtpconquest.network;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
 import uk.iwaservice.squadtpconquest.client.ClientPacketHandler;
 
 import java.util.UUID;
@@ -16,7 +15,18 @@ import java.util.UUID;
  * locally and lets the mark expire on its own (see {@link ClientPacketHandler#handleSpot}).
  */
 public record SpotPacket(UUID target, String targetName, ResourceLocation dimension, BlockPos pos,
-                          int durationTicks) {
+                          int durationTicks) implements CustomPacketPayload {
+
+    public static final Type<SpotPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(uk.iwaservice.squadtpconquest.SquadTpConquest.MODID, "spot"));
+
+    public static final StreamCodec<FriendlyByteBuf, SpotPacket> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), SpotPacket::decode);
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
 
     public static void encode(SpotPacket msg, FriendlyByteBuf buf) {
         buf.writeUUID(msg.target);
@@ -29,10 +39,5 @@ public record SpotPacket(UUID target, String targetName, ResourceLocation dimens
     public static SpotPacket decode(FriendlyByteBuf buf) {
         return new SpotPacket(buf.readUUID(), buf.readUtf(), buf.readResourceLocation(), buf.readBlockPos(),
                 buf.readVarInt());
-    }
-
-    public static void handle(SpotPacket msg, java.util.function.Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().setPacketHandled(true);
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPacketHandler.handleSpot(msg));
     }
 }

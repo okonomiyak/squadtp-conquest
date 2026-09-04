@@ -2,11 +2,13 @@ package uk.iwaservice.squadtpconquest.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.settings.KeyConflictContext;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.settings.KeyConflictContext;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 import uk.iwaservice.squadtpconquest.SquadTpConquest;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestCaptureOverlay;
@@ -14,7 +16,7 @@ import uk.iwaservice.squadtpconquest.client.gui.ConquestHudOverlay;
 import uk.iwaservice.squadtpconquest.client.gui.KillFeedOverlay;
 
 /** Mod-bus client events: keybind and HUD overlay registration. */
-@Mod.EventBusSubscriber(modid = SquadTpConquest.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = SquadTpConquest.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public final class ClientModEvents {
 
     public static final KeyMapping OPEN_CONQUEST_SCREEN = new KeyMapping(
@@ -57,10 +59,13 @@ public final class ClientModEvents {
     }
 
     @SubscribeEvent
-    public static void onRegisterGuiOverlays(net.minecraftforge.client.event.RegisterGuiOverlaysEvent event) {
-        event.registerAboveAll("conquest_hud", ConquestHudOverlay.INSTANCE);
-        event.registerAboveAll("conquest_capture", ConquestCaptureOverlay.INSTANCE);
-        event.registerAboveAll("conquest_kill_feed", KillFeedOverlay.INSTANCE);
+    public static void onRegisterGuiLayers(RegisterGuiLayersEvent event) {
+        event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(SquadTpConquest.MODID, "conquest_hud"),
+                ConquestHudOverlay.INSTANCE);
+        event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(SquadTpConquest.MODID, "conquest_capture"),
+                ConquestCaptureOverlay.INSTANCE);
+        event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(SquadTpConquest.MODID, "conquest_kill_feed"),
+                KillFeedOverlay.INSTANCE);
     }
 
     private ClientModEvents() {}

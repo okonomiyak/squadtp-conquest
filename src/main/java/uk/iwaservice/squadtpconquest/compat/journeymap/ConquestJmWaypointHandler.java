@@ -1,8 +1,8 @@
 package uk.iwaservice.squadtpconquest.compat.journeymap;
 
-import journeymap.client.api.IClientAPI;
-import journeymap.client.api.display.DisplayType;
-import journeymap.client.api.display.Waypoint;
+import journeymap.api.v2.client.IClientAPI;
+import journeymap.api.v2.common.waypoint.Waypoint;
+import journeymap.api.v2.common.waypoint.WaypointFactory;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -28,7 +28,7 @@ public final class ConquestJmWaypointHandler {
     public static void clear() {
         IClientAPI api = ConquestJmPlugin.api();
         if (api != null) {
-            api.removeAll(SquadTpConquest.MODID);
+            api.removeAllWaypoints(SquadTpConquest.MODID);
         }
     }
 
@@ -37,44 +37,42 @@ public final class ConquestJmWaypointHandler {
         if (api == null) {
             return;
         }
-        api.removeAll(SquadTpConquest.MODID);
+        api.removeAllWaypoints(SquadTpConquest.MODID);
 
-        if (ConquestClientData.getState() != RoundState.IN_PROGRESS
-                || !api.playerAccepts(SquadTpConquest.MODID, DisplayType.Waypoint)) {
+        if (ConquestClientData.getState() != RoundState.IN_PROGRESS) {
             return;
         }
 
         for (ConquestSyncPacket.PointStatus point : ConquestClientData.getPoints()) {
             int color = point.owner().hudColor() & 0xFFFFFF;
-            show(api, waypoint(point.name(), point.name(), point.dimension(), point.pos(), color));
+            show(api, waypoint(point.name(), point.dimension(), point.pos(), color));
         }
 
         // Spots are only ever sent for enemies, so the target's team is always our opponent's.
         int spotColor = ConquestClientData.getYourTeam().opponent().hudColor() & 0xFFFFFF;
         for (Map.Entry<UUID, ConquestClientData.SpotEntry> entry : ConquestClientData.getSpots().entrySet()) {
             ConquestClientData.SpotEntry spot = entry.getValue();
-            show(api, waypoint("spot_" + entry.getKey(), spot.name(), spot.dimension(), spot.pos(), spotColor));
+            show(api, waypoint(spot.name(), spot.dimension(), spot.pos(), spotColor));
         }
 
         // Pins are only ever sent by/to teammates, so the placer's team is always our own.
         int pinColor = ConquestClientData.getYourTeam().hudColor() & 0xFFFFFF;
         for (Map.Entry<UUID, ConquestClientData.PinEntry> entry : ConquestClientData.getPins().entrySet()) {
             ConquestClientData.PinEntry pin = entry.getValue();
-            show(api, waypoint("pin_" + entry.getKey(), pin.placerName(), pin.dimension(), pin.pos(), pinColor));
+            show(api, waypoint(pin.placerName(), pin.dimension(), pin.pos(), pinColor));
         }
     }
 
-    private static Waypoint waypoint(String id, String name, ResourceLocation dimension, BlockPos pos, int color) {
+    private static Waypoint waypoint(String name, ResourceLocation dimension, BlockPos pos, int color) {
         ResourceKey<Level> dimKey = ResourceKey.create(Registries.DIMENSION, dimension);
-        return new Waypoint(SquadTpConquest.MODID, id, name, dimKey, pos)
-                .setColor(color)
-                .setPersistent(false)
-                .setEditable(false);
+        Waypoint waypoint = WaypointFactory.createWaypoint(SquadTpConquest.MODID, pos, name, dimKey, false);
+        waypoint.setColor(color);
+        return waypoint;
     }
 
     private static void show(IClientAPI api, Waypoint waypoint) {
         try {
-            api.show(waypoint);
+            api.addWaypoint(SquadTpConquest.MODID, waypoint);
         } catch (Exception e) {
             SquadTpConquest.LOGGER.warn("Failed to show capture point waypoint {}", waypoint.getName(), e);
         }

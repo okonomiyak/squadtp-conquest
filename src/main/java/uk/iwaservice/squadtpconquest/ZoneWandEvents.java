@@ -1,8 +1,8 @@
 package uk.iwaservice.squadtpconquest;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.bus.api.SubscribeEvent;
 import uk.iwaservice.squadtpconquest.conquest.ZoneSelection;
 
 /**

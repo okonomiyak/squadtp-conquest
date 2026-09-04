@@ -1,11 +1,11 @@
 package uk.iwaservice.squadtpconquest.client.gui;
 
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import uk.iwaservice.squadtpconquest.client.ConquestClientData;
 import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.Team;
@@ -21,7 +21,7 @@ import java.util.List;
  * the admin and spectator teams can see it too (Team A fixed on the left, spectating), so anyone
  * can watch the match without joining a side.
  */
-public class ConquestHudOverlay implements IGuiOverlay {
+public class ConquestHudOverlay implements LayeredDraw.Layer {
 
     public static final ConquestHudOverlay INSTANCE = new ConquestHudOverlay();
 
@@ -37,11 +37,12 @@ public class ConquestHudOverlay implements IGuiOverlay {
     private record PointIcon(String name, Team activeTeam, boolean contested, int flagPercent) {}
 
     @Override
-    public void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int width, int height) {
+    public void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui) {
             return;
         }
+        int width = graphics.guiWidth();
 
         Team yourTeam = ConquestClientData.getYourTeam();
         boolean spectating = yourTeam == Team.ADMIN || yourTeam == Team.SPECTATOR;

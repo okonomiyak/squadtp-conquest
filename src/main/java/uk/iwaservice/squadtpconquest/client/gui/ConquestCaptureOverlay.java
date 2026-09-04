@@ -1,11 +1,11 @@
 package uk.iwaservice.squadtpconquest.client.gui;
 
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import uk.iwaservice.squadtpconquest.client.ConquestClientData;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
@@ -21,7 +21,7 @@ import javax.annotation.Nullable;
  * always-on ticket/point-icon HUD (ConquestHudOverlay), which stays visible
  * the whole round regardless of the player's position.
  */
-public class ConquestCaptureOverlay implements IGuiOverlay {
+public class ConquestCaptureOverlay implements LayeredDraw.Layer {
 
     public static final ConquestCaptureOverlay INSTANCE = new ConquestCaptureOverlay();
 
@@ -30,11 +30,13 @@ public class ConquestCaptureOverlay implements IGuiOverlay {
     private static final int CONTESTED_COLOR = 0xFFFFDD33;
 
     @Override
-    public void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int width, int height) {
+    public void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui) {
             return;
         }
+        int width = graphics.guiWidth();
+        int height = graphics.guiHeight();
         Team yourTeam = ConquestClientData.getYourTeam();
         if (!ConquestClientData.isActive() || !yourTeam.isCombatant()) {
             return;

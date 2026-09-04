@@ -199,17 +199,17 @@ public final class Sector {
             sector.pointNames.add(pointList.getString(i));
         }
         if (tag.contains("AttackerSpawnDim")) {
-            sector.attackerSpawnDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("AttackerSpawnDim")));
-            sector.attackerSpawnPos = NbtUtils.readBlockPos(tag.getCompound("AttackerSpawnPos"));
+            sector.attackerSpawnDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("AttackerSpawnDim")));
+            sector.attackerSpawnPos = NbtUtils.readBlockPos(tag, "AttackerSpawnPos").orElse(null);
         }
         if (tag.contains("DefenderSpawnDim")) {
-            sector.defenderSpawnDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("DefenderSpawnDim")));
-            sector.defenderSpawnPos = NbtUtils.readBlockPos(tag.getCompound("DefenderSpawnPos"));
+            sector.defenderSpawnDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("DefenderSpawnDim")));
+            sector.defenderSpawnPos = NbtUtils.readBlockPos(tag, "DefenderSpawnPos").orElse(null);
         }
         if (tag.contains("CombatAreaDim")) {
-            sector.combatAreaDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("CombatAreaDim")));
-            sector.combatAreaPos1 = NbtUtils.readBlockPos(tag.getCompound("CombatAreaPos1"));
-            sector.combatAreaPos2 = NbtUtils.readBlockPos(tag.getCompound("CombatAreaPos2"));
+            sector.combatAreaDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("CombatAreaDim")));
+            sector.combatAreaPos1 = NbtUtils.readBlockPos(tag, "CombatAreaPos1").orElse(null);
+            sector.combatAreaPos2 = NbtUtils.readBlockPos(tag, "CombatAreaPos2").orElse(null);
         }
         sector.timeLimitSecondsOverride = tag.getInt("TimeLimitOverride");
         return sector;

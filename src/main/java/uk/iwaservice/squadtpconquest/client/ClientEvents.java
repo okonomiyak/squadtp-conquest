@@ -12,18 +12,18 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import uk.iwaservice.squadtpconquest.Config;
 import uk.iwaservice.squadtpconquest.SquadTpConquest;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestScoreScreen;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestScreen;
 import uk.iwaservice.squadtpconquest.compat.JourneyMapCompat;
 
-@Mod.EventBusSubscriber(modid = SquadTpConquest.MODID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = SquadTpConquest.MODID, value = Dist.CLIENT)
 public final class ClientEvents {
 
     /** Tracks whether the current scoreboard screen was opened by holding the key, for hold-to-open mode. */
@@ -39,10 +39,7 @@ public final class ClientEvents {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
+    public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
         while (ClientModEvents.OPEN_CONQUEST_SCREEN.consumeClick()) {
             if (mc.player != null && mc.screen == null) {

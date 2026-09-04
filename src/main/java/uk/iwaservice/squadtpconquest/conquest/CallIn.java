@@ -51,6 +51,6 @@ public final class CallIn {
 
     static CallIn load(CompoundTag tag) {
         return new CallIn(tag.getString("Name"), tag.getInt("ScoreCost"),
-                new ResourceLocation(tag.getString("ItemId")), tag.getInt("Count"));
+                ResourceLocation.parse(tag.getString("ItemId")), tag.getInt("Count"));
     }
 }

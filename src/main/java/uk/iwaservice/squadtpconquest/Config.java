@@ -1,61 +1,61 @@
 package uk.iwaservice.squadtpconquest;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.List;
 
 public final class Config {
-    public static final ForgeConfigSpec SPEC;
+    public static final ModConfigSpec SPEC;
 
-    public static final ForgeConfigSpec.IntValue CAPTURE_RADIUS;
-    public static final ForgeConfigSpec.DoubleValue CAPTURE_RATE_PER_SECOND;
-    public static final ForgeConfigSpec.IntValue TICKET_BLEED_INTERVAL;
-    public static final ForgeConfigSpec.IntValue TICKET_BLEED_AMOUNT;
-    public static final ForgeConfigSpec.IntValue STARTING_TICKETS;
-    public static final ForgeConfigSpec.IntValue ROUND_TIME_LIMIT_SECONDS;
-    public static final ForgeConfigSpec.IntValue RESULT_DISPLAY_SECONDS;
-    public static final ForgeConfigSpec.BooleanValue END_ON_TEAM_EMPTY;
-    public static final ForgeConfigSpec.BooleanValue AUTO_RESET_AFTER_RESULT;
-    public static final ForgeConfigSpec.IntValue TICKET_COST_PER_RESPAWN;
-    public static final ForgeConfigSpec.BooleanValue LOCK_TEAM_CHANGE_DURING_ROUND;
-    public static final ForgeConfigSpec.BooleanValue TEAM_JOIN_REQUIRES_OP;
-    public static final ForgeConfigSpec.DoubleValue MAX_HEALTH;
-    public static final ForgeConfigSpec.IntValue START_COUNTDOWN_SECONDS;
-    public static final ForgeConfigSpec.IntValue TDM_KILL_LIMIT;
-    public static final ForgeConfigSpec.IntValue HOME_ZONE_KILL_SECONDS;
-    public static final ForgeConfigSpec.IntValue BOUNDARY_KILL_SECONDS;
-    public static final ForgeConfigSpec.IntValue TEAM_BEACON_LIFETIME_SECONDS;
-    public static final ForgeConfigSpec.BooleanValue SPAWN_AT_OWNED_POINTS_ENABLED;
-    public static final ForgeConfigSpec.IntValue SPOT_RANGE_BLOCKS;
-    public static final ForgeConfigSpec.IntValue SPOT_DURATION_SECONDS;
-    public static final ForgeConfigSpec.IntValue SPOT_COOLDOWN_SECONDS;
-    public static final ForgeConfigSpec.IntValue PIN_RANGE_BLOCKS;
-    public static final ForgeConfigSpec.IntValue PIN_DURATION_SECONDS;
-    public static final ForgeConfigSpec.IntValue PIN_COOLDOWN_SECONDS;
-    public static final ForgeConfigSpec.IntValue ASSIST_WINDOW_SECONDS;
-    public static final ForgeConfigSpec.IntValue SCORE_PER_KILL;
-    public static final ForgeConfigSpec.IntValue SCORE_PER_ASSIST;
-    public static final ForgeConfigSpec.IntValue SCORE_PER_REVIVE;
-    public static final ForgeConfigSpec.IntValue SCORE_PER_CAPTURE;
-    public static final ForgeConfigSpec.IntValue KILL_FEED_DURATION_SECONDS;
+    public static final ModConfigSpec.IntValue CAPTURE_RADIUS;
+    public static final ModConfigSpec.DoubleValue CAPTURE_RATE_PER_SECOND;
+    public static final ModConfigSpec.IntValue TICKET_BLEED_INTERVAL;
+    public static final ModConfigSpec.IntValue TICKET_BLEED_AMOUNT;
+    public static final ModConfigSpec.IntValue STARTING_TICKETS;
+    public static final ModConfigSpec.IntValue ROUND_TIME_LIMIT_SECONDS;
+    public static final ModConfigSpec.IntValue RESULT_DISPLAY_SECONDS;
+    public static final ModConfigSpec.BooleanValue END_ON_TEAM_EMPTY;
+    public static final ModConfigSpec.BooleanValue AUTO_RESET_AFTER_RESULT;
+    public static final ModConfigSpec.IntValue TICKET_COST_PER_RESPAWN;
+    public static final ModConfigSpec.BooleanValue LOCK_TEAM_CHANGE_DURING_ROUND;
+    public static final ModConfigSpec.BooleanValue TEAM_JOIN_REQUIRES_OP;
+    public static final ModConfigSpec.DoubleValue MAX_HEALTH;
+    public static final ModConfigSpec.IntValue START_COUNTDOWN_SECONDS;
+    public static final ModConfigSpec.IntValue TDM_KILL_LIMIT;
+    public static final ModConfigSpec.IntValue HOME_ZONE_KILL_SECONDS;
+    public static final ModConfigSpec.IntValue BOUNDARY_KILL_SECONDS;
+    public static final ModConfigSpec.IntValue TEAM_BEACON_LIFETIME_SECONDS;
+    public static final ModConfigSpec.BooleanValue SPAWN_AT_OWNED_POINTS_ENABLED;
+    public static final ModConfigSpec.IntValue SPOT_RANGE_BLOCKS;
+    public static final ModConfigSpec.IntValue SPOT_DURATION_SECONDS;
+    public static final ModConfigSpec.IntValue SPOT_COOLDOWN_SECONDS;
+    public static final ModConfigSpec.IntValue PIN_RANGE_BLOCKS;
+    public static final ModConfigSpec.IntValue PIN_DURATION_SECONDS;
+    public static final ModConfigSpec.IntValue PIN_COOLDOWN_SECONDS;
+    public static final ModConfigSpec.IntValue ASSIST_WINDOW_SECONDS;
+    public static final ModConfigSpec.IntValue SCORE_PER_KILL;
+    public static final ModConfigSpec.IntValue SCORE_PER_ASSIST;
+    public static final ModConfigSpec.IntValue SCORE_PER_REVIVE;
+    public static final ModConfigSpec.IntValue SCORE_PER_CAPTURE;
+    public static final ModConfigSpec.IntValue KILL_FEED_DURATION_SECONDS;
 
-    public static final ForgeConfigSpec.IntValue BT_ATTACKER_TICKETS;
-    public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_LIMIT_SECONDS;
-    public static final ForgeConfigSpec.IntValue BT_SECTOR_TIME_EXTENSION_ON_CAPTURE;
-    public static final ForgeConfigSpec.IntValue BT_SECTOR_AREA_TRANSITION_GRACE_SECONDS;
-    public static final ForgeConfigSpec.IntValue BT_TICKETS_PER_SECTOR_CAPTURE;
+    public static final ModConfigSpec.IntValue BT_ATTACKER_TICKETS;
+    public static final ModConfigSpec.IntValue BT_SECTOR_TIME_LIMIT_SECONDS;
+    public static final ModConfigSpec.IntValue BT_SECTOR_TIME_EXTENSION_ON_CAPTURE;
+    public static final ModConfigSpec.IntValue BT_SECTOR_AREA_TRANSITION_GRACE_SECONDS;
+    public static final ModConfigSpec.IntValue BT_TICKETS_PER_SECTOR_CAPTURE;
 
-    public static final ForgeConfigSpec.IntValue RANGE_RESET_INTERVAL_SECONDS;
+    public static final ModConfigSpec.IntValue RANGE_RESET_INTERVAL_SECONDS;
 
-    public static final ForgeConfigSpec.BooleanValue TERRAIN_DESTRUCTION_ENABLED;
-    public static final ForgeConfigSpec.IntValue TERRAIN_RESTORE_DELAY_SECONDS;
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> INDESTRUCTIBLE_BLOCKS;
-    public static final ForgeConfigSpec.ConfigValue<String> CRATER_RUBBLE_BLOCK;
-    public static final ForgeConfigSpec.DoubleValue CRATER_RUBBLE_RING_RATIO;
-    public static final ForgeConfigSpec.IntValue MAX_BLOCKS_PER_EXPLOSION;
+    public static final ModConfigSpec.BooleanValue TERRAIN_DESTRUCTION_ENABLED;
+    public static final ModConfigSpec.IntValue TERRAIN_RESTORE_DELAY_SECONDS;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> INDESTRUCTIBLE_BLOCKS;
+    public static final ModConfigSpec.ConfigValue<String> CRATER_RUBBLE_BLOCK;
+    public static final ModConfigSpec.DoubleValue CRATER_RUBBLE_RING_RATIO;
+    public static final ModConfigSpec.IntValue MAX_BLOCKS_PER_EXPLOSION;
 
     static {
-        ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder b = new ModConfigSpec.Builder();
 
         b.push("conquest");
         CAPTURE_RADIUS = b

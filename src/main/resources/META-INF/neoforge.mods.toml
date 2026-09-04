@@ -1,5 +1,5 @@
 modLoader="javafml"
-loaderVersion="[47,)"
+loaderVersion="[1,)"
 license="GPL-3.0"
 
 [[mods]]
@@ -9,29 +9,29 @@ displayName="SquadTP Conquest"
 description='''Battlefield-style conquest game mode built on top of the squadtp squad API.'''
 
 [[dependencies.squadtpconquest]]
-    modId="forge"
-    mandatory=true
-    versionRange="[47,)"
+    modId="neoforge"
+    type="required"
+    versionRange="[21.1.244,)"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.squadtpconquest]]
     modId="minecraft"
-    mandatory=true
-    versionRange="[1.20.1,1.21)"
+    type="required"
+    versionRange="[1.21.1]"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.squadtpconquest]]
     modId="squadtp"
-    mandatory=true
+    type="required"
     versionRange="[0.1.0,)"
     ordering="AFTER"
     side="BOTH"
 
 [[dependencies.squadtpconquest]]
     modId="classloadout"
-    mandatory=false
+    type="optional"
     versionRange="[0.5.0,)"
     ordering="AFTER"
     side="BOTH"

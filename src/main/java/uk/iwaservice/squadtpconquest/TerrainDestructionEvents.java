@@ -1,5 +1,6 @@
 package uk.iwaservice.squadtpconquest;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -10,9 +11,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.level.ExplosionEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.event.level.ExplosionEvent;
+import net.neoforged.bus.api.SubscribeEvent;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 
@@ -81,7 +81,7 @@ public final class TerrainDestructionEvents {
             return;
         }
 
-        Vec3 center = event.getExplosion().getPosition();
+        Vec3 center = event.getExplosion().center();
         List<BlockPos> byDistance = new ArrayList<>(affected);
         byDistance.sort(Comparator.comparingDouble(pos -> distanceSq(pos, center)));
 
@@ -123,7 +123,7 @@ public final class TerrainDestructionEvents {
 
     /** Falls back to air (i.e. no rubble ring, crater is all-air) if craterRubbleBlock is misconfigured. */
     private static Block resolveBlock(String id) {
-        Block block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(id));
+        Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(id));
         return block != null ? block : Blocks.AIR;
     }
 

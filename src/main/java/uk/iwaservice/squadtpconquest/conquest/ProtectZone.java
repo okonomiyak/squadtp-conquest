@@ -56,9 +56,9 @@ public final class ProtectZone {
     }
 
     static ProtectZone load(CompoundTag tag) {
-        ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("Dim")));
-        BlockPos min = NbtUtils.readBlockPos(tag.getCompound("Min"));
-        BlockPos max = NbtUtils.readBlockPos(tag.getCompound("Max"));
+        ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("Dim")));
+        BlockPos min = NbtUtils.readBlockPos(tag, "Min").orElse(null);
+        BlockPos max = NbtUtils.readBlockPos(tag, "Max").orElse(null);
         return new ProtectZone(tag.getString("Name"), dim, min, max);
     }
 }

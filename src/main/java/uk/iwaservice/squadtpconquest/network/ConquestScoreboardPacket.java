@@ -1,10 +1,9 @@
 package uk.iwaservice.squadtpconquest.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
-import uk.iwaservice.squadtpconquest.client.ClientPacketHandler;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 
 import java.util.ArrayList;
@@ -17,7 +16,18 @@ import java.util.UUID;
  * assists (2026-08-20) — assists are still tracked and scored server-side
  * ({@code PlayerScore.assists}, {@code scorePerAssist}), just not displayed on this screen.
  */
-public record ConquestScoreboardPacket(int roundElapsedSeconds, List<Entry> entries) {
+public record ConquestScoreboardPacket(int roundElapsedSeconds, List<Entry> entries) implements CustomPacketPayload {
+
+    public static final Type<ConquestScoreboardPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(uk.iwaservice.squadtpconquest.SquadTpConquest.MODID, "conquest_scoreboard"));
+
+    public static final StreamCodec<FriendlyByteBuf, ConquestScoreboardPacket> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), ConquestScoreboardPacket::decode);
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
 
     public record Entry(UUID uuid, String name, Team team, int kills, int deaths, int revives, int captures, int score,
                          int lifetimeKills, int lifetimeDeaths, int lifetimeRevives, int lifetimeCaptures,
@@ -53,10 +63,5 @@ public record ConquestScoreboardPacket(int roundElapsedSeconds, List<Entry> entr
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
         }
         return new ConquestScoreboardPacket(elapsed, entries);
-    }
-
-    public static void handle(ConquestScoreboardPacket msg, java.util.function.Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().setPacketHandled(true);
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPacketHandler.handleScoreboard(msg));
     }
 }

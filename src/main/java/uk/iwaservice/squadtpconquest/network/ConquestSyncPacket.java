@@ -2,11 +2,9 @@ package uk.iwaservice.squadtpconquest.network;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
-import uk.iwaservice.squadtpconquest.client.ClientPacketHandler;
 import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.conquest.Team;
@@ -27,7 +25,18 @@ public record ConquestSyncPacket(List<PointStatus> points,
                                   Team attackerTeam, int sectorIndex, int sectorCount,
                                   int attackerTickets, int attackerTicketsMax, int tdmKillLimit,
                                   List<CallInStatus> callIns, int availableScore,
-                                  List<SquadStatus> joinableSquads) {
+                                  List<SquadStatus> joinableSquads) implements CustomPacketPayload {
+
+    public static final Type<ConquestSyncPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(uk.iwaservice.squadtpconquest.SquadTpConquest.MODID, "conquest_sync"));
+
+    public static final StreamCodec<FriendlyByteBuf, ConquestSyncPacket> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), ConquestSyncPacket::decode);
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
 
     /**
      * One capture point as seen by a specific viewer (contested/inZone are per-viewer).
@@ -142,10 +151,5 @@ public record ConquestSyncPacket(List<PointStatus> points,
         return new ConquestSyncPacket(points, ticketsA, ticketsB, active, state, mode, yourTeam, canAdmin, openScreen,
                 attackerTeam, sectorIndex, sectorCount, attackerTickets, attackerTicketsMax, tdmKillLimit,
                 callIns, availableScore, joinableSquads);
-    }
-
-    public static void handle(ConquestSyncPacket msg, java.util.function.Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().setPacketHandled(true);
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPacketHandler.handleSync(msg));
     }
 }

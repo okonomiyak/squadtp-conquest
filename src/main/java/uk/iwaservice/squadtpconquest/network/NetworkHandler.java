@@ -1,12 +1,10 @@
 package uk.iwaservice.squadtpconquest.network;
 
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkDirection;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.simple.SimpleChannel;
-import uk.iwaservice.squadtpconquest.SquadTpConquest;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import uk.iwaservice.squadtpconquest.client.ClientPacketHandler;
 
 /**
  * Server-to-client only channel. Clients never send conquest packets; all
@@ -19,58 +17,38 @@ public final class NetworkHandler {
     // of silently decoding a malformed packet and crashing the client mid-game.
     private static final String PROTOCOL_VERSION = "21";
 
-    public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(SquadTpConquest.MODID, "main"),
-            () -> PROTOCOL_VERSION,
-            PROTOCOL_VERSION::equals,
-            PROTOCOL_VERSION::equals);
-
-    public static void register() {
-        CHANNEL.messageBuilder(ConquestSyncPacket.class, 0, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(ConquestSyncPacket::encode)
-                .decoder(ConquestSyncPacket::decode)
-                .consumerMainThread(ConquestSyncPacket::handle)
-                .add();
-        CHANNEL.messageBuilder(ConquestScoreboardPacket.class, 1, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(ConquestScoreboardPacket::encode)
-                .decoder(ConquestScoreboardPacket::decode)
-                .consumerMainThread(ConquestScoreboardPacket::handle)
-                .add();
-        CHANNEL.messageBuilder(SpotPacket.class, 2, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(SpotPacket::encode)
-                .decoder(SpotPacket::decode)
-                .consumerMainThread(SpotPacket::handle)
-                .add();
-        CHANNEL.messageBuilder(PinPacket.class, 3, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(PinPacket::encode)
-                .decoder(PinPacket::decode)
-                .consumerMainThread(PinPacket::handle)
-                .add();
-        CHANNEL.messageBuilder(KillFeedPacket.class, 4, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(KillFeedPacket::encode)
-                .decoder(KillFeedPacket::decode)
-                .consumerMainThread(KillFeedPacket::handle)
-                .add();
+    public static void register(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);
+        registrar.playToClient(ConquestSyncPacket.TYPE, ConquestSyncPacket.STREAM_CODEC,
+                (msg, ctx) -> ClientPacketHandler.handleSync(msg));
+        registrar.playToClient(ConquestScoreboardPacket.TYPE, ConquestScoreboardPacket.STREAM_CODEC,
+                (msg, ctx) -> ClientPacketHandler.handleScoreboard(msg));
+        registrar.playToClient(SpotPacket.TYPE, SpotPacket.STREAM_CODEC,
+                (msg, ctx) -> ClientPacketHandler.handleSpot(msg));
+        registrar.playToClient(PinPacket.TYPE, PinPacket.STREAM_CODEC,
+                (msg, ctx) -> ClientPacketHandler.handlePin(msg));
+        registrar.playToClient(KillFeedPacket.TYPE, KillFeedPacket.STREAM_CODEC,
+                (msg, ctx) -> ClientPacketHandler.handleKillFeed(msg));
     }
 
     public static void send(ServerPlayer player, ConquestSyncPacket packet) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        PacketDistributor.sendToPlayer(player, packet);
     }
 
     public static void send(ServerPlayer player, ConquestScoreboardPacket packet) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        PacketDistributor.sendToPlayer(player, packet);
     }
 
     public static void send(ServerPlayer player, SpotPacket packet) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        PacketDistributor.sendToPlayer(player, packet);
     }
 
     public static void send(ServerPlayer player, PinPacket packet) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        PacketDistributor.sendToPlayer(player, packet);
     }
 
     public static void broadcast(KillFeedPacket packet) {
-        CHANNEL.send(PacketDistributor.ALL.noArg(), packet);
+        PacketDistributor.sendToAllPlayers(packet);
     }
 
     private NetworkHandler() {}

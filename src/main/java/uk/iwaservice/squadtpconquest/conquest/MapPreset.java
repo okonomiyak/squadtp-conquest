@@ -36,8 +36,8 @@ public final class MapPreset {
         }
 
         static PointLayout load(CompoundTag tag) {
-            ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("Dim")));
-            return new PointLayout(tag.getString("Name"), dim, NbtUtils.readBlockPos(tag.getCompound("Pos")), tag.getInt("Radius"));
+            ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("Dim")));
+            return new PointLayout(tag.getString("Name"), dim, NbtUtils.readBlockPos(tag, "Pos").orElse(null), tag.getInt("Radius"));
         }
     }
 
@@ -52,8 +52,8 @@ public final class MapPreset {
         }
 
         static ZoneBox load(CompoundTag tag) {
-            ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("Dim")));
-            return new ZoneBox(dim, NbtUtils.readBlockPos(tag.getCompound("Pos1")), NbtUtils.readBlockPos(tag.getCompound("Pos2")));
+            ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("Dim")));
+            return new ZoneBox(dim, NbtUtils.readBlockPos(tag, "Pos1").orElse(null), NbtUtils.readBlockPos(tag, "Pos2").orElse(null));
         }
     }
 
@@ -214,14 +214,14 @@ public final class MapPreset {
         ResourceKey<Level> spawnADim = null;
         BlockPos spawnAPos = null;
         if (tag.contains("SpawnADim")) {
-            spawnADim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("SpawnADim")));
-            spawnAPos = NbtUtils.readBlockPos(tag.getCompound("SpawnAPos"));
+            spawnADim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("SpawnADim")));
+            spawnAPos = NbtUtils.readBlockPos(tag, "SpawnAPos").orElse(null);
         }
         ResourceKey<Level> spawnBDim = null;
         BlockPos spawnBPos = null;
         if (tag.contains("SpawnBDim")) {
-            spawnBDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("SpawnBDim")));
-            spawnBPos = NbtUtils.readBlockPos(tag.getCompound("SpawnBPos"));
+            spawnBDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("SpawnBDim")));
+            spawnBPos = NbtUtils.readBlockPos(tag, "SpawnBPos").orElse(null);
         }
         ZoneBox zoneA = tag.contains("ZoneA") ? ZoneBox.load(tag.getCompound("ZoneA")) : null;
         ZoneBox zoneB = tag.contains("ZoneB") ? ZoneBox.load(tag.getCompound("ZoneB")) : null;

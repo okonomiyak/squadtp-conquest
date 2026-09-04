@@ -485,11 +485,11 @@ public class ConquestScreen extends Screen {
      * content.
      */
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        int step = delta > 0 ? -1 : delta < 0 ? 1 : 0;
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        int step = scrollY > 0 ? -1 : scrollY < 0 ? 1 : 0;
         int localX = (int) mouseX - panelLeft;
         if (step == 0 || localX < 0 || localX > panelWidth) {
-            return super.mouseScrolled(mouseX, mouseY, delta);
+            return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         }
         int localY = (int) mouseY - panelTop;
 
@@ -540,14 +540,14 @@ public class ConquestScreen extends Screen {
             }
         }
 
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     // --- rendering (reads live data each frame; only widget positions are cached) ---
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
 
         int l = panelLeft;
         int t = panelTop;

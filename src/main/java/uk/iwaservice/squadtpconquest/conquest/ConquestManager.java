@@ -1,5 +1,6 @@
 package uk.iwaservice.squadtpconquest.conquest;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
@@ -30,7 +31,6 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
-import net.minecraftforge.registries.ForgeRegistries;
 import uk.iwaservice.squadtp.squad.ReviveSystem;
 import uk.iwaservice.squadtp.squad.Squad;
 import uk.iwaservice.squadtp.squad.SquadManager;
@@ -240,7 +240,7 @@ public class ConquestManager extends SavedData {
 
     public static ConquestManager get(MinecraftServer server) {
         return server.overworld().getDataStorage()
-                .computeIfAbsent(ConquestManager::load, ConquestManager::new, DATA_NAME);
+                .computeIfAbsent(new SavedData.Factory<>(ConquestManager::new, ConquestManager::load), DATA_NAME);
     }
 
     /** Fresh world only (see {@link #get}): seeds a built-in blank "Normal" preset to reset to. */
@@ -701,7 +701,7 @@ public class ConquestManager extends SavedData {
         if (availableScore(player.getUUID()) < callIn.getScoreCost()) {
             return UseCallInResult.INSUFFICIENT_SCORE;
         }
-        Item item = ForgeRegistries.ITEMS.getValue(callIn.getItemId());
+        Item item = BuiltInRegistries.ITEM.get(callIn.getItemId());
         if (item == null) {
             return UseCallInResult.UNKNOWN_ITEM;
         }
@@ -823,7 +823,7 @@ public class ConquestManager extends SavedData {
         if (attribute == null) {
             return;
         }
-        double target = team.isCombatant() ? Config.MAX_HEALTH.get() : Attributes.MAX_HEALTH.getDefaultValue();
+        double target = team.isCombatant() ? Config.MAX_HEALTH.get() : Attributes.MAX_HEALTH.value().getDefaultValue();
         attribute.setBaseValue(target);
         player.setHealth((float) target);
     }
@@ -1716,7 +1716,7 @@ public class ConquestManager extends SavedData {
      * {@code indestructibleBlocks} config default or added in-game via {@link #addProtectedBlock}.
      */
     public boolean isIndestructible(BlockState state) {
-        ResourceLocation key = ForgeRegistries.BLOCKS.getKey(state.getBlock());
+        ResourceLocation key = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (key == null) {
             return false;
         }
@@ -2816,7 +2816,7 @@ public class ConquestManager extends SavedData {
 
     // --- persistence ---
 
-    public static ConquestManager load(CompoundTag tag) {
+    public static ConquestManager load(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
         ConquestManager manager = new ConquestManager();
         ListTag pointList = tag.getList("Points", Tag.TAG_COMPOUND);
         for (int i = 0; i < pointList.size(); i++) {
@@ -2843,64 +2843,64 @@ public class ConquestManager extends SavedData {
             manager.lastWinner = Team.valueOf(tag.getString("LastWinner"));
         }
         if (tag.contains("SpawnADim")) {
-            manager.spawnADim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("SpawnADim")));
-            manager.spawnAPos = NbtUtils.readBlockPos(tag.getCompound("SpawnAPos"));
+            manager.spawnADim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("SpawnADim")));
+            manager.spawnAPos = NbtUtils.readBlockPos(tag, "SpawnAPos").orElse(null);
         }
         if (tag.contains("SpawnBDim")) {
-            manager.spawnBDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("SpawnBDim")));
-            manager.spawnBPos = NbtUtils.readBlockPos(tag.getCompound("SpawnBPos"));
+            manager.spawnBDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("SpawnBDim")));
+            manager.spawnBPos = NbtUtils.readBlockPos(tag, "SpawnBPos").orElse(null);
         }
         if (tag.contains("SpawnA2Dim")) {
-            manager.spawnA2Dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("SpawnA2Dim")));
-            manager.spawnA2Pos = NbtUtils.readBlockPos(tag.getCompound("SpawnA2Pos"));
+            manager.spawnA2Dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("SpawnA2Dim")));
+            manager.spawnA2Pos = NbtUtils.readBlockPos(tag, "SpawnA2Pos").orElse(null);
         }
         if (tag.contains("SpawnB2Dim")) {
-            manager.spawnB2Dim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("SpawnB2Dim")));
-            manager.spawnB2Pos = NbtUtils.readBlockPos(tag.getCompound("SpawnB2Pos"));
+            manager.spawnB2Dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("SpawnB2Dim")));
+            manager.spawnB2Pos = NbtUtils.readBlockPos(tag, "SpawnB2Pos").orElse(null);
         }
         if (tag.contains("GatherDim")) {
-            manager.gatherDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("GatherDim")));
-            manager.gatherPos = NbtUtils.readBlockPos(tag.getCompound("GatherPos"));
+            manager.gatherDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("GatherDim")));
+            manager.gatherPos = NbtUtils.readBlockPos(tag, "GatherPos").orElse(null);
         }
         if (tag.contains("ZoneADim")) {
-            manager.zoneADim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("ZoneADim")));
+            manager.zoneADim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("ZoneADim")));
             if (tag.contains("ZoneAPos1")) {
-                manager.zoneAPos1 = NbtUtils.readBlockPos(tag.getCompound("ZoneAPos1"));
+                manager.zoneAPos1 = NbtUtils.readBlockPos(tag, "ZoneAPos1").orElse(null);
             }
             if (tag.contains("ZoneAPos2")) {
-                manager.zoneAPos2 = NbtUtils.readBlockPos(tag.getCompound("ZoneAPos2"));
+                manager.zoneAPos2 = NbtUtils.readBlockPos(tag, "ZoneAPos2").orElse(null);
             }
         }
         if (tag.contains("ZoneBDim")) {
-            manager.zoneBDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("ZoneBDim")));
+            manager.zoneBDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("ZoneBDim")));
             if (tag.contains("ZoneBPos1")) {
-                manager.zoneBPos1 = NbtUtils.readBlockPos(tag.getCompound("ZoneBPos1"));
+                manager.zoneBPos1 = NbtUtils.readBlockPos(tag, "ZoneBPos1").orElse(null);
             }
             if (tag.contains("ZoneBPos2")) {
-                manager.zoneBPos2 = NbtUtils.readBlockPos(tag.getCompound("ZoneBPos2"));
+                manager.zoneBPos2 = NbtUtils.readBlockPos(tag, "ZoneBPos2").orElse(null);
             }
         }
         if (tag.contains("BoundaryDim")) {
-            manager.boundaryDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("BoundaryDim")));
+            manager.boundaryDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("BoundaryDim")));
             if (tag.contains("BoundaryPos1")) {
-                manager.boundaryPos1 = NbtUtils.readBlockPos(tag.getCompound("BoundaryPos1"));
+                manager.boundaryPos1 = NbtUtils.readBlockPos(tag, "BoundaryPos1").orElse(null);
             }
             if (tag.contains("BoundaryPos2")) {
-                manager.boundaryPos2 = NbtUtils.readBlockPos(tag.getCompound("BoundaryPos2"));
+                manager.boundaryPos2 = NbtUtils.readBlockPos(tag, "BoundaryPos2").orElse(null);
             }
         }
         if (tag.contains("RangeDim")) {
-            manager.rangeDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("RangeDim")));
+            manager.rangeDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("RangeDim")));
             if (tag.contains("RangePos1")) {
-                manager.rangePos1 = NbtUtils.readBlockPos(tag.getCompound("RangePos1"));
+                manager.rangePos1 = NbtUtils.readBlockPos(tag, "RangePos1").orElse(null);
             }
             if (tag.contains("RangePos2")) {
-                manager.rangePos2 = NbtUtils.readBlockPos(tag.getCompound("RangePos2"));
+                manager.rangePos2 = NbtUtils.readBlockPos(tag, "RangePos2").orElse(null);
             }
         }
         if (tag.contains("RangeSpawnDim")) {
-            manager.rangeSpawnDim = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("RangeSpawnDim")));
-            manager.rangeSpawnPos = NbtUtils.readBlockPos(tag.getCompound("RangeSpawnPos"));
+            manager.rangeSpawnDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("RangeSpawnDim")));
+            manager.rangeSpawnPos = NbtUtils.readBlockPos(tag, "RangeSpawnPos").orElse(null);
         }
         ListTag scoreList = tag.getList("Scores", Tag.TAG_COMPOUND);
         for (int i = 0; i < scoreList.size(); i++) {
@@ -2968,7 +2968,7 @@ public class ConquestManager extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag) {
+    public CompoundTag save(CompoundTag tag, net.minecraft.core.HolderLookup.Provider registries) {
         ListTag pointList = new ListTag();
         for (CapturePoint point : points.values()) {
             pointList.add(point.save());

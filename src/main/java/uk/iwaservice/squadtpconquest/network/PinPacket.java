@@ -2,11 +2,9 @@ package uk.iwaservice.squadtpconquest.network;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
-import uk.iwaservice.squadtpconquest.client.ClientPacketHandler;
 
 import java.util.UUID;
 
@@ -18,7 +16,18 @@ import java.util.UUID;
  * unused placeholders and the receiver should just remove the placer's existing pin, if any.
  */
 public record PinPacket(UUID placer, String placerName, ResourceLocation dimension, BlockPos pos,
-                         int durationTicks, boolean cleared) {
+                         int durationTicks, boolean cleared) implements CustomPacketPayload {
+
+    public static final Type<PinPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(uk.iwaservice.squadtpconquest.SquadTpConquest.MODID, "pin"));
+
+    public static final StreamCodec<FriendlyByteBuf, PinPacket> STREAM_CODEC =
+            StreamCodec.of((buf, msg) -> encode(msg, buf), PinPacket::decode);
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
 
     public static void encode(PinPacket msg, FriendlyByteBuf buf) {
         buf.writeUUID(msg.placer);
@@ -32,10 +41,5 @@ public record PinPacket(UUID placer, String placerName, ResourceLocation dimensi
     public static PinPacket decode(FriendlyByteBuf buf) {
         return new PinPacket(buf.readUUID(), buf.readUtf(), buf.readResourceLocation(), buf.readBlockPos(),
                 buf.readVarInt(), buf.readBoolean());
-    }
-
-    public static void handle(PinPacket msg, java.util.function.Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().setPacketHandled(true);
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> ClientPacketHandler.handlePin(msg));
     }
 }
