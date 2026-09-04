@@ -1,5 +1,7 @@
 # squadtp-conquest 引き継ぎメモ (2026-08-07 更新)
 
+**2026-09-02追記(classloadout側のセッションから、未コミット)**: ユーザー報告「GuardSpawnerが爆発で壊れてしまう」を調査した結果、原因はclassloadout側ではなくこちら側だと判明した。classloadout`v0.5.1`で`guard_spawner`ブロックのバニラ`.strength(-1.0F, 3600000.8F)`(岩盤と同じ値)を設定済みだったが、`TerrainDestructionEvents.onDetonate`は`Config.INDESTRUCTIBLE_BLOCKS`(既定`bedrock`・チェスト類・`conquest_flag`等)に載っている種類しか判定せず、**それ以外は爆発ブロックのvanillaブラスト抵抗値を一切見ずにクレーター/瓦礫化してしまう**設計(config comment自体に「regardless of blast resistance」と明記済み)だったため、`classloadout:guard_spawner`が対戦ラウンド中(STARTING/IN_PROGRESS)の爆発で無条件に壊されていた。`Config.java`の`INDESTRUCTIBLE_BLOCKS`既定リストに`"classloadout:guard_spawner"`を追加して修正(README.mdのconfig説明2箇所も追記)。**注意**: `defineList`の既定値はTOML未生成時のみ適用されるため、**既にサーバー用configファイルが生成済みの環境ではこの変更は自動反映されない**——既存の`world/serverconfig/*-server.toml`の`indestructibleBlocks`に手動で`"classloadout:guard_spawner"`を追記するか、`/conquest protectblock add classloadout:guard_spawner`をゲーム内で実行する必要がある。ビルド確認は本セッションの環境(classloadout側)では`../squadtp/build/libs/`が見つからず未実施(squadtp本体のビルド待ち)——コードは`List.of(...)`への文字列追加のみで、既存エントリと全く同じパターン。
+
 前回(2026-07-25)からの主な変化: BF風の各種機能(地形破壊・ゾーンワンド・戦場境界・
 セクター別戦闘エリア・セクター突破チケットボーナス・コールイン・チームリスポーンビーコン)を
 連続実装した後、**squadtp本体に2件連続で手を入れた**(いずれもユーザー明示許可、詳細は下記

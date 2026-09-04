@@ -234,7 +234,8 @@ public final class Config {
                         "regardless of blast resistance. Format: \"modid:block_id\".")
                 .defineList("indestructibleBlocks",
                         List.of("minecraft:bedrock", "minecraft:chest", "minecraft:trapped_chest",
-                                "minecraft:barrel", "minecraft:end_portal_frame", "squadtpconquest:conquest_flag"),
+                                "minecraft:barrel", "minecraft:end_portal_frame", "squadtpconquest:conquest_flag",
+                                "classloadout:guard_spawner"),
                         o -> o instanceof String);
         CRATER_RUBBLE_BLOCK = b
                 .comment("Block placed in the outer ring of a crater (see craterRubbleRingRatio).",

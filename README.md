@@ -254,7 +254,8 @@ BF風のクレーターに差し替える。爆心に近いブロックはair、
 
 **破壊されないブロックの指定は3通り**:
 - `indestructibleBlocks`(config): ブロックの種類(レジストリ名)で常に除外。既定で
-  `minecraft:bedrock`・チェスト類・`squadtpconquest:conquest_flag`などを含む。TOML直接編集が必要
+  `minecraft:bedrock`・チェスト類・`squadtpconquest:conquest_flag`・`classloadout:guard_spawner`などを含む。
+  TOML直接編集が必要
 - `/conquest protectblock add|remove|list <ブロックID>`: 上記configリストに、ゲーム内から
   追加/削除できるブロック種類のリスト(NBT永続化、ラウンドをまたいで保持)。`list`はconfig既定分と
   ゲーム内追加分を両方まとめて表示する。config既定のブロックはこのコマンドでは解除できない
@@ -699,7 +700,7 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 
 `terrainDestruction`セクション:
 - `terrainDestructionEnabled`(既定true) — falseで機能全体を無効化しバニラの爆発挙動に戻す
-- `indestructibleBlocks`(既定`bedrock`・チェスト類・`squadtpconquest:conquest_flag`等) — ブロック種類による破壊禁止リスト(レジストリ名、`modid:block_id`形式)
+- `indestructibleBlocks`(既定`bedrock`・チェスト類・`squadtpconquest:conquest_flag`・`classloadout:guard_spawner`等) — ブロック種類による破壊禁止リスト(レジストリ名、`modid:block_id`形式)
 - `craterRubbleBlock`(既定`minecraft:coarse_dirt`) — クレーター外周に置き換わるブロック
 - `craterRubbleRingRatio`(既定0.25) — 影響ブロックのうち外周(ガレキ)になる割合。残りはair
 - `maxBlocksPerExplosion`(既定200) — 1回の爆発で処理する上限(爆心に近い順)。超過分はバニラ処理に委ねる
