@@ -57,7 +57,7 @@ repositories {
     // has to match that instead of a bare "[module]-[revision].[ext]".
     ivy {
         name = 'squadtpLocal'
-        url = uri(file('../squadtp/build/libs'))
+        url = uri(file('../squadtp-1.21.1/build/libs'))
         patternLayout { artifact "[module]-${minecraft_version}-forge-[revision].[ext]" }
         metadataSources { artifact() }
         content { includeModule('uk.iwaservice', 'squadtp') }
