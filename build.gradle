@@ -63,12 +63,11 @@ repositories {
         content { includeModule('uk.iwaservice', 'squadtp') }
     }
     // classloadout jar built by the sibling project (optional soft dependency, see
-    // compat/ClassLoadoutCompat). Its archivesName has no MC-version/loader suffix
-    // (unlike squadtp's), so the pattern is the bare default.
+    // compat/ClassLoadoutCompat). archivesName matches squadtp's convention.
     ivy {
         name = 'classloadoutLocal'
         url = uri(file('../classloadout-1.21.1/build/libs'))
-        patternLayout { artifact "[module]-[revision].[ext]" }
+        patternLayout { artifact "[module]-${minecraft_version}-neoforge-[revision].[ext]" }
         metadataSources { artifact() }
         content { includeModule('uk.iwaservice', 'classloadout') }
     }
