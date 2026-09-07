@@ -4,6 +4,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import uk.iwaservice.squadtpconquest.client.GuiBlurFix;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import uk.iwaservice.squadtp.client.SquadClientData;
@@ -23,6 +24,17 @@ import java.util.UUID;
  * kept fresh by S2C packets, so there is nothing to click or submit here.
  */
 public class ConquestScoreScreen extends Screen {
+    private int savedBlur = -1;
+
+    @Override
+    public void removed() {
+        if (savedBlur >= 0) {
+            GuiBlurFix.restore(savedBlur);
+            savedBlur = -1;
+        }
+        super.removed();
+    }
+
 
     private static final int PAD = 12;
     // Gray/translucent so the game world stays visible behind it while open,
@@ -59,6 +71,7 @@ public class ConquestScoreScreen extends Screen {
 
     @Override
     protected void init() {
+        if (savedBlur < 0) savedBlur = GuiBlurFix.suppress();
         panelWidth = Math.min(480, this.width - 16);
         panelHeight = Math.min(320, this.height - 16);
         panelLeft = (this.width - panelWidth) / 2;

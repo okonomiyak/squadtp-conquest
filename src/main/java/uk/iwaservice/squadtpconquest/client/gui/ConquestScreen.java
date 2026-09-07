@@ -6,6 +6,7 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import uk.iwaservice.squadtpconquest.client.GuiBlurFix;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import uk.iwaservice.squadtp.client.SquadClientData;
@@ -39,6 +40,17 @@ import java.util.UUID;
  * is done via /conquest point add|remove|list rather than in this small panel.
  */
 public class ConquestScreen extends Screen {
+    private int savedBlur = -1;
+
+    @Override
+    public void removed() {
+        if (savedBlur >= 0) {
+            GuiBlurFix.restore(savedBlur);
+            savedBlur = -1;
+        }
+        super.removed();
+    }
+
 
     private enum Tab {
         STATUS("conquest.gui.tab_status"),
@@ -119,6 +131,7 @@ public class ConquestScreen extends Screen {
 
     @Override
     protected void init() {
+        if (savedBlur < 0) savedBlur = GuiBlurFix.suppress();
         rebuild();
     }
 
@@ -547,7 +560,7 @@ public class ConquestScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
+        renderTransparentBackground(graphics);
 
         int l = panelLeft;
         int t = panelTop;
