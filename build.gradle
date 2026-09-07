@@ -62,6 +62,16 @@ repositories {
         metadataSources { artifact() }
         content { includeModule('uk.iwaservice', 'squadtp') }
     }
+    // classloadout jar built by the sibling project (optional soft dependency, see
+    // compat/ClassLoadoutCompat). Its archivesName has no MC-version/loader suffix
+    // (unlike squadtp's), so the pattern is the bare default.
+    ivy {
+        name = 'classloadoutLocal'
+        url = uri(file('../classloadout-1.21.1/build/libs'))
+        patternLayout { artifact "[module]-[revision].[ext]" }
+        metadataSources { artifact() }
+        content { includeModule('uk.iwaservice', 'classloadout') }
+    }
     // JourneyMap API v2 (new recommended host; the old jm.gserv.me host is kept as a
     // fallback below since JourneyMap still publishes there too, but is less reliable).
     maven {
@@ -101,9 +111,13 @@ dependencies {
     // dropped into run/mods directly (see the API's setup docs).
     runtimeOnly 'curse.maven:common-network-806044:7087488'
 
-    // classloadout: soft dependency (see compat/ClassLoadoutCompat), stubbed out here.
-    // ponytail: classloadout has no NeoForge/1.21.1 build yet; restore the ivy repo + modCompileOnly/
-    // modRuntimeOnly dependency (see squadtp-conquest-1.20.1's build.gradle) once it's ported.
+    // classloadout: compile-time only soft dependency, never shipped or required (see
+    // compat/ClassLoadoutCompat). Plain compileOnly/runtimeOnly (not modCompileOnly/
+    // modRuntimeOnly) since it's already Mojmap-named, same as squadtp above.
+    compileOnly "uk.iwaservice:classloadout:${classloadout_version}"
+    // Same jar again, for runClient/runServer only, so the integration is actually exercisable
+    // in the dev environment without classloadout being a real project dependency.
+    runtimeOnly "uk.iwaservice:classloadout:${classloadout_version}"
 }
 
 // mods.toml's version="${file.jarVersion}" reads this manifest attribute; without it NeoForge has
