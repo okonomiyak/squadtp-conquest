@@ -246,7 +246,7 @@ public class ConquestManager extends SavedData {
     /** Fresh world only (see {@link #get}): seeds a built-in blank "Normal" preset to reset to. */
     public ConquestManager() {
         presets.put("Normal", new MapPreset("Normal", GameMode.CONQUEST, List.of(),
-                null, null, null, null, null, null, null, List.of(), List.of(), List.of()));
+                null, null, null, null, null, null, null, null, null, null, null, List.of(), List.of(), List.of()));
     }
 
     // --- accessors ---
@@ -1895,6 +1895,7 @@ public class ConquestManager extends SavedData {
         MapPreset.ZoneBox boundaryBox = boundaryDim != null && boundaryPos1 != null && boundaryPos2 != null
                 ? new MapPreset.ZoneBox(boundaryDim, boundaryPos1, boundaryPos2) : null;
         presets.put(name, new MapPreset(name, mode, layout, spawnADim, spawnAPos, spawnBDim, spawnBPos,
+                spawnA2Dim, spawnA2Pos, spawnB2Dim, spawnB2Pos,
                 zoneABox, zoneBBox, boundaryBox, new ArrayList<>(protectZones.values()),
                 new ArrayList<>(spawnZones.values()), new ArrayList<>(protectedBlocks)));
         setDirty();
@@ -1936,6 +1937,10 @@ public class ConquestManager extends SavedData {
         spawnAPos = preset.getSpawnAPos();
         spawnBDim = preset.getSpawnBDim();
         spawnBPos = preset.getSpawnBPos();
+        spawnA2Dim = preset.getSpawnA2Dim();
+        spawnA2Pos = preset.getSpawnA2Pos();
+        spawnB2Dim = preset.getSpawnB2Dim();
+        spawnB2Pos = preset.getSpawnB2Pos();
         mode = preset.getMode();
 
         MapPreset.ZoneBox zoneABox = preset.getZoneA();
