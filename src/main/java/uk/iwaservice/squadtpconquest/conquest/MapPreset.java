@@ -69,6 +69,14 @@ public final class MapPreset {
     @Nullable
     private final BlockPos spawnBPos;
     @Nullable
+    private final ResourceKey<Level> spawnA2Dim;
+    @Nullable
+    private final BlockPos spawnA2Pos;
+    @Nullable
+    private final ResourceKey<Level> spawnB2Dim;
+    @Nullable
+    private final BlockPos spawnB2Pos;
+    @Nullable
     private final ZoneBox zoneA;
     @Nullable
     private final ZoneBox zoneB;
@@ -81,6 +89,8 @@ public final class MapPreset {
     public MapPreset(String name, GameMode mode, List<PointLayout> points,
                       @Nullable ResourceKey<Level> spawnADim, @Nullable BlockPos spawnAPos,
                       @Nullable ResourceKey<Level> spawnBDim, @Nullable BlockPos spawnBPos,
+                      @Nullable ResourceKey<Level> spawnA2Dim, @Nullable BlockPos spawnA2Pos,
+                      @Nullable ResourceKey<Level> spawnB2Dim, @Nullable BlockPos spawnB2Pos,
                       @Nullable ZoneBox zoneA, @Nullable ZoneBox zoneB, @Nullable ZoneBox boundary,
                       List<ProtectZone> protectZones, List<SpawnZone> spawnZones, List<String> protectedBlocks) {
         this.name = name;
@@ -90,6 +100,10 @@ public final class MapPreset {
         this.spawnAPos = spawnAPos;
         this.spawnBDim = spawnBDim;
         this.spawnBPos = spawnBPos;
+        this.spawnA2Dim = spawnA2Dim;
+        this.spawnA2Pos = spawnA2Pos;
+        this.spawnB2Dim = spawnB2Dim;
+        this.spawnB2Pos = spawnB2Pos;
         this.zoneA = zoneA;
         this.zoneB = zoneB;
         this.boundary = boundary;
@@ -128,6 +142,26 @@ public final class MapPreset {
     @Nullable
     public BlockPos getSpawnBPos() {
         return spawnBPos;
+    }
+
+    @Nullable
+    public ResourceKey<Level> getSpawnA2Dim() {
+        return spawnA2Dim;
+    }
+
+    @Nullable
+    public BlockPos getSpawnA2Pos() {
+        return spawnA2Pos;
+    }
+
+    @Nullable
+    public ResourceKey<Level> getSpawnB2Dim() {
+        return spawnB2Dim;
+    }
+
+    @Nullable
+    public BlockPos getSpawnB2Pos() {
+        return spawnB2Pos;
     }
 
     @Nullable
@@ -176,6 +210,14 @@ public final class MapPreset {
             tag.putString("SpawnBDim", spawnBDim.location().toString());
             tag.put("SpawnBPos", NbtUtils.writeBlockPos(spawnBPos));
         }
+        if (spawnA2Dim != null && spawnA2Pos != null) {
+            tag.putString("SpawnA2Dim", spawnA2Dim.location().toString());
+            tag.put("SpawnA2Pos", NbtUtils.writeBlockPos(spawnA2Pos));
+        }
+        if (spawnB2Dim != null && spawnB2Pos != null) {
+            tag.putString("SpawnB2Dim", spawnB2Dim.location().toString());
+            tag.put("SpawnB2Pos", NbtUtils.writeBlockPos(spawnB2Pos));
+        }
         if (zoneA != null) {
             tag.put("ZoneA", zoneA.save());
         }
@@ -223,6 +265,18 @@ public final class MapPreset {
             spawnBDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("SpawnBDim")));
             spawnBPos = NbtUtils.readBlockPos(tag, "SpawnBPos").orElse(null);
         }
+        ResourceKey<Level> spawnA2Dim = null;
+        BlockPos spawnA2Pos = null;
+        if (tag.contains("SpawnA2Dim")) {
+            spawnA2Dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("SpawnA2Dim")));
+            spawnA2Pos = NbtUtils.readBlockPos(tag, "SpawnA2Pos").orElse(null);
+        }
+        ResourceKey<Level> spawnB2Dim = null;
+        BlockPos spawnB2Pos = null;
+        if (tag.contains("SpawnB2Dim")) {
+            spawnB2Dim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("SpawnB2Dim")));
+            spawnB2Pos = NbtUtils.readBlockPos(tag, "SpawnB2Pos").orElse(null);
+        }
         ZoneBox zoneA = tag.contains("ZoneA") ? ZoneBox.load(tag.getCompound("ZoneA")) : null;
         ZoneBox zoneB = tag.contains("ZoneB") ? ZoneBox.load(tag.getCompound("ZoneB")) : null;
         ZoneBox boundary = tag.contains("Boundary") ? ZoneBox.load(tag.getCompound("Boundary")) : null;
@@ -242,6 +296,7 @@ public final class MapPreset {
             protectedBlocks.add(protectedBlockList.getString(i));
         }
         return new MapPreset(name, mode, points, spawnADim, spawnAPos, spawnBDim, spawnBPos,
+                spawnA2Dim, spawnA2Pos, spawnB2Dim, spawnB2Pos,
                 zoneA, zoneB, boundary, protectZones, spawnZones, protectedBlocks);
     }
 }
