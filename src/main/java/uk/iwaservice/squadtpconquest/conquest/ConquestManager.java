@@ -1961,6 +1961,14 @@ public class ConquestManager extends SavedData {
         protectedBlocks.clear();
         protectedBlocks.addAll(preset.getProtectedBlocks());
 
+        // Invalidate any snapshot taken under the previous boundary/sectors - it may no longer even
+        // cover this preset's area. start()'s own fallback (terrainSnapshot == null) then takes a
+        // fresh one of the current terrain the next time a round starts, instead of restoring
+        // whatever stale region the last preset/session had captured.
+        terrainSnapshot = null;
+        terrainSnapshotDim = null;
+        terrainSnapshotOrigin = null;
+
         setDirty();
         return LoadPresetResult.OK;
     }
