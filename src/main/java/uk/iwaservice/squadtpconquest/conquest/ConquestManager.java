@@ -2240,6 +2240,11 @@ public class ConquestManager extends SavedData {
             return false;
         }
         boolean wasStarting = state == RoundState.STARTING;
+        // Only once the round was actually in progress - cancelling the "Get Ready!" countdown
+        // means combat (and therefore score) never happened, so there's nothing to convert yet.
+        if (!wasStarting) {
+            awardClassloadoutPoints(server);
+        }
         state = RoundState.WAITING;
         setDirty();
         broadcast(server, Component.translatable(wasStarting ? "conquest.msg.start_cancelled" : "conquest.msg.stopped")
@@ -2617,7 +2622,9 @@ public class ConquestManager extends SavedData {
      * the scoreboard) into classloadout shop points via {@link ClassLoadoutCompat#awardPoints},
      * scaled by {@link Config#CLASSLOADOUT_POINTS_MULTIPLIER}. No-op per player at 0 score (nothing
      * to award) - {@link ClassLoadoutCompat#awardPoints} itself already no-ops when classloadout
-     * isn't installed or the multiplier zeroes the amount out.
+     * isn't installed or the multiplier zeroes the amount out. Called from both {@link #endRound}
+     * (a normal finish) and {@link #stop} (an admin-forced early end) so whatever score was earned
+     * before the round stopped, for whatever reason, still counts.
      */
     private void awardClassloadoutPoints(MinecraftServer server) {
         double multiplier = Config.CLASSLOADOUT_POINTS_MULTIPLIER.get();
