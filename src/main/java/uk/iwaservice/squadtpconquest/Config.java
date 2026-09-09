@@ -53,6 +53,7 @@ public final class Config {
     public static final ForgeConfigSpec.ConfigValue<String> CRATER_RUBBLE_BLOCK;
     public static final ForgeConfigSpec.DoubleValue CRATER_RUBBLE_RING_RATIO;
     public static final ForgeConfigSpec.IntValue MAX_BLOCKS_PER_EXPLOSION;
+    public static final ForgeConfigSpec.DoubleValue CLASSLOADOUT_POINTS_MULTIPLIER;
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
@@ -252,6 +253,15 @@ public final class Config {
                         "explosion handling instead of being skipped, so very large explosions degrade gracefully",
                         "rather than lagging the server.")
                 .defineInRange("maxBlocksPerExplosion", 200, 1, 100000);
+        b.pop();
+
+        b.push("classloadout");
+        CLASSLOADOUT_POINTS_MULTIPLIER = b
+                .comment("Each combatant's round score (see scorePerKill/scorePerAssist/scorePerRevive - the same",
+                        "number shown on the scoreboard) times this multiplier is awarded as classloadout shop",
+                        "points (see classloadout's /class buy) when the round ends. 0 disables the award entirely.",
+                        "No-op if classloadout isn't installed.")
+                .defineInRange("classloadoutPointsMultiplier", 1.0, 0.0, 100.0);
         b.pop();
 
         SPEC = b.build();

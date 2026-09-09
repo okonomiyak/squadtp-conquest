@@ -2599,6 +2599,7 @@ public class ConquestManager extends SavedData {
         }
         broadcastTitle(server, title, subtitle);
         announceMvp(server);
+        awardClassloadoutPoints(server);
         teleportToGatherPoint(server);
         restoreTerrainSnapshot(server);
 
@@ -2609,6 +2610,27 @@ public class ConquestManager extends SavedData {
         // revivable) — clear() alone is meant for server shutdown, where there's no player left to
         // fix up client-side.
         ReviveSystem.forceReviveAll(server);
+    }
+
+    /**
+     * Converts each online combatant's round score (see {@link #totalScore}, same number shown on
+     * the scoreboard) into classloadout shop points via {@link ClassLoadoutCompat#awardPoints},
+     * scaled by {@link Config#CLASSLOADOUT_POINTS_MULTIPLIER}. No-op per player at 0 score (nothing
+     * to award) - {@link ClassLoadoutCompat#awardPoints} itself already no-ops when classloadout
+     * isn't installed or the multiplier zeroes the amount out.
+     */
+    private void awardClassloadoutPoints(MinecraftServer server) {
+        double multiplier = Config.CLASSLOADOUT_POINTS_MULTIPLIER.get();
+        if (multiplier <= 0) {
+            return;
+        }
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (!teamOf(player.getUUID()).isCombatant()) {
+                continue;
+            }
+            int amount = (int) Math.round(totalScore(player.getUUID()) * multiplier);
+            ClassLoadoutCompat.awardPoints(player, amount);
+        }
     }
 
     /**

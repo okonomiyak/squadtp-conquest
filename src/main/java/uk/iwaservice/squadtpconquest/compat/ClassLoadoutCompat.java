@@ -39,5 +39,21 @@ public final class ClassLoadoutCompat {
         }
     }
 
+    /**
+     * Adds {@code amount} to the player's classloadout shop point balance (see {@code /class buy}).
+     * No-op if classloadout isn't installed, or {@code amount <= 0}.
+     */
+    public static void awardPoints(ServerPlayer player, int amount) {
+        if (amount <= 0 || !isLoaded()) {
+            return;
+        }
+        try {
+            uk.iwaservice.squadtpconquest.compat.classloadout.ConquestLoadoutHandler.awardPoints(player, amount);
+        } catch (Throwable t) {
+            broken = true;
+            SquadTpConquest.LOGGER.error("classloadout integration failed, disabling it for this session", t);
+        }
+    }
+
     private ClassLoadoutCompat() {}
 }
