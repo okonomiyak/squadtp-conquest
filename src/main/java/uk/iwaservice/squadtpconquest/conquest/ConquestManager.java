@@ -2240,6 +2240,11 @@ public class ConquestManager extends SavedData {
             return false;
         }
         boolean wasStarting = state == RoundState.STARTING;
+        // Only once the round was actually in progress - cancelling the "Get Ready!" countdown
+        // means combat never happened, so there's no round to have earned points for yet.
+        if (!wasStarting) {
+            awardClassloadoutPoints(server, null);
+        }
         state = RoundState.WAITING;
         setDirty();
         broadcast(server, Component.translatable(wasStarting ? "conquest.msg.start_cancelled" : "conquest.msg.stopped")
@@ -2599,6 +2604,7 @@ public class ConquestManager extends SavedData {
         }
         broadcastTitle(server, title, subtitle);
         announceMvp(server);
+        awardClassloadoutPoints(server, winner);
         teleportToGatherPoint(server);
         restoreTerrainSnapshot(server);
 
@@ -2609,6 +2615,26 @@ public class ConquestManager extends SavedData {
         // revivable) — clear() alone is meant for server shutdown, where there's no player left to
         // fix up client-side.
         ReviveSystem.forceReviveAll(server);
+    }
+
+    /**
+     * Awards every online combatant a flat classloadout shop point amount via
+     * {@link ClassLoadoutCompat#awardPoints} - {@link Config#CLASSLOADOUT_POINTS_WIN} for
+     * {@code winner}'s team, {@link Config#CLASSLOADOUT_POINTS_LOSE} for everyone else. Same
+     * regardless of individual score - unconditional per combatant, not scaled by performance.
+     * {@code winner} null means a draw or an admin-forced {@link #stop} - both teams get the
+     * "lose" amount, since neither has a winning side. {@link ClassLoadoutCompat#awardPoints}
+     * itself already no-ops when classloadout isn't installed or the amount is 0.
+     */
+    private void awardClassloadoutPoints(MinecraftServer server, @Nullable Team winner) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            Team team = teamOf(player.getUUID());
+            if (!team.isCombatant()) {
+                continue;
+            }
+            int amount = team == winner ? Config.CLASSLOADOUT_POINTS_WIN.get() : Config.CLASSLOADOUT_POINTS_LOSE.get();
+            ClassLoadoutCompat.awardPoints(player, amount);
+        }
     }
 
     /**

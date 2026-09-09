@@ -53,6 +53,8 @@ public final class Config {
     public static final ModConfigSpec.ConfigValue<String> CRATER_RUBBLE_BLOCK;
     public static final ModConfigSpec.DoubleValue CRATER_RUBBLE_RING_RATIO;
     public static final ModConfigSpec.IntValue MAX_BLOCKS_PER_EXPLOSION;
+    public static final ModConfigSpec.IntValue CLASSLOADOUT_POINTS_WIN;
+    public static final ModConfigSpec.IntValue CLASSLOADOUT_POINTS_LOSE;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -252,6 +254,18 @@ public final class Config {
                         "explosion handling instead of being skipped, so very large explosions degrade gracefully",
                         "rather than lagging the server.")
                 .defineInRange("maxBlocksPerExplosion", 200, 1, 100000);
+        b.pop();
+
+        b.push("classloadout");
+        CLASSLOADOUT_POINTS_WIN = b
+                .comment("Flat classloadout shop points (see /class buy) awarded to every online combatant on the",
+                        "winning team when a round ends. 0 disables the award for winners. No-op if classloadout",
+                        "isn't installed.")
+                .defineInRange("classloadoutPointsWin", 100, 0, 1000000);
+        CLASSLOADOUT_POINTS_LOSE = b
+                .comment("Same as classloadoutPointsWin, but for the losing team - and for every online combatant",
+                        "on a draw or an admin-forced /conquest stop, since neither has a winning side.")
+                .defineInRange("classloadoutPointsLose", 50, 0, 1000000);
         b.pop();
 
         SPEC = b.build();
