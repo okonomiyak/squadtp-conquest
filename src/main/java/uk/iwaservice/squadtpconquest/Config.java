@@ -53,7 +53,8 @@ public final class Config {
     public static final ForgeConfigSpec.ConfigValue<String> CRATER_RUBBLE_BLOCK;
     public static final ForgeConfigSpec.DoubleValue CRATER_RUBBLE_RING_RATIO;
     public static final ForgeConfigSpec.IntValue MAX_BLOCKS_PER_EXPLOSION;
-    public static final ForgeConfigSpec.DoubleValue CLASSLOADOUT_POINTS_MULTIPLIER;
+    public static final ForgeConfigSpec.IntValue CLASSLOADOUT_POINTS_WIN;
+    public static final ForgeConfigSpec.IntValue CLASSLOADOUT_POINTS_LOSE;
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
@@ -256,12 +257,15 @@ public final class Config {
         b.pop();
 
         b.push("classloadout");
-        CLASSLOADOUT_POINTS_MULTIPLIER = b
-                .comment("Each combatant's round score (see scorePerKill/scorePerAssist/scorePerRevive - the same",
-                        "number shown on the scoreboard) times this multiplier is awarded as classloadout shop",
-                        "points (see classloadout's /class buy) when the round ends. 0 disables the award entirely.",
-                        "No-op if classloadout isn't installed.")
-                .defineInRange("classloadoutPointsMultiplier", 1.0, 0.0, 100.0);
+        CLASSLOADOUT_POINTS_WIN = b
+                .comment("Flat classloadout shop points (see /class buy) awarded to every online combatant on the",
+                        "winning team when a round ends. 0 disables the award for winners. No-op if classloadout",
+                        "isn't installed.")
+                .defineInRange("classloadoutPointsWin", 100, 0, 1000000);
+        CLASSLOADOUT_POINTS_LOSE = b
+                .comment("Same as classloadoutPointsWin, but for the losing team - and for every online combatant",
+                        "on a draw or an admin-forced /conquest stop, since neither has a winning side.")
+                .defineInRange("classloadoutPointsLose", 50, 0, 1000000);
         b.pop();
 
         SPEC = b.build();

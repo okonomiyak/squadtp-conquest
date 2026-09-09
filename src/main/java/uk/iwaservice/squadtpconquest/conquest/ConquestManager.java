@@ -2241,9 +2241,9 @@ public class ConquestManager extends SavedData {
         }
         boolean wasStarting = state == RoundState.STARTING;
         // Only once the round was actually in progress - cancelling the "Get Ready!" countdown
-        // means combat (and therefore score) never happened, so there's nothing to convert yet.
+        // means combat never happened, so there's no round to have earned points for yet.
         if (!wasStarting) {
-            awardClassloadoutPoints(server);
+            awardClassloadoutPoints(server, null);
         }
         state = RoundState.WAITING;
         setDirty();
@@ -2604,7 +2604,7 @@ public class ConquestManager extends SavedData {
         }
         broadcastTitle(server, title, subtitle);
         announceMvp(server);
-        awardClassloadoutPoints(server);
+        awardClassloadoutPoints(server, winner);
         teleportToGatherPoint(server);
         restoreTerrainSnapshot(server);
 
@@ -2618,24 +2618,21 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Converts each online combatant's round score (see {@link #totalScore}, same number shown on
-     * the scoreboard) into classloadout shop points via {@link ClassLoadoutCompat#awardPoints},
-     * scaled by {@link Config#CLASSLOADOUT_POINTS_MULTIPLIER}. No-op per player at 0 score (nothing
-     * to award) - {@link ClassLoadoutCompat#awardPoints} itself already no-ops when classloadout
-     * isn't installed or the multiplier zeroes the amount out. Called from both {@link #endRound}
-     * (a normal finish) and {@link #stop} (an admin-forced early end) so whatever score was earned
-     * before the round stopped, for whatever reason, still counts.
+     * Awards every online combatant a flat classloadout shop point amount via
+     * {@link ClassLoadoutCompat#awardPoints} - {@link Config#CLASSLOADOUT_POINTS_WIN} for
+     * {@code winner}'s team, {@link Config#CLASSLOADOUT_POINTS_LOSE} for everyone else. Same
+     * regardless of individual score - unconditional per combatant, not scaled by performance.
+     * {@code winner} null means a draw or an admin-forced {@link #stop} - both teams get the
+     * "lose" amount, since neither has a winning side. {@link ClassLoadoutCompat#awardPoints}
+     * itself already no-ops when classloadout isn't installed or the amount is 0.
      */
-    private void awardClassloadoutPoints(MinecraftServer server) {
-        double multiplier = Config.CLASSLOADOUT_POINTS_MULTIPLIER.get();
-        if (multiplier <= 0) {
-            return;
-        }
+    private void awardClassloadoutPoints(MinecraftServer server, @Nullable Team winner) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (!teamOf(player.getUUID()).isCombatant()) {
+            Team team = teamOf(player.getUUID());
+            if (!team.isCombatant()) {
                 continue;
             }
-            int amount = (int) Math.round(totalScore(player.getUUID()) * multiplier);
+            int amount = team == winner ? Config.CLASSLOADOUT_POINTS_WIN.get() : Config.CLASSLOADOUT_POINTS_LOSE.get();
             ClassLoadoutCompat.awardPoints(player, amount);
         }
     }
