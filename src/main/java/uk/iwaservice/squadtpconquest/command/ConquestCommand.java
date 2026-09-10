@@ -38,6 +38,7 @@ import uk.iwaservice.squadtpconquest.conquest.ZoneSelection;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -135,6 +136,11 @@ public final class ConquestCommand {
                     ConquestManager.get(ctx.getSource().getServer()).getCallIns().stream()
                             .map(CallIn::getName), builder);
 
+    /** Readable colors only (no BLACK - unreadable against the scoreboard's dark panel) plus "default" to reset. */
+    private static final String[] NAME_COLOR_CHOICES = {"white", "red", "blue", "green", "yellow", "aqua",
+            "light_purple", "gold", "gray", "dark_gray", "dark_red", "dark_blue", "dark_green", "dark_aqua",
+            "dark_purple", "default"};
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("conquest")
                 .then(Commands.literal("team")
@@ -165,6 +171,11 @@ public final class ConquestCommand {
                                 .executes(ConquestCommand::pinClear)))
                 .then(Commands.literal("suicide")
                         .executes(ConquestCommand::suicide))
+                .then(Commands.literal("namecolor")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.argument("color", StringArgumentType.word())
+                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(NAME_COLOR_CHOICES, b))
+                                .executes(ConquestCommand::nameColor)))
                 .then(Commands.literal("point")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -487,6 +498,30 @@ public final class ConquestCommand {
             return 0;
         }
         player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
+        return 1;
+    }
+
+    /**
+     * OP-only, purely cosmetic: picks the color the caller's own name renders in on
+     * {@code ConquestScoreScreen} (both round and lifetime tabs), visible to everyone viewing the
+     * scoreboard, not just the caller. "default"/"reset" clears it back to the screen's normal
+     * text color.
+     */
+    private static int nameColor(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        String raw = StringArgumentType.getString(ctx, "color").toLowerCase(Locale.ROOT);
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        if (raw.equals("default") || raw.equals("reset")) {
+            manager.clearNameColor(player.getUUID());
+            ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.namecolor_reset"), false);
+            return 1;
+        }
+        ChatFormatting color = ChatFormatting.getByName(raw);
+        if (color == null || !color.isColor()) {
+            return fail(ctx, Component.translatable("conquest.msg.namecolor_invalid"));
+        }
+        manager.setNameColor(player.getUUID(), color);
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.namecolor_set", color.getName()), false);
         return 1;
     }
 

@@ -352,7 +352,7 @@ public class ConquestScoreScreen extends Screen {
 
     private void drawLifetimeRow(GuiGraphics graphics, int x, int y, int width, int rank, ConquestScoreboardPacket.Entry e) {
         graphics.drawString(this.font, "#" + rank, x, y, COLOR_TEXT_DIM);
-        graphics.drawString(this.font, e.name(), x + 22, y, COLOR_TEXT);
+        graphics.drawString(this.font, e.name(), x + 22, y, e.nameColor() != 0 ? e.nameColor() : COLOR_TEXT);
         String stats = e.lifetimeKills() + "  " + e.lifetimeDeaths()
                 + "  " + formatKd(e.lifetimeKills(), e.lifetimeDeaths()) + "  " + e.lifetimeRevives()
                 + "  " + e.lifetimeCaptures();
@@ -394,7 +394,7 @@ public class ConquestScoreScreen extends Screen {
 
     private void drawRow(GuiGraphics graphics, int x, int y, int width, int rank, ConquestScoreboardPacket.Entry e) {
         graphics.drawString(this.font, "#" + rank, x, y, COLOR_TEXT_DIM);
-        graphics.drawString(this.font, e.name(), x + 22, y, COLOR_TEXT);
+        graphics.drawString(this.font, e.name(), x + 22, y, e.nameColor() != 0 ? e.nameColor() : COLOR_TEXT);
         String stats = e.score() + "  " + e.kills() + "/" + e.deaths() + "/" + e.revives() + "/" + e.captures();
         graphics.drawString(this.font, stats, x + width - this.font.width(stats), y, COLOR_TEXT_DIM);
     }
