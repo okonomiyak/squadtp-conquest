@@ -163,6 +163,8 @@ public final class ConquestCommand {
                                 .executes(ConquestCommand::pin))
                         .then(Commands.literal("clear")
                                 .executes(ConquestCommand::pinClear)))
+                .then(Commands.literal("suicide")
+                        .executes(ConquestCommand::suicide))
                 .then(Commands.literal("point")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -470,6 +472,21 @@ public final class ConquestCommand {
         ServerPlayer placer = ctx.getSource().getPlayerOrException();
         ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
         manager.clearPin(ctx.getSource().getServer(), placer);
+        return 1;
+    }
+
+    /**
+     * Self-service, no OP permission needed - instant, real death (not a down), same as the Mikan
+     * item or a zone/boundary execution: {@code player.hurt(genericKill, MAX_VALUE)} bypasses
+     * squadtp's downed-conversion. Triggered by the Suicide button on {@code ConquestScoreScreen}.
+     * Silent no-op (0, no chat message) if already dead - same convention as {@link #spot}/{@link #pin}.
+     */
+    private static int suicide(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        if (!player.isAlive()) {
+            return 0;
+        }
+        player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
         return 1;
     }
 

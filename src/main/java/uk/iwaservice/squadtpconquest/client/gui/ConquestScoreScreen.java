@@ -19,9 +19,10 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Full-round scoreboard (Right Alt by default; Tab stays vanilla). Pure
+ * Full-round scoreboard (Right Alt by default; Tab stays vanilla). Mostly
  * display — every value comes from ConquestClientData/SquadClientData, both
- * kept fresh by S2C packets, so there is nothing to click or submit here.
+ * kept fresh by S2C packets — plus a page-toggle button and the Suicide
+ * button (self-service instant death, see {@code ConquestCommand#suicide}).
  */
 public class ConquestScoreScreen extends Screen {
     private int savedBlur = -1;
@@ -79,6 +80,16 @@ public class ConquestScoreScreen extends Screen {
 
         addRenderableWidget(Button.builder(Component.literal("»"), b -> page = (page + 1) % PAGE_COUNT)
                 .bounds(panelLeft + panelWidth - PAD - 20, panelTop + 4, 20, 16).build());
+
+        addRenderableWidget(Button.builder(Component.translatable("conquest.score.suicide_button"),
+                        b -> command("conquest suicide"))
+                .bounds(panelLeft + PAD, panelTop + 4, 50, 16).build());
+    }
+
+    private void command(String cmd) {
+        if (minecraft != null && minecraft.player != null) {
+            minecraft.player.connection.sendCommand(cmd);
+        }
     }
 
     @Override

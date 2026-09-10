@@ -228,6 +228,7 @@
   "conquest.score.lifetime_header": "通算成績(このセッションの全ラウンド合計)",
   "conquest.score.col_header_lifetime": "#   名前                        K  D  K/D比  蘇生数  占領数",
   "conquest.score.spectating": "観戦中",
+  "conquest.score.suicide_button": "自殺",
 
   "conquest.capture.capturing": "占領中",
   "conquest.capture.contested": "係争中",

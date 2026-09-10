@@ -228,6 +228,7 @@
   "conquest.score.lifetime_header": "Lifetime Stats (all rounds this session)",
   "conquest.score.col_header_lifetime": "#   Name                        K  D  K/D  Revives  Captures",
   "conquest.score.spectating": "Spectating",
+  "conquest.score.suicide_button": "Suicide",
 
   "conquest.capture.capturing": "CAPTURING",
   "conquest.capture.contested": "CONTESTED",
