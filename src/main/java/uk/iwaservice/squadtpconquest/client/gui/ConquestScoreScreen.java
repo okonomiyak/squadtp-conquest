@@ -83,7 +83,7 @@ public class ConquestScoreScreen extends Screen {
 
         addRenderableWidget(Button.builder(Component.translatable("conquest.score.suicide_button"),
                         b -> command("conquest suicide"))
-                .bounds(panelLeft + PAD, panelTop + 4, 50, 16).build());
+                .bounds(panelLeft + panelWidth - PAD - 20 - 24 - 50, panelTop + 4, 50, 16).build());
     }
 
     private void command(String cmd) {
