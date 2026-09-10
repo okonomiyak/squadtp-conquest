@@ -172,6 +172,7 @@ public final class ConquestCommand {
                 .then(Commands.literal("suicide")
                         .executes(ConquestCommand::suicide))
                 .then(Commands.literal("namecolor")
+                        .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("color", StringArgumentType.word())
                                 .suggests((ctx, b) -> SharedSuggestionProvider.suggest(NAME_COLOR_CHOICES, b))
                                 .executes(ConquestCommand::nameColor)))
@@ -501,10 +502,10 @@ public final class ConquestCommand {
     }
 
     /**
-     * Self-service, no OP permission needed - purely cosmetic: picks the color the caller's own
-     * name renders in on {@code ConquestScoreScreen} (both round and lifetime tabs), visible to
-     * everyone viewing the scoreboard, not just the caller. "default"/"reset" clears it back to
-     * the screen's normal text color.
+     * OP-only, purely cosmetic: picks the color the caller's own name renders in on
+     * {@code ConquestScoreScreen} (both round and lifetime tabs), visible to everyone viewing the
+     * scoreboard, not just the caller. "default"/"reset" clears it back to the screen's normal
+     * text color.
      */
     private static int nameColor(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();

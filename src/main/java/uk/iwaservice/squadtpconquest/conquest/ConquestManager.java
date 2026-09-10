@@ -81,7 +81,7 @@ public class ConquestManager extends SavedData {
     private final LinkedHashMap<String, CallIn> callIns = new LinkedHashMap<>();
     /** Player UUID -> assigned team (players absent from the map are NEUTRAL). */
     private final Map<UUID, Team> playerTeams = new HashMap<>();
-    /** Player-chosen scoreboard name color (see {@code /conquest namecolor}), self-service and purely cosmetic. Absent = default text color. */
+    /** OP-chosen scoreboard name color (see {@code /conquest namecolor}), purely cosmetic. Absent = default text color. */
     private final Map<UUID, ChatFormatting> nameColors = new HashMap<>();
     private int ticketsA;
     private int ticketsB;
@@ -320,7 +320,7 @@ public class ConquestManager extends SavedData {
         return nameColors.get(player);
     }
 
-    /** Self-service, no OP permission needed - see {@code /conquest namecolor}. */
+    /** OP-only - see {@code /conquest namecolor}. */
     public void setNameColor(UUID player, ChatFormatting color) {
         nameColors.put(player, color);
         setDirty();
