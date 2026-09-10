@@ -135,8 +135,17 @@ public class ConquestManager extends SavedData {
     private BlockPos zoneBPos1;
     @Nullable
     private BlockPos zoneBPos2;
-    /** Transient: continuous seconds each intruder has spent inside the enemy's home zone. */
-    private final Map<UUID, Integer> zoneIntrusionSeconds = new HashMap<>();
+    /**
+     * Transient: continuous seconds each intruder has spent inside a given zone, keyed by
+     * (player, zone label) rather than just the player - {@link #checkZoneIntrusion} is called
+     * multiple times per second for different zones (home A, home B, and in Breakthrough the
+     * sliding sector front zones too), and a bare per-player key would have each call's "not
+     * inside my zone" branch wipe out progress another call just recorded for that same player
+     * the instant before.
+     */
+    private final Map<ZoneIntrusionKey, Integer> zoneIntrusionSeconds = new HashMap<>();
+
+    private record ZoneIntrusionKey(UUID player, String zone) {}
 
     /**
      * The battlefield boundary: a single axis-aligned box (not per-team, unlike the home zones)
@@ -1205,12 +1214,13 @@ public class ConquestManager extends SavedData {
      * every second before that. Independent of game mode.
      */
     private void tickHomeZones(MinecraftServer server) {
-        checkZoneIntrusion(server, Team.A, zoneADim, getZoneMin(Team.A), getZoneMax(Team.A));
-        checkZoneIntrusion(server, Team.B, zoneBDim, getZoneMin(Team.B), getZoneMax(Team.B));
+        checkZoneIntrusion(server, Team.A, zoneADim, getZoneMin(Team.A), getZoneMax(Team.A), "home-a");
+        checkZoneIntrusion(server, Team.B, zoneBDim, getZoneMin(Team.B), getZoneMax(Team.B), "home-b");
     }
 
+    /** {@code zoneKey} scopes {@link #zoneIntrusionSeconds} to this specific zone - see that field's javadoc for why. */
     private void checkZoneIntrusion(MinecraftServer server, Team owner, @Nullable ResourceKey<Level> dim,
-                                     @Nullable BlockPos min, @Nullable BlockPos max) {
+                                     @Nullable BlockPos min, @Nullable BlockPos max, String zoneKey) {
         if (dim == null || min == null || max == null) {
             return;
         }
@@ -1218,19 +1228,20 @@ public class ConquestManager extends SavedData {
         int killSeconds = Config.HOME_ZONE_KILL_SECONDS.get();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             UUID uuid = player.getUUID();
+            ZoneIntrusionKey key = new ZoneIntrusionKey(uuid, zoneKey);
             boolean inside = teamOf(uuid) == intruderTeam && player.isAlive()
                     && player.level().dimension() == dim
                     && player.getX() >= min.getX() && player.getX() < max.getX() + 1
                     && player.getY() >= min.getY() && player.getY() < max.getY() + 1
                     && player.getZ() >= min.getZ() && player.getZ() < max.getZ() + 1;
             if (!inside) {
-                zoneIntrusionSeconds.remove(uuid);
+                zoneIntrusionSeconds.remove(key);
                 continue;
             }
-            int seconds = zoneIntrusionSeconds.merge(uuid, 1, Integer::sum);
+            int seconds = zoneIntrusionSeconds.merge(key, 1, Integer::sum);
             int remaining = killSeconds - seconds;
             if (remaining <= 0) {
-                zoneIntrusionSeconds.remove(uuid);
+                zoneIntrusionSeconds.remove(key);
                 player.hurt(player.damageSources().genericKill(), Float.MAX_VALUE);
             } else {
                 player.displayClientMessage(Component.translatable("conquest.msg.zone_warning", remaining)
@@ -2412,12 +2423,12 @@ public class ConquestManager extends SavedData {
         Integer prevNumber = sectors.lowerKey(active.getNumber());
         if (prevNumber != null) {
             Sector prev = sectors.get(prevNumber);
-            checkZoneIntrusion(server, attackerTeam, prev.getCombatAreaDim(), prev.getCombatAreaMin(), prev.getCombatAreaMax());
+            checkZoneIntrusion(server, attackerTeam, prev.getCombatAreaDim(), prev.getCombatAreaMin(), prev.getCombatAreaMax(), "front-rear");
         }
         Integer nextNumber = sectors.higherKey(active.getNumber());
         if (nextNumber != null) {
             Sector next = sectors.get(nextNumber);
-            checkZoneIntrusion(server, defenderTeam(), next.getCombatAreaDim(), next.getCombatAreaMin(), next.getCombatAreaMax());
+            checkZoneIntrusion(server, defenderTeam(), next.getCombatAreaDim(), next.getCombatAreaMin(), next.getCombatAreaMax(), "front-ahead");
         }
     }
 
