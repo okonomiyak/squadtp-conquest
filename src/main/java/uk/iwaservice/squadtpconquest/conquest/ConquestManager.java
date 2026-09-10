@@ -81,6 +81,8 @@ public class ConquestManager extends SavedData {
     private final LinkedHashMap<String, CallIn> callIns = new LinkedHashMap<>();
     /** Player UUID -> assigned team (players absent from the map are NEUTRAL). */
     private final Map<UUID, Team> playerTeams = new HashMap<>();
+    /** Player-chosen scoreboard name color (see {@code /conquest namecolor}), self-service and purely cosmetic. Absent = default text color. */
+    private final Map<UUID, ChatFormatting> nameColors = new HashMap<>();
     private int ticketsA;
     private int ticketsB;
     /** CONQUEST (capture points, tickets drain) or TDM (no points, tickets count kills up). */
@@ -311,6 +313,23 @@ public class ConquestManager extends SavedData {
 
     public Team teamOf(UUID player) {
         return playerTeams.getOrDefault(player, Team.NEUTRAL);
+    }
+
+    @Nullable
+    public ChatFormatting getNameColor(UUID player) {
+        return nameColors.get(player);
+    }
+
+    /** Self-service, no OP permission needed - see {@code /conquest namecolor}. */
+    public void setNameColor(UUID player, ChatFormatting color) {
+        nameColors.put(player, color);
+        setDirty();
+    }
+
+    public void clearNameColor(UUID player) {
+        if (nameColors.remove(player) != null) {
+            setDirty();
+        }
     }
 
     public GameMode getMode() {
@@ -2585,9 +2604,12 @@ public class ConquestManager extends SavedData {
             int lifetimeDeaths = lifetime == null ? 0 : lifetime.deaths;
             int lifetimeRevives = lifetime == null ? 0 : lifetime.revives;
             int lifetimeCaptures = lifetime == null ? 0 : lifetime.captures;
+            ChatFormatting nameColor = nameColors.get(player.getUUID());
+            Integer nameColorRgb = nameColor == null ? null : nameColor.getColor();
             entries.add(new ConquestScoreboardPacket.Entry(player.getUUID(), player.getGameProfile().getName(),
                     team, kills, deaths, revives, captures, totalScore(player.getUUID()),
-                    lifetimeKills, lifetimeDeaths, lifetimeRevives, lifetimeCaptures, totalLifetimeScore(player.getUUID())));
+                    lifetimeKills, lifetimeDeaths, lifetimeRevives, lifetimeCaptures, totalLifetimeScore(player.getUUID()),
+                    nameColorRgb == null ? 0 : nameColorRgb));
         }
         return new ConquestScoreboardPacket(roundElapsedSeconds, entries);
     }
@@ -2878,6 +2900,14 @@ public class ConquestManager extends SavedData {
             CompoundTag t = teamList.getCompound(i);
             manager.playerTeams.put(t.getUUID("Uuid"), Team.valueOf(t.getString("Team")));
         }
+        ListTag nameColorList = tag.getList("NameColors", Tag.TAG_COMPOUND);
+        for (int i = 0; i < nameColorList.size(); i++) {
+            CompoundTag n = nameColorList.getCompound(i);
+            ChatFormatting color = ChatFormatting.getByName(n.getString("Color"));
+            if (color != null) {
+                manager.nameColors.put(n.getUUID("Uuid"), color);
+            }
+        }
         manager.ticketsA = tag.getInt("TicketsA");
         manager.ticketsB = tag.getInt("TicketsB");
         manager.mode = tag.contains("Mode") ? GameMode.valueOf(tag.getString("Mode")) : GameMode.CONQUEST;
@@ -3032,6 +3062,14 @@ public class ConquestManager extends SavedData {
             teamList.add(t);
         }
         tag.put("Teams", teamList);
+        ListTag nameColorList = new ListTag();
+        for (Map.Entry<UUID, ChatFormatting> e : nameColors.entrySet()) {
+            CompoundTag n = new CompoundTag();
+            n.putUUID("Uuid", e.getKey());
+            n.putString("Color", e.getValue().getName());
+            nameColorList.add(n);
+        }
+        tag.put("NameColors", nameColorList);
         tag.putInt("TicketsA", ticketsA);
         tag.putInt("TicketsB", ticketsB);
         tag.putString("Mode", mode.name());

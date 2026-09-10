@@ -19,9 +19,10 @@ import java.util.UUID;
  */
 public record ConquestScoreboardPacket(int roundElapsedSeconds, List<Entry> entries) {
 
+    /** {@code nameColor} is an RGB int (see {@code ChatFormatting#getColor}), 0 meaning "use the default text color" - see {@code /conquest namecolor}. */
     public record Entry(UUID uuid, String name, Team team, int kills, int deaths, int revives, int captures, int score,
                          int lifetimeKills, int lifetimeDeaths, int lifetimeRevives, int lifetimeCaptures,
-                         int lifetimeScore) {}
+                         int lifetimeScore, int nameColor) {}
 
     public static void encode(ConquestScoreboardPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.roundElapsedSeconds);
@@ -40,6 +41,7 @@ public record ConquestScoreboardPacket(int roundElapsedSeconds, List<Entry> entr
             buf.writeVarInt(e.lifetimeRevives());
             buf.writeVarInt(e.lifetimeCaptures());
             buf.writeVarInt(e.lifetimeScore());
+            buf.writeInt(e.nameColor());
         }
     }
 
@@ -50,7 +52,8 @@ public record ConquestScoreboardPacket(int roundElapsedSeconds, List<Entry> entr
         for (int i = 0; i < count; i++) {
             entries.add(new Entry(buf.readUUID(), buf.readUtf(), buf.readEnum(Team.class),
                     buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                    buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
+                    buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
+                    buf.readInt()));
         }
         return new ConquestScoreboardPacket(elapsed, entries);
     }
