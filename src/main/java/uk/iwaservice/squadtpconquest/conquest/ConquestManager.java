@@ -2410,7 +2410,10 @@ public class ConquestManager extends SavedData {
         // One team alone advances; both present = contested; empty = hold.
         if (occ.countA() > 0 ^ occ.countB() > 0) {
             Team holder = occ.countA() > 0 ? Team.A : Team.B;
-            CapturePoint.CaptureEvent event = point.advance(holder, Config.CAPTURE_RATE_PER_SECOND.get());
+            int holderCount = holder == Team.A ? occ.countA() : occ.countB();
+            double rate = Config.CAPTURE_RATE_PER_SECOND.get()
+                    * Math.min(holderCount, Config.CAPTURE_RATE_MAX_PLAYERS.get());
+            CapturePoint.CaptureEvent event = point.advance(holder, rate);
             setDirty();
             if (event == CapturePoint.CaptureEvent.CAPTURED) {
                 broadcast(server, Component.translatable("conquest.msg.captured",

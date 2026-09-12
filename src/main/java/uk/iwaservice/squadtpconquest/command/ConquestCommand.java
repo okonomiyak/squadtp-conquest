@@ -58,6 +58,7 @@ public final class ConquestCommand {
     static {
         CONFIG_KEYS.put("captureRadius", intEntry(Config.CAPTURE_RADIUS));
         CONFIG_KEYS.put("captureRatePerSecond", doubleEntry(Config.CAPTURE_RATE_PER_SECOND));
+        CONFIG_KEYS.put("captureRateMaxPlayers", intEntry(Config.CAPTURE_RATE_MAX_PLAYERS));
         CONFIG_KEYS.put("ticketBleedInterval", intEntry(Config.TICKET_BLEED_INTERVAL));
         CONFIG_KEYS.put("ticketBleedAmount", intEntry(Config.TICKET_BLEED_AMOUNT));
         CONFIG_KEYS.put("startingTickets", intEntry(Config.STARTING_TICKETS));

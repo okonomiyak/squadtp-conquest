@@ -9,6 +9,7 @@ public final class Config {
 
     public static final ModConfigSpec.IntValue CAPTURE_RADIUS;
     public static final ModConfigSpec.DoubleValue CAPTURE_RATE_PER_SECOND;
+    public static final ModConfigSpec.IntValue CAPTURE_RATE_MAX_PLAYERS;
     public static final ModConfigSpec.IntValue TICKET_BLEED_INTERVAL;
     public static final ModConfigSpec.IntValue TICKET_BLEED_AMOUNT;
     public static final ModConfigSpec.IntValue STARTING_TICKETS;
@@ -64,8 +65,12 @@ public final class Config {
                 .comment("Default capture radius in blocks around a capture point.")
                 .defineInRange("captureRadius", 10, 2, 64);
         CAPTURE_RATE_PER_SECOND = b
-                .comment("Flag progress change in percent per second while one team holds the zone.")
+                .comment("Flag progress change in percent per second, per holding player in the zone",
+                        "(capped by captureRateMaxPlayers).")
                 .defineInRange("captureRatePerSecond", 5.0, 0.1, 100.0);
+        CAPTURE_RATE_MAX_PLAYERS = b
+                .comment("Holding players beyond this count no longer speed up the capture further.")
+                .defineInRange("captureRateMaxPlayers", 5, 1, 20);
         TICKET_BLEED_INTERVAL = b
                 .comment("Seconds between ticket bleed ticks while a team owns the capture point.")
                 .defineInRange("ticketBleedInterval", 5, 1, 600);
