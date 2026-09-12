@@ -47,6 +47,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -866,6 +867,14 @@ public class ConquestManager extends SavedData {
      * any, is disbanded first, and fresh same-team squads are formed afterward (chunked to
      * squadtp's maxSquadSize) so nobody needs to manually reform. Returns the number of players
      * reassigned.
+     *
+     * <p>Headcount is balanced first (never differ by more than one unit - team size matters more
+     * for a Conquest match than skill does); only when headcount is already even does each team's
+     * running average lifetime K/D (see {@link #personalKd}) break the tie, sending the next unit
+     * to whichever team is currently weaker. Locked units and free players are each processed in
+     * descending-K/D order (after the existing random shuffle, so equal-K/D ties - very common,
+     * e.g. everyone at 0 - still break randomly) so the strongest units get first pick of which
+     * team needs them most.
      */
     public int shuffleTeams(MinecraftServer server) {
         List<ServerPlayer> players = new ArrayList<>();
@@ -907,39 +916,70 @@ public class ConquestManager extends SavedData {
         }
         Collections.shuffle(lockedUnits);
         Collections.shuffle(freePlayers);
+        // Stable sort: among equal-K/D units, the shuffle above still decides the order.
+        lockedUnits.sort(Comparator.comparingDouble(this::averageKd).reversed());
+        freePlayers.sort(Comparator.comparingDouble((ServerPlayer p) -> personalKd(p.getUUID())).reversed());
 
         disbandSquadsOf(server, squadManager, freePlayers);
 
         int countA = 0;
         int countB = 0;
+        double kdSumA = 0;
+        double kdSumB = 0;
         for (List<ServerPlayer> unit : lockedUnits) {
-            Team team = countA <= countB ? Team.A : Team.B;
+            Team team = pickBalancedTeam(countA, countB, kdSumA, kdSumB);
             for (ServerPlayer player : unit) {
                 joinTeam(player, team, false);
             }
+            double unitKdSum = unit.stream().mapToDouble(p -> personalKd(p.getUUID())).sum();
             if (team == Team.A) {
                 countA += unit.size();
+                kdSumA += unitKdSum;
             } else {
                 countB += unit.size();
+                kdSumB += unitKdSum;
             }
         }
 
         List<ServerPlayer> teamA = new ArrayList<>();
         List<ServerPlayer> teamB = new ArrayList<>();
         for (ServerPlayer player : freePlayers) {
-            Team team = countA <= countB ? Team.A : Team.B;
+            Team team = pickBalancedTeam(countA, countB, kdSumA, kdSumB);
             joinTeam(player, team);
             (team == Team.A ? teamA : teamB).add(player);
+            double kd = personalKd(player.getUUID());
             if (team == Team.A) {
                 countA++;
+                kdSumA += kd;
             } else {
                 countB++;
+                kdSumB += kd;
             }
         }
 
         formSquads(server, squadManager, teamA);
         formSquads(server, squadManager, teamB);
         return players.size();
+    }
+
+    /** See {@link #shuffleTeams}'s doc for the balancing rule this implements. */
+    private static Team pickBalancedTeam(int countA, int countB, double kdSumA, double kdSumB) {
+        if (countA != countB) {
+            return countA < countB ? Team.A : Team.B;
+        }
+        double avgA = countA == 0 ? 0 : kdSumA / countA;
+        double avgB = countB == 0 ? 0 : kdSumB / countB;
+        return avgA <= avgB ? Team.A : Team.B;
+    }
+
+    /** A player's lifetime kills/deaths ratio (0 if they have no recorded lifetime score yet). */
+    private double personalKd(UUID player) {
+        PlayerScore s = lifetimeScores.get(player);
+        return s == null ? 0.0 : (double) s.kills / Math.max(1, s.deaths);
+    }
+
+    private double averageKd(List<ServerPlayer> unit) {
+        return unit.stream().mapToDouble(p -> personalKd(p.getUUID())).average().orElse(0.0);
     }
 
     private static void disbandSquadsOf(MinecraftServer server, SquadManager squadManager, List<ServerPlayer> players) {
