@@ -132,6 +132,7 @@
   "conquest.msg.team_top": "%s Top: %s (%s pts)",
 
   "conquest.title.get_ready": "Get Ready!",
+  "conquest.title.get_ready_team": "Get Ready! You are %s",
   "conquest.title.started": "Conquest Started",
   "conquest.title.started_sub": "Starting tickets: %s",
   "conquest.title.started_tdm": "Team Deathmatch Started",
