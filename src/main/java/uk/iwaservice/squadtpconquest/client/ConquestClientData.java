@@ -24,7 +24,7 @@ public final class ConquestClientData {
     public record PinEntry(String placerName, ResourceLocation dimension, BlockPos pos, long expiryGameTime) {}
 
     /** One kill feed line (see {@link uk.iwaservice.squadtpconquest.network.KillFeedPacket}). */
-    public record KillFeedEntry(String attackerName, String victimName, long expiryGameTime) {}
+    public record KillFeedEntry(String attackerName, String victimName, int distanceMeters, long expiryGameTime) {}
 
     private static final Map<UUID, SpotEntry> spots = new HashMap<>();
     /** Keyed by placer UUID — each player has at most one active pin. */
@@ -157,8 +157,8 @@ public final class ConquestClientData {
         pins.clear();
     }
 
-    public static synchronized void addKillFeedEntry(String attackerName, String victimName, long expiryGameTime) {
-        killFeed.add(new KillFeedEntry(attackerName, victimName, expiryGameTime));
+    public static synchronized void addKillFeedEntry(String attackerName, String victimName, int distanceMeters, long expiryGameTime) {
+        killFeed.add(new KillFeedEntry(attackerName, victimName, distanceMeters, expiryGameTime));
         while (killFeed.size() > MAX_KILL_FEED_ENTRIES) {
             killFeed.remove(0);
         }

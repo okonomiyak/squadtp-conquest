@@ -135,8 +135,9 @@ public final class ScoreEvents {
 
     /** Feeds the top-right kill feed overlay ("Attacker → Victim"), visible to every online player. */
     private static void broadcastKillFeed(ServerPlayer attacker, ServerPlayer victim) {
+        int distance = (int) Math.round(attacker.position().distanceTo(victim.position()));
         NetworkHandler.broadcast(new KillFeedPacket(attacker.getGameProfile().getName(),
-                victim.getGameProfile().getName(), Config.KILL_FEED_DURATION_SECONDS.get() * 20));
+                victim.getGameProfile().getName(), distance, Config.KILL_FEED_DURATION_SECONDS.get() * 20));
     }
 
     /** Records the last player to hold right-click on a downed player (see ReviveAttribution). */
