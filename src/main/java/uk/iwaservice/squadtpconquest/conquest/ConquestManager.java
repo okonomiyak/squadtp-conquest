@@ -2141,9 +2141,7 @@ public class ConquestManager extends SavedData {
             state = RoundState.STARTING;
             countdownSecondsRemaining = countdown;
             setDirty();
-            broadcastTitle(server,
-                    Component.literal(String.valueOf(countdown)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
-                    Component.translatable("conquest.title.get_ready"));
+            broadcastCountdownTitle(server, countdown);
         }
         return StartResult.OK;
     }
@@ -2569,10 +2567,7 @@ public class ConquestManager extends SavedData {
                 announceStarted(server);
             } else {
                 setDirty();
-                broadcastTitle(server,
-                        Component.literal(String.valueOf(countdownSecondsRemaining))
-                                .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
-                        Component.translatable("conquest.title.get_ready"));
+                broadcastCountdownTitle(server, countdownSecondsRemaining);
             }
         } else if (state == RoundState.IN_PROGRESS) {
             roundElapsedSeconds++;
@@ -2942,6 +2937,25 @@ public class ConquestManager extends SavedData {
     /** Vanilla title+subtitle shown to every online player. */
     private static void broadcastTitle(MinecraftServer server, Component title, Component subtitle) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 60, 20));
+            player.connection.send(new ClientboundSetTitleTextPacket(title));
+            player.connection.send(new ClientboundSetSubtitleTextPacket(subtitle));
+        }
+    }
+
+    /**
+     * STARTING-state countdown title: the big number, same for everyone, but the subtitle names
+     * the viewer's own team for a combatant ("Get Ready! You are Team A") instead of the plain
+     * "Get Ready!" a non-combatant (admin/spectator/waiting) sees - per-player rather than
+     * {@link #broadcastTitle}'s identical-for-everyone text.
+     */
+    private void broadcastCountdownTitle(MinecraftServer server, int secondsRemaining) {
+        Component title = Component.literal(String.valueOf(secondsRemaining)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            Team team = teamOf(player.getUUID());
+            Component subtitle = team.isCombatant()
+                    ? Component.translatable("conquest.title.get_ready_team", team.display())
+                    : Component.translatable("conquest.title.get_ready");
             player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 60, 20));
             player.connection.send(new ClientboundSetTitleTextPacket(title));
             player.connection.send(new ClientboundSetSubtitleTextPacket(subtitle));

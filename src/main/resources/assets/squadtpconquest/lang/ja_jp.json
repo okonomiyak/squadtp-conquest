@@ -132,6 +132,7 @@
   "conquest.msg.team_top": "%sトップ: %s (%sポイント)",
 
   "conquest.title.get_ready": "準備してください!",
+  "conquest.title.get_ready_team": "準備してください! あなたは%sです",
   "conquest.title.started": "コンクエスト開始",
   "conquest.title.started_sub": "初期チケット: %s",
   "conquest.title.started_tdm": "チームデスマッチ開始",
