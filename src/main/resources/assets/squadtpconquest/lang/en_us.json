@@ -148,6 +148,7 @@
   "conquest.hud.attacker_tickets": "Attacker Tickets: %s",
   "conquest.hud.defending": "Defending",
   "conquest.hud.kill_feed_entry": "%s → %s",
+  "conquest.hud.kill_confirm": "Killed %s",
 
   "conquest.status.header": "=== Conquest Status ===",
   "conquest.status.mode": "Mode: %s",
