@@ -149,7 +149,7 @@
   "conquest.hud.attacker_tickets": "攻撃側チケット: %s",
   "conquest.hud.defending": "防衛中",
   "conquest.hud.kill_feed_entry": "%s → %s (%dm)",
-  "conquest.hud.kill_confirm": "%sをkill (%dm)",
+  "conquest.hud.kill_confirm": "%sをキル (%dm)",
 
   "conquest.status.header": "=== コンクエスト状況 ===",
   "conquest.status.mode": "モード: %s",
