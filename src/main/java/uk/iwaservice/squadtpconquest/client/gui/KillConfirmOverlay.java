@@ -43,7 +43,7 @@ public class KillConfirmOverlay implements LayeredDraw.Layer {
         }
 
         Font font = mc.font;
-        Component line = Component.translatable("conquest.hud.kill_confirm", latest.victimName());
+        Component line = Component.translatable("conquest.hud.kill_confirm", latest.victimName(), latest.distanceMeters());
         int y = height - Y;
         graphics.pose().pushPose();
         graphics.pose().translate(width / 2f, y, 0);

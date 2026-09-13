@@ -52,7 +52,7 @@ public final class ClientPacketHandler {
     public static void handleKillFeed(KillFeedPacket msg) {
         Minecraft mc = Minecraft.getInstance();
         long now = mc.level != null ? mc.level.getGameTime() : 0;
-        ConquestClientData.addKillFeedEntry(msg.attackerName(), msg.victimName(), now + msg.durationTicks());
+        ConquestClientData.addKillFeedEntry(msg.attackerName(), msg.victimName(), msg.distanceMeters(), now + msg.durationTicks());
     }
 
     private ClientPacketHandler() {}

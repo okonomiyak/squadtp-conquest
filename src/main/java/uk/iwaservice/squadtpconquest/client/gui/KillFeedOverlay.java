@@ -40,7 +40,7 @@ public class KillFeedOverlay implements LayeredDraw.Layer {
             // Oldest first in the list; render newest (last added) at the top.
             ConquestClientData.KillFeedEntry entry = entries.get(entries.size() - 1 - i);
             Component line = Component.translatable("conquest.hud.kill_feed_entry",
-                    entry.attackerName(), entry.victimName());
+                    entry.attackerName(), entry.victimName(), entry.distanceMeters());
             int y = TOP_Y + i * LINE_HEIGHT;
             graphics.drawString(font, line, width - PAD - font.width(line), y, 0xFFFFFF);
         }
