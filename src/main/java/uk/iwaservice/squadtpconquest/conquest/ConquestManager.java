@@ -82,6 +82,11 @@ public class ConquestManager extends SavedData {
     private final LinkedHashMap<String, CallIn> callIns = new LinkedHashMap<>();
     /** Player UUID -> assigned team (players absent from the map are NEUTRAL). */
     private final Map<UUID, Team> playerTeams = new HashMap<>();
+    /** Snapshot of {@link #playerTeams} taken at the last {@link #endRound}, so the scoreboard's
+     * per-team columns keep showing that match's results through WAITING even after a player
+     * leaves their combat team (see {@link #buildScoreboardPacket}) - without this, their still-
+     * intact round score just silently drops off the display once their live team stops being A/B. */
+    private final Map<UUID, Team> lastRoundTeams = new HashMap<>();
     /** OP-chosen scoreboard name color (see {@code /conquest namecolor}), purely cosmetic. Absent = default text color. */
     private final Map<UUID, ChatFormatting> nameColors = new HashMap<>();
     private int ticketsA;
@@ -2314,6 +2319,8 @@ public class ConquestManager extends SavedData {
         // means combat never happened, so there's no round to have earned points for yet.
         if (!wasStarting) {
             awardClassloadoutPoints(server, null);
+            lastRoundTeams.clear();
+            lastRoundTeams.putAll(playerTeams);
         }
         state = RoundState.WAITING;
         setDirty();
@@ -2629,12 +2636,22 @@ public class ConquestManager extends SavedData {
         }
     }
 
-    /** Full online-player roster with kills/deaths/revives/score, for the scoreboard screen. */
+    /**
+     * Full online-player roster with kills/deaths/revives/score, for the scoreboard screen.
+     *
+     * <p>While {@code WAITING}/{@code ENDED} with a {@link #lastRoundTeams} snapshot on hand, team
+     * membership comes from that snapshot instead of each player's live team - otherwise, as soon
+     * as anyone left their combat team after the match (heading off to do something else), their
+     * still-intact round score would silently vanish from both team columns, even though nothing
+     * about the match's outcome changed. A player who wasn't part of that round (e.g. joined after
+     * it ended) has no snapshot entry and is skipped, same as {@code Team.NEUTRAL} below.
+     */
     private ConquestScoreboardPacket buildScoreboardPacket(MinecraftServer server) {
         List<ConquestScoreboardPacket.Entry> entries = new ArrayList<>();
+        boolean useLastRoundTeams = (state == RoundState.WAITING || state == RoundState.ENDED) && !lastRoundTeams.isEmpty();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            Team team = teamOf(player.getUUID());
-            if (team == Team.NEUTRAL) {
+            Team team = useLastRoundTeams ? lastRoundTeams.get(player.getUUID()) : teamOf(player.getUUID());
+            if (team == null || team == Team.NEUTRAL) {
                 continue;
             }
             PlayerScore s = scores.get(player.getUUID());
@@ -2662,6 +2679,8 @@ public class ConquestManager extends SavedData {
         state = RoundState.ENDED;
         lastWinner = winner;
         resultElapsedSeconds = 0;
+        lastRoundTeams.clear();
+        lastRoundTeams.putAll(playerTeams);
         setDirty();
 
         Component title;
