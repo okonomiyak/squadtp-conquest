@@ -13,6 +13,7 @@ import org.lwjgl.glfw.GLFW;
 import uk.iwaservice.squadtpconquest.SquadTpConquest;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestCaptureOverlay;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestHudOverlay;
+import uk.iwaservice.squadtpconquest.client.gui.KillConfirmOverlay;
 import uk.iwaservice.squadtpconquest.client.gui.KillFeedOverlay;
 
 /** Mod-bus client events: keybind and HUD overlay registration. */
@@ -66,6 +67,8 @@ public final class ClientModEvents {
                 ConquestCaptureOverlay.INSTANCE);
         event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(SquadTpConquest.MODID, "conquest_kill_feed"),
                 KillFeedOverlay.INSTANCE);
+        event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(SquadTpConquest.MODID, "conquest_kill_confirm"),
+                KillConfirmOverlay.INSTANCE);
     }
 
     private ClientModEvents() {}
