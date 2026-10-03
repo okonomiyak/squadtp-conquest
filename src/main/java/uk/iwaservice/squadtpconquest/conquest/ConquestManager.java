@@ -94,6 +94,13 @@ public class ConquestManager extends SavedData {
     /** CONQUEST (capture points, tickets drain) or TDM (no points, tickets count kills up). */
     private GameMode mode = GameMode.CONQUEST;
 
+    /** What the scoreboard screen shows apart from the (client-extrapolated) round timer. */
+    private record ScoreboardKey(RoundState state, List<ConquestScoreboardPacket.Entry> entries) {}
+
+    // Last packet sent to each online player (not persisted); an equal one is not sent again.
+    private final Map<UUID, ConquestSyncPacket> lastSync = new HashMap<>();
+    private final Map<UUID, ScoreboardKey> lastScoreboard = new HashMap<>();
+
     private RoundState state = RoundState.WAITING;
     /** Seconds since /conquest start, ticked only while IN_PROGRESS. */
     private int roundElapsedSeconds;
@@ -2624,11 +2631,26 @@ public class ConquestManager extends SavedData {
             }
         }
 
+        // Each player only gets a packet when it differs from what they were last sent. The scoreboard
+        // timer is excluded from that comparison: the client extrapolates it while the round runs.
         ConquestScoreboardPacket scoreboard = buildScoreboardPacket(server);
+        ScoreboardKey scoreboardKey = new ScoreboardKey(state, scoreboard.entries());
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            NetworkHandler.send(player, buildSyncPacket(player, occupancyByPoint, false));
-            NetworkHandler.send(player, scoreboard);
+            UUID id = player.getUUID();
+            ConquestSyncPacket sync = buildSyncPacket(player, occupancyByPoint, false);
+            if (!sync.equals(lastSync.put(id, sync))) {
+                NetworkHandler.send(player, sync);
+            }
+            if (!scoreboardKey.equals(lastScoreboard.put(id, scoreboardKey))) {
+                NetworkHandler.send(player, scoreboard);
+            }
         }
+    }
+
+    /** Drops what a player was last sent, so they get fresh packets when they rejoin. */
+    public void forgetSent(UUID player) {
+        lastSync.remove(player);
+        lastScoreboard.remove(player);
     }
 
     /**

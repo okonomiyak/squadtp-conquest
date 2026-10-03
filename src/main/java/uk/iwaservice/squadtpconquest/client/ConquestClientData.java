@@ -42,6 +42,8 @@ public final class ConquestClientData {
     private static Team yourTeam = Team.NEUTRAL;
     private static boolean canAdmin;
     private static int roundElapsedSeconds;
+    /** Client game time when {@link #roundElapsedSeconds} was received; the timer is extrapolated from it while the round runs. */
+    private static long roundElapsedReceivedAt;
     private static List<ConquestScoreboardPacket.Entry> scoreboard = List.of();
     private static Team attackerTeam = Team.A;
     private static int sectorIndex;
@@ -84,6 +86,7 @@ public final class ConquestClientData {
 
     public static synchronized void applyScoreboard(int newRoundElapsedSeconds, List<ConquestScoreboardPacket.Entry> newEntries) {
         roundElapsedSeconds = newRoundElapsedSeconds;
+        roundElapsedReceivedAt = gameTime();
         scoreboard = List.copyOf(newEntries);
         revision++;
     }
@@ -93,7 +96,14 @@ public final class ConquestClientData {
     }
 
     public static synchronized int getRoundElapsedSeconds() {
-        return roundElapsedSeconds;
+        return state == RoundState.IN_PROGRESS
+                ? roundElapsedSeconds + (int) ((gameTime() - roundElapsedReceivedAt) / 20)
+                : roundElapsedSeconds;
+    }
+
+    private static long gameTime() {
+        net.minecraft.client.multiplayer.ClientLevel level = net.minecraft.client.Minecraft.getInstance().level;
+        return level != null ? level.getGameTime() : 0;
     }
 
     public static synchronized List<ConquestScoreboardPacket.Entry> getScoreboard() {
