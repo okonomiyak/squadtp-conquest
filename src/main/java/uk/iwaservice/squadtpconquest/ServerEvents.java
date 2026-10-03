@@ -137,5 +137,13 @@ public final class ServerEvents {
         }
     }
 
+    /** Forgets what a player was last sent, so a rejoin starts from fresh packets. */
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            ConquestManager.get(player.server).forgetSent(player.getUUID());
+        }
+    }
+
     private ServerEvents() {}
 }
