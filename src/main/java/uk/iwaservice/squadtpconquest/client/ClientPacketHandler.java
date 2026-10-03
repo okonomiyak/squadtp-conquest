@@ -5,6 +5,7 @@ import uk.iwaservice.squadtpconquest.client.gui.ConquestScreen;
 import uk.iwaservice.squadtpconquest.compat.JourneyMapCompat;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
+import uk.iwaservice.squadtpconquest.network.ConquestZonesPacket;
 import uk.iwaservice.squadtpconquest.network.KillFeedPacket;
 import uk.iwaservice.squadtpconquest.network.PinPacket;
 import uk.iwaservice.squadtpconquest.network.SpotPacket;
@@ -29,6 +30,10 @@ public final class ClientPacketHandler {
 
     public static void handleScoreboard(ConquestScoreboardPacket msg) {
         ConquestClientData.applyScoreboard(msg.roundElapsedSeconds(), msg.entries());
+    }
+
+    public static void handleZones(ConquestZonesPacket msg) {
+        ConquestClientData.applyZones(msg);
     }
 
     public static void handleSpot(SpotPacket msg) {

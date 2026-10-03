@@ -59,6 +59,16 @@ public enum Team implements StringRepresentable {
         };
     }
 
+    /** Packed RGB of the dust particles tracing this team's zones (see {@code CaptureZoneVisualizer}). */
+    public int zoneRgb() {
+        return switch (this) {
+            case A -> 0x3B70E0;
+            case B -> 0xE03B3B;
+            case RANGE -> 0x3BE05E;
+            default -> 0xD9D9D9;
+        };
+    }
+
     /** Colored display name, e.g. "Team A" / "チームA". */
     public MutableComponent display() {
         return Component.translatable("conquest.team." + key).withStyle(color);

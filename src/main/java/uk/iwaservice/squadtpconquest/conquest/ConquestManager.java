@@ -39,6 +39,7 @@ import uk.iwaservice.squadtpconquest.Config;
 import uk.iwaservice.squadtpconquest.compat.ClassLoadoutCompat;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
+import uk.iwaservice.squadtpconquest.network.ConquestZonesPacket;
 import uk.iwaservice.squadtpconquest.network.NetworkHandler;
 import uk.iwaservice.squadtpconquest.network.PinPacket;
 import uk.iwaservice.squadtpconquest.network.SpotPacket;
@@ -94,12 +95,16 @@ public class ConquestManager extends SavedData {
     /** CONQUEST (capture points, tickets drain) or TDM (no points, tickets count kills up). */
     private GameMode mode = GameMode.CONQUEST;
 
+    private static final int BEACON_VISUAL_RADIUS = 2;
+    private static final int SPAWN_ZONE_RGB = 0xFAD933;
+
     /** What the scoreboard screen shows apart from the (client-extrapolated) round timer. */
     private record ScoreboardKey(RoundState state, List<ConquestScoreboardPacket.Entry> entries) {}
 
     // Last packet sent to each online player (not persisted); an equal one is not sent again.
     private final Map<UUID, ConquestSyncPacket> lastSync = new HashMap<>();
     private final Map<UUID, ScoreboardKey> lastScoreboard = new HashMap<>();
+    private final Map<UUID, ConquestZonesPacket> lastZones = new HashMap<>();
 
     private RoundState state = RoundState.WAITING;
     /** Seconds since /conquest start, ticked only while IN_PROGRESS. */
@@ -2635,6 +2640,7 @@ public class ConquestManager extends SavedData {
         // timer is excluded from that comparison: the client extrapolates it while the round runs.
         ConquestScoreboardPacket scoreboard = buildScoreboardPacket(server);
         ScoreboardKey scoreboardKey = new ScoreboardKey(state, scoreboard.entries());
+        ConquestZonesPacket zones = buildZonesPacket();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             UUID id = player.getUUID();
             ConquestSyncPacket sync = buildSyncPacket(player, occupancyByPoint, false);
@@ -2644,6 +2650,9 @@ public class ConquestManager extends SavedData {
             if (!scoreboardKey.equals(lastScoreboard.put(id, scoreboardKey))) {
                 NetworkHandler.send(player, scoreboard);
             }
+            if (!zones.equals(lastZones.put(id, zones))) {
+                NetworkHandler.send(player, zones);
+            }
         }
     }
 
@@ -2651,6 +2660,46 @@ public class ConquestManager extends SavedData {
     public void forgetSent(UUID player) {
         lastSync.remove(player);
         lastScoreboard.remove(player);
+        lastZones.remove(player);
+    }
+
+    /** Every zone outline other than capture point rings, for clients to trace with particles. */
+    private ConquestZonesPacket buildZonesPacket() {
+        List<ConquestZonesPacket.Box> boxes = new ArrayList<>();
+        List<ConquestZonesPacket.Ring> rings = new ArrayList<>();
+        for (Team team : new Team[]{Team.A, Team.B}) {
+            addBox(boxes, getZoneDim(team), getZoneMin(team), getZoneMax(team), team.zoneRgb());
+        }
+        for (ProtectZone zone : getProtectZones()) {
+            addBox(boxes, zone.getDim(), zone.getMin(), zone.getMax(), Team.NEUTRAL.zoneRgb());
+        }
+        for (SpawnZone zone : getSpawnZones()) {
+            addBox(boxes, zone.getDim(), zone.getMin(), zone.getMax(), SPAWN_ZONE_RGB);
+        }
+        Sector activeSector = currentSector();
+        if (activeSector != null && activeSector.getCombatAreaDim() != null
+                && activeSector.getCombatAreaMin() != null && activeSector.getCombatAreaMax() != null) {
+            addBox(boxes, activeSector.getCombatAreaDim(), activeSector.getCombatAreaMin(), activeSector.getCombatAreaMax(),
+                    Team.NEUTRAL.zoneRgb());
+        } else {
+            addBox(boxes, getBoundaryDim(), getBoundaryMin(), getBoundaryMax(), Team.NEUTRAL.zoneRgb());
+        }
+        for (Team team : new Team[]{Team.A, Team.B}) {
+            ResourceKey<Level> dim = getTeamBeaconDim(team);
+            BlockPos pos = getTeamBeaconPos(team);
+            if (dim != null && pos != null) {
+                rings.add(new ConquestZonesPacket.Ring(dim.location(), pos, BEACON_VISUAL_RADIUS, team.zoneRgb()));
+            }
+        }
+        addBox(boxes, getRangeDim(), getRangeMin(), getRangeMax(), Team.RANGE.zoneRgb());
+        return new ConquestZonesPacket(boxes, rings);
+    }
+
+    private static void addBox(List<ConquestZonesPacket.Box> boxes, @Nullable ResourceKey<Level> dim,
+                               @Nullable BlockPos min, @Nullable BlockPos max, int rgb) {
+        if (dim != null && min != null && max != null) {
+            boxes.add(new ConquestZonesPacket.Box(dim.location(), min, max, rgb));
+        }
     }
 
     /**

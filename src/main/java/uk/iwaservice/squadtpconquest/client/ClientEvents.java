@@ -26,6 +26,10 @@ import uk.iwaservice.squadtpconquest.compat.JourneyMapCompat;
 @EventBusSubscriber(modid = SquadTpConquest.MODID, value = Dist.CLIENT)
 public final class ClientEvents {
 
+    /** Zone particles are respawned every this many client ticks. */
+    private static final int ZONE_VISUAL_INTERVAL_TICKS = 10;
+    private static int zoneTickCounter;
+
     /** Tracks whether the current scoreboard screen was opened by holding the key, for hold-to-open mode. */
     private static boolean scoreboardOpenedByHold;
 
@@ -35,6 +39,7 @@ public final class ClientEvents {
         ConquestClientData.clearSpots();
         ConquestClientData.clearPins();
         ConquestClientData.clearKillFeed();
+        ConquestClientData.clearZones();
         JourneyMapCompat.clear();
     }
 
@@ -71,6 +76,9 @@ public final class ClientEvents {
         }
         if (mc.level != null) {
             ConquestClientData.pruneExpiredKillFeed(mc.level.getGameTime());
+            if (!mc.isPaused() && ++zoneTickCounter % ZONE_VISUAL_INTERVAL_TICKS == 0) {
+                CaptureZoneVisualizer.render(mc.level);
+            }
         }
     }
 

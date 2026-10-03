@@ -15,7 +15,7 @@ public final class NetworkHandler {
     // Bump whenever a packet's wire format changes (field added/removed/reordered).
     // A mismatch then fails the connection handshake with a clear message instead
     // of silently decoding a malformed packet and crashing the client mid-game.
-    private static final String PROTOCOL_VERSION = "21";
+    private static final String PROTOCOL_VERSION = "22";
 
     public static void register(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);
@@ -23,6 +23,8 @@ public final class NetworkHandler {
                 (msg, ctx) -> ClientPacketHandler.handleSync(msg));
         registrar.playToClient(ConquestScoreboardPacket.TYPE, ConquestScoreboardPacket.STREAM_CODEC,
                 (msg, ctx) -> ClientPacketHandler.handleScoreboard(msg));
+        registrar.playToClient(ConquestZonesPacket.TYPE, ConquestZonesPacket.STREAM_CODEC,
+                (msg, ctx) -> ClientPacketHandler.handleZones(msg));
         registrar.playToClient(SpotPacket.TYPE, SpotPacket.STREAM_CODEC,
                 (msg, ctx) -> ClientPacketHandler.handleSpot(msg));
         registrar.playToClient(PinPacket.TYPE, PinPacket.STREAM_CODEC,
@@ -36,6 +38,10 @@ public final class NetworkHandler {
     }
 
     public static void send(ServerPlayer player, ConquestScoreboardPacket packet) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    public static void send(ServerPlayer player, ConquestZonesPacket packet) {
         PacketDistributor.sendToPlayer(player, packet);
     }
 
