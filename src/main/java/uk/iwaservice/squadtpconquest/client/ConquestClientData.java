@@ -7,6 +7,7 @@ import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
+import uk.iwaservice.squadtpconquest.network.ConquestZonesPacket;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
@@ -44,6 +45,7 @@ public final class ConquestClientData {
     private static int roundElapsedSeconds;
     /** Client game time when {@link #roundElapsedSeconds} was received; the timer is extrapolated from it while the round runs. */
     private static long roundElapsedReceivedAt;
+    private static ConquestZonesPacket zones = new ConquestZonesPacket(List.of(), List.of());
     private static List<ConquestScoreboardPacket.Entry> scoreboard = List.of();
     private static Team attackerTeam = Team.A;
     private static int sectorIndex;
@@ -104,6 +106,19 @@ public final class ConquestClientData {
     private static long gameTime() {
         net.minecraft.client.multiplayer.ClientLevel level = net.minecraft.client.Minecraft.getInstance().level;
         return level != null ? level.getGameTime() : 0;
+    }
+
+    public static synchronized void applyZones(ConquestZonesPacket newZones) {
+        zones = newZones;
+    }
+
+    public static synchronized ConquestZonesPacket getZones() {
+        return zones;
+    }
+
+    /** Called on logout, so another server's zones aren't drawn from stale data. */
+    public static synchronized void clearZones() {
+        zones = new ConquestZonesPacket(List.of(), List.of());
     }
 
     public static synchronized List<ConquestScoreboardPacket.Entry> getScoreboard() {
