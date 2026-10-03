@@ -887,11 +887,13 @@ public class ConquestManager extends SavedData {
      *
      * <p>Headcount is balanced first (never differ by more than one unit - team size matters more
      * for a Conquest match than skill does); only when headcount is already even does each team's
-     * running average lifetime K/D (see {@link #personalKd}) break the tie, sending the next unit
-     * to whichever team is currently weaker. Locked units and free players are each processed in
-     * descending-K/D order (after the existing random shuffle, so equal-K/D ties - very common,
-     * e.g. everyone at 0 - still break randomly) so the strongest units get first pick of which
-     * team needs them most.
+     * running average player rating (see {@link #personalRating}) break the tie, sending the next
+     * unit to whichever team is currently weaker. A rating is the lifetime K/D plus a win-rate
+     * term, {@code shuffleWinRateWeight * (winRate - 0.5) * 2}, where winRate is Laplace-smoothed
+     * ({@code (wins + 1) / (wins + losses + 2)}) so players with no history get no adjustment.
+     * Locked units and free players are each processed in descending-rating order (after the
+     * existing random shuffle, so equal-rating ties - very common, e.g. everyone new - still
+     * break randomly) so the strongest units get first pick of which team needs them most.
      */
     public int shuffleTeams(MinecraftServer server) {
         List<ServerPlayer> players = new ArrayList<>();
@@ -933,44 +935,44 @@ public class ConquestManager extends SavedData {
         }
         Collections.shuffle(lockedUnits);
         Collections.shuffle(freePlayers);
-        // Stable sort: among equal-K/D units, the shuffle above still decides the order.
-        lockedUnits.sort(Comparator.comparingDouble(this::averageKd).reversed());
-        freePlayers.sort(Comparator.comparingDouble((ServerPlayer p) -> personalKd(p.getUUID())).reversed());
+        // Stable sort: among equal-rating units, the shuffle above still decides the order.
+        lockedUnits.sort(Comparator.comparingDouble(this::averageRating).reversed());
+        freePlayers.sort(Comparator.comparingDouble((ServerPlayer p) -> personalRating(p.getUUID())).reversed());
 
         disbandSquadsOf(server, squadManager, freePlayers);
 
         int countA = 0;
         int countB = 0;
-        double kdSumA = 0;
-        double kdSumB = 0;
+        double ratingSumA = 0;
+        double ratingSumB = 0;
         for (List<ServerPlayer> unit : lockedUnits) {
-            Team team = pickBalancedTeam(countA, countB, kdSumA, kdSumB);
+            Team team = pickBalancedTeam(countA, countB, ratingSumA, ratingSumB);
             for (ServerPlayer player : unit) {
                 joinTeam(player, team, false);
             }
-            double unitKdSum = unit.stream().mapToDouble(p -> personalKd(p.getUUID())).sum();
+            double unitRatingSum = unit.stream().mapToDouble(p -> personalRating(p.getUUID())).sum();
             if (team == Team.A) {
                 countA += unit.size();
-                kdSumA += unitKdSum;
+                ratingSumA += unitRatingSum;
             } else {
                 countB += unit.size();
-                kdSumB += unitKdSum;
+                ratingSumB += unitRatingSum;
             }
         }
 
         List<ServerPlayer> teamA = new ArrayList<>();
         List<ServerPlayer> teamB = new ArrayList<>();
         for (ServerPlayer player : freePlayers) {
-            Team team = pickBalancedTeam(countA, countB, kdSumA, kdSumB);
+            Team team = pickBalancedTeam(countA, countB, ratingSumA, ratingSumB);
             joinTeam(player, team);
             (team == Team.A ? teamA : teamB).add(player);
-            double kd = personalKd(player.getUUID());
+            double rating = personalRating(player.getUUID());
             if (team == Team.A) {
                 countA++;
-                kdSumA += kd;
+                ratingSumA += rating;
             } else {
                 countB++;
-                kdSumB += kd;
+                ratingSumB += rating;
             }
         }
 
@@ -980,23 +982,32 @@ public class ConquestManager extends SavedData {
     }
 
     /** See {@link #shuffleTeams}'s doc for the balancing rule this implements. */
-    private static Team pickBalancedTeam(int countA, int countB, double kdSumA, double kdSumB) {
+    private static Team pickBalancedTeam(int countA, int countB, double ratingSumA, double ratingSumB) {
         if (countA != countB) {
             return countA < countB ? Team.A : Team.B;
         }
-        double avgA = countA == 0 ? 0 : kdSumA / countA;
-        double avgB = countB == 0 ? 0 : kdSumB / countB;
+        double avgA = countA == 0 ? 0 : ratingSumA / countA;
+        double avgB = countB == 0 ? 0 : ratingSumB / countB;
         return avgA <= avgB ? Team.A : Team.B;
     }
 
-    /** A player's lifetime kills/deaths ratio (0 if they have no recorded lifetime score yet). */
-    private double personalKd(UUID player) {
+    /**
+     * A player's shuffle rating: lifetime K/D (0 if no recorded score yet) plus
+     * {@code shuffleWinRateWeight * (winRate - 0.5) * 2}, with winRate Laplace-smoothed so a player
+     * with no wins or losses sits at 0.5 and gets no adjustment.
+     */
+    private double personalRating(UUID player) {
         PlayerScore s = lifetimeScores.get(player);
-        return s == null ? 0.0 : (double) s.kills / Math.max(1, s.deaths);
+        if (s == null) {
+            return 0.0;
+        }
+        double kd = (double) s.kills / Math.max(1, s.deaths);
+        double winRate = (s.wins + 1.0) / (s.wins + s.losses + 2.0);
+        return kd + Config.SHUFFLE_WIN_RATE_WEIGHT.get() * (winRate - 0.5) * 2;
     }
 
-    private double averageKd(List<ServerPlayer> unit) {
-        return unit.stream().mapToDouble(p -> personalKd(p.getUUID())).average().orElse(0.0);
+    private double averageRating(List<ServerPlayer> unit) {
+        return unit.stream().mapToDouble(p -> personalRating(p.getUUID())).average().orElse(0.0);
     }
 
     private static void disbandSquadsOf(MinecraftServer server, SquadManager squadManager, List<ServerPlayer> players) {
@@ -2730,11 +2741,14 @@ public class ConquestManager extends SavedData {
             int lifetimeDeaths = lifetime == null ? 0 : lifetime.deaths;
             int lifetimeRevives = lifetime == null ? 0 : lifetime.revives;
             int lifetimeCaptures = lifetime == null ? 0 : lifetime.captures;
+            int lifetimeWins = lifetime == null ? 0 : lifetime.wins;
+            int lifetimeLosses = lifetime == null ? 0 : lifetime.losses;
             ChatFormatting nameColor = nameColors.get(player.getUUID());
             Integer nameColorRgb = nameColor == null ? null : nameColor.getColor();
             entries.add(new ConquestScoreboardPacket.Entry(player.getUUID(), player.getGameProfile().getName(),
                     team, kills, deaths, revives, captures, totalScore(player.getUUID()),
-                    lifetimeKills, lifetimeDeaths, lifetimeRevives, lifetimeCaptures, totalLifetimeScore(player.getUUID()),
+                    lifetimeKills, lifetimeDeaths, lifetimeRevives, lifetimeCaptures, lifetimeWins, lifetimeLosses,
+                    totalLifetimeScore(player.getUUID()),
                     nameColorRgb == null ? 0 : nameColorRgb));
         }
         return new ConquestScoreboardPacket(roundElapsedSeconds, entries);
@@ -2747,6 +2761,18 @@ public class ConquestManager extends SavedData {
         resultElapsedSeconds = 0;
         lastRoundTeams.clear();
         lastRoundTeams.putAll(playerTeams);
+        if (winner != null) {
+            for (Map.Entry<UUID, Team> e : playerTeams.entrySet()) {
+                if (e.getValue() == Team.A || e.getValue() == Team.B) {
+                    PlayerScore lifetime = lifetimeScoreOf(e.getKey());
+                    if (e.getValue() == winner) {
+                        lifetime.wins++;
+                    } else {
+                        lifetime.losses++;
+                    }
+                }
+            }
+        }
         setDirty();
 
         Component title;
@@ -3150,6 +3176,8 @@ public class ConquestManager extends SavedData {
             score.assists = s.getInt("Assists");
             score.revives = s.getInt("Revives");
             score.captures = s.getInt("Captures");
+            score.wins = s.getInt("Wins");
+            score.losses = s.getInt("Losses");
             manager.lifetimeScores.put(s.getUUID("Uuid"), score);
         }
         ListTag presetList = tag.getList("Presets", Tag.TAG_COMPOUND);
@@ -3308,6 +3336,8 @@ public class ConquestManager extends SavedData {
             s.putInt("Assists", e.getValue().assists);
             s.putInt("Revives", e.getValue().revives);
             s.putInt("Captures", e.getValue().captures);
+            s.putInt("Wins", e.getValue().wins);
+            s.putInt("Losses", e.getValue().losses);
             lifetimeScoreList.add(s);
         }
         tag.put("LifetimeScores", lifetimeScoreList);
