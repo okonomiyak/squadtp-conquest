@@ -342,7 +342,7 @@ public class ConquestScoreScreen extends Screen {
         graphics.drawString(this.font, e.name(), x + 22, y, e.nameColor() != 0 ? e.nameColor() : COLOR_TEXT);
         String stats = e.lifetimeKills() + "  " + e.lifetimeDeaths()
                 + "  " + formatKd(e.lifetimeKills(), e.lifetimeDeaths()) + "  " + e.lifetimeRevives()
-                + "  " + e.lifetimeCaptures();
+                + "  " + e.lifetimeCaptures() + "  " + e.lifetimeWins() + "-" + e.lifetimeLosses();
         graphics.drawString(this.font, stats, x + width - this.font.width(stats), y, COLOR_TEXT_DIM);
     }
 

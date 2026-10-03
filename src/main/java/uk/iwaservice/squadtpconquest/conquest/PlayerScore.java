@@ -7,6 +7,9 @@ public final class PlayerScore {
     public int assists;
     public int revives;
     public int captures;
+    /** Lifetime-only: rounds won/lost (draws and forced stops count for neither); round scores ignore these. */
+    public int wins;
+    public int losses;
     /** Score already spent on call-ins this round (round-scoped only; lifetime scores don't track this). */
     public int spent;
 }

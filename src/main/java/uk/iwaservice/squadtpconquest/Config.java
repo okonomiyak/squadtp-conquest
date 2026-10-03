@@ -21,6 +21,7 @@ public final class Config {
     public static final ForgeConfigSpec.BooleanValue LOCK_TEAM_CHANGE_DURING_ROUND;
     public static final ForgeConfigSpec.BooleanValue TEAM_JOIN_REQUIRES_OP;
     public static final ForgeConfigSpec.DoubleValue MAX_HEALTH;
+    public static final ForgeConfigSpec.DoubleValue SHUFFLE_WIN_RATE_WEIGHT;
     public static final ForgeConfigSpec.IntValue START_COUNTDOWN_SECONDS;
     public static final ForgeConfigSpec.IntValue TDM_KILL_LIMIT;
     public static final ForgeConfigSpec.IntValue HOME_ZONE_KILL_SECONDS;
@@ -107,6 +108,11 @@ public final class Config {
                         "of round state — for servers that want an admin to assign every team manually. Default",
                         "false. Takes priority over lockTeamChangeDuringRound when both are true.")
                 .define("teamJoinRequiresOp", false);
+        SHUFFLE_WIN_RATE_WEIGHT = b
+                .comment("How strongly lifetime win rate counts in /conquest team shuffle, on top of K/D:",
+                        "rating = K/D + weight * (winRate - 0.5) * 2, winRate smoothed as (wins+1)/(games+2).",
+                        "0 = K/D only.")
+                .defineInRange("shuffleWinRateWeight", 1.0, 0.0, 10.0);
         MAX_HEALTH = b
                 .comment("Max health for players on a combatant team (A/B), applied on /conquest team join and",
                         "at round start. Vanilla default is 20.0 (10 hearts); raise this to rebalance time-to-kill",
