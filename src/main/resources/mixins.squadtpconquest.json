@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "uk.iwaservice.squadtpconquest.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "PlayerMixin"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

@@ -35,3 +35,6 @@ description='''Battlefield-style conquest game mode built on top of the squadtp 
     versionRange="[0.5.0,)"
     ordering="AFTER"
     side="BOTH"
+
+[[mixins]]
+    config="mixins.squadtpconquest.json"
