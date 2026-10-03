@@ -2,18 +2,15 @@ package uk.iwaservice.squadtpconquest;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import uk.iwaservice.squadtp.api.PlayerDownedEvent;
-import uk.iwaservice.squadtp.squad.ReviveSystem;
+import uk.iwaservice.squadtp.api.PlayerRevivedEvent;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.DamageLog;
 import uk.iwaservice.squadtpconquest.conquest.GameMode;
-import uk.iwaservice.squadtpconquest.conquest.ReviveAttribution;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 import uk.iwaservice.squadtpconquest.network.KillFeedPacket;
@@ -24,9 +21,8 @@ import java.util.UUID;
 
 /**
  * Kill/death/assist scoring, hooked off vanilla Forge combat events plus squadtp's public
- * {@link PlayerDownedEvent} (kill crediting only, see {@link #onPlayerDowned}). Revive scoring is
- * fed separately via {@link ReviveAttribution}, written here and consumed by
- * {@link ConquestManager}'s per-second tick.
+ * {@link PlayerDownedEvent} (kill crediting only, see {@link #onPlayerDowned}) and
+ * {@link PlayerRevivedEvent} (revive crediting).
  */
 public final class ScoreEvents {
 
@@ -140,19 +136,19 @@ public final class ScoreEvents {
                 victim.getGameProfile().getName(), distance, Config.KILL_FEED_DURATION_SECONDS.get() * 20));
     }
 
-    /** Records the last player to hold right-click on a downed player (see ReviveAttribution). */
+    /** Credits the reviver when squadtp finishes a channelled revive on a teammate. */
     @SubscribeEvent
-    public static void onInteractEntity(PlayerInteractEvent.EntityInteract event) {
-        if (event.getHand() != InteractionHand.MAIN_HAND) {
+    public static void onPlayerRevived(PlayerRevivedEvent event) {
+        ServerPlayer reviver = event.getReviver();
+        ServerPlayer target = event.getTarget();
+        ConquestManager manager = ConquestManager.get(target.server);
+        if (manager.getState() != RoundState.IN_PROGRESS) {
             return;
         }
-        if (!(event.getEntity() instanceof ServerPlayer reviver) || !(event.getTarget() instanceof ServerPlayer target)) {
-            return;
+        Team targetTeam = manager.teamOf(target.getUUID());
+        if (targetTeam.isCombatant() && manager.teamOf(reviver.getUUID()) == targetTeam) {
+            manager.recordRevive(reviver.getUUID());
         }
-        if (!ReviveSystem.isDowned(target.getUUID())) {
-            return;
-        }
-        ReviveAttribution.note(target.getUUID(), reviver.getUUID());
     }
 
     private ScoreEvents() {}
