@@ -13,6 +13,8 @@ import uk.iwaservice.squadtpconquest.client.ConquestClientData;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -24,11 +26,17 @@ import java.util.UUID;
  */
 public final class ConquestJmWaypointHandler {
 
+    private record Wp(String id, String name, ResourceLocation dimension, BlockPos pos, int color) {}
+
+    /** What JourneyMap currently shows, so an unchanged sync doesn't rebuild every waypoint. */
+    private static List<Wp> shown = List.of();
+
     /** Removes every waypoint this mod has shown, without re-adding any. */
     public static void clear() {
         IClientAPI api = ConquestJmPlugin.api();
         if (api != null) {
             api.removeAll(SquadTpConquest.MODID);
+            shown = List.of();
         }
     }
 
@@ -37,31 +45,36 @@ public final class ConquestJmWaypointHandler {
         if (api == null) {
             return;
         }
-        api.removeAll(SquadTpConquest.MODID);
+        List<Wp> desired = new ArrayList<>();
+        if (ConquestClientData.getState() == RoundState.IN_PROGRESS
+                && api.playerAccepts(SquadTpConquest.MODID, DisplayType.Waypoint)) {
+            for (ConquestSyncPacket.PointStatus point : ConquestClientData.getPoints()) {
+                int color = point.owner().hudColor() & 0xFFFFFF;
+                desired.add(new Wp(point.name(), point.name(), point.dimension(), point.pos(), color));
+            }
 
-        if (ConquestClientData.getState() != RoundState.IN_PROGRESS
-                || !api.playerAccepts(SquadTpConquest.MODID, DisplayType.Waypoint)) {
+            // Spots are only ever sent for enemies, so the target's team is always our opponent's.
+            int spotColor = ConquestClientData.getYourTeam().opponent().hudColor() & 0xFFFFFF;
+            for (Map.Entry<UUID, ConquestClientData.SpotEntry> entry : ConquestClientData.getSpots().entrySet()) {
+                ConquestClientData.SpotEntry spot = entry.getValue();
+                desired.add(new Wp("spot_" + entry.getKey(), spot.name(), spot.dimension(), spot.pos(), spotColor));
+            }
+
+            // Pins are only ever sent by/to teammates, so the placer's team is always our own.
+            int pinColor = ConquestClientData.getYourTeam().hudColor() & 0xFFFFFF;
+            for (Map.Entry<UUID, ConquestClientData.PinEntry> entry : ConquestClientData.getPins().entrySet()) {
+                ConquestClientData.PinEntry pin = entry.getValue();
+                desired.add(new Wp("pin_" + entry.getKey(), pin.placerName(), pin.dimension(), pin.pos(), pinColor));
+            }
+        }
+        if (desired.equals(shown)) {
             return;
         }
-
-        for (ConquestSyncPacket.PointStatus point : ConquestClientData.getPoints()) {
-            int color = point.owner().hudColor() & 0xFFFFFF;
-            show(api, waypoint(point.name(), point.name(), point.dimension(), point.pos(), color));
+        api.removeAll(SquadTpConquest.MODID);
+        for (Wp w : desired) {
+            show(api, waypoint(w.id(), w.name(), w.dimension(), w.pos(), w.color()));
         }
-
-        // Spots are only ever sent for enemies, so the target's team is always our opponent's.
-        int spotColor = ConquestClientData.getYourTeam().opponent().hudColor() & 0xFFFFFF;
-        for (Map.Entry<UUID, ConquestClientData.SpotEntry> entry : ConquestClientData.getSpots().entrySet()) {
-            ConquestClientData.SpotEntry spot = entry.getValue();
-            show(api, waypoint("spot_" + entry.getKey(), spot.name(), spot.dimension(), spot.pos(), spotColor));
-        }
-
-        // Pins are only ever sent by/to teammates, so the placer's team is always our own.
-        int pinColor = ConquestClientData.getYourTeam().hudColor() & 0xFFFFFF;
-        for (Map.Entry<UUID, ConquestClientData.PinEntry> entry : ConquestClientData.getPins().entrySet()) {
-            ConquestClientData.PinEntry pin = entry.getValue();
-            show(api, waypoint("pin_" + entry.getKey(), pin.placerName(), pin.dimension(), pin.pos(), pinColor));
-        }
+        shown = desired;
     }
 
     private static Waypoint waypoint(String id, String name, ResourceLocation dimension, BlockPos pos, int color) {
