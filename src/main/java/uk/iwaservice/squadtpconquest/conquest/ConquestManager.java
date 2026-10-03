@@ -242,7 +242,6 @@ public class ConquestManager extends SavedData {
     /** Cumulative kill/death/assist/revive counters across all rounds; never cleared. */
     private final Map<UUID, PlayerScore> lifetimeScores = new HashMap<>();
     /** Transient: players currently known to be downed, for revive-transition detection. */
-    private final Set<UUID> trackedDowned = new HashSet<>();
 
     // --- breakthrough mode ---
 
@@ -759,30 +758,6 @@ public class ConquestManager extends SavedData {
             player.drop(stack, false);
         }
         return UseCallInResult.OK;
-    }
-
-    /**
-     * Detects downed-to-alive transitions (squadtp exposes no revive-completion
-     * event) and credits whichever player was last seen reviving that target,
-     * per {@link ReviveAttribution}.
-     */
-    private void checkRevives(MinecraftServer server) {
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            UUID uuid = player.getUUID();
-            boolean downedNow = ReviveSystem.isDowned(uuid);
-            if (downedNow) {
-                trackedDowned.add(uuid);
-                continue;
-            }
-            if (!trackedDowned.remove(uuid)) {
-                continue;
-            }
-            UUID reviver = ReviveAttribution.take(uuid);
-            if (reviver != null && player.isAlive() && teamOf(uuid).isCombatant()
-                    && teamOf(reviver) == teamOf(uuid)) {
-                recordRevive(reviver);
-            }
-        }
     }
 
     // --- setup operations (commands) ---
@@ -2137,7 +2112,6 @@ public class ConquestManager extends SavedData {
         resultElapsedSeconds = 0;
         lastWinner = null;
         scores.clear();
-        trackedDowned.clear();
         pendingAttackerRespawns.clear();
         zoneIntrusionSeconds.clear();
         boundaryOutsideSeconds.clear();
@@ -2618,7 +2592,6 @@ public class ConquestManager extends SavedData {
                 tickBreakthrough(server, occupancyByPoint);
             }
 
-            checkRevives(server);
             tickHomeZones(server);
             tickBoundary(server);
             tickTeamBeacons();
