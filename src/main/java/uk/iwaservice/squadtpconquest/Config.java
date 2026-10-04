@@ -22,6 +22,8 @@ public final class Config {
     public static final ForgeConfigSpec.BooleanValue TEAM_JOIN_REQUIRES_OP;
     public static final ForgeConfigSpec.DoubleValue MAX_HEALTH;
     public static final ForgeConfigSpec.DoubleValue SHUFFLE_WIN_RATE_WEIGHT;
+    public static final ForgeConfigSpec.BooleanValue SELF_DAMAGE_ENABLED;
+    public static final ForgeConfigSpec.DoubleValue SELF_DAMAGE_MULTIPLIER;
     public static final ForgeConfigSpec.IntValue START_COUNTDOWN_SECONDS;
     public static final ForgeConfigSpec.IntValue TDM_KILL_LIMIT;
     public static final ForgeConfigSpec.IntValue HOME_ZONE_KILL_SECONDS;
@@ -118,6 +120,13 @@ public final class Config {
                         "at round start. Vanilla default is 20.0 (10 hearts); raise this to rebalance time-to-kill",
                         "against weapon mods (TACZ, SuperbWarfare) that assume a different HP scale.")
                 .defineInRange("maxHealth", 20.0, 1.0, 1024.0);
+        SELF_DAMAGE_ENABLED = b
+                .comment("Let players damage themselves (own explosions/arrows) even on a team with friendly fire off.",
+                        "false = vanilla behavior (team friendly-fire settings also block self-damage). Default true.")
+                .define("selfDamageEnabled", true);
+        SELF_DAMAGE_MULTIPLIER = b
+                .comment("Multiplier applied to damage a player deals to themselves. 1.0 = unchanged, 0 = none.")
+                .defineInRange("selfDamageMultiplier", 1.0, 0.0, 10.0);
         START_COUNTDOWN_SECONDS = b
                 .comment("Seconds of countdown shown as a title after /conquest start before the round actually",
                         "begins (points/tickets are already reset and teams already teleported during it).",

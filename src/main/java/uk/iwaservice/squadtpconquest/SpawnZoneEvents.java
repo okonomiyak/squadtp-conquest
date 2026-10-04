@@ -2,6 +2,7 @@ package uk.iwaservice.squadtpconquest;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
@@ -34,6 +35,16 @@ public final class SpawnZoneEvents {
                 || manager.teamOf(victim.getUUID()) == Team.WAITING
                 || manager.teamOf(attacker.getUUID()) == Team.WAITING) {
             event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onSelfDamage(LivingHurtEvent event) {
+        if (event.getEntity() instanceof ServerPlayer victim && event.getSource().getEntity() == victim) {
+            double mult = Config.SELF_DAMAGE_MULTIPLIER.get();
+            if (mult != 1.0) {
+                event.setAmount((float) (event.getAmount() * mult));
+            }
         }
     }
 
