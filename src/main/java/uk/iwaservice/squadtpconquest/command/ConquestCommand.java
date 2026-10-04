@@ -70,6 +70,8 @@ public final class ConquestCommand {
         CONFIG_KEYS.put("lockTeamChangeDuringRound", boolEntry(Config.LOCK_TEAM_CHANGE_DURING_ROUND));
         CONFIG_KEYS.put("teamJoinRequiresOp", boolEntry(Config.TEAM_JOIN_REQUIRES_OP));
         CONFIG_KEYS.put("maxHealth", doubleEntry(Config.MAX_HEALTH));
+        CONFIG_KEYS.put("selfDamageEnabled", boolEntry(Config.SELF_DAMAGE_ENABLED));
+        CONFIG_KEYS.put("selfDamageMultiplier", doubleEntry(Config.SELF_DAMAGE_MULTIPLIER));
         CONFIG_KEYS.put("startCountdownSeconds", intEntry(Config.START_COUNTDOWN_SECONDS));
         CONFIG_KEYS.put("tdmKillLimit", intEntry(Config.TDM_KILL_LIMIT));
         CONFIG_KEYS.put("assistWindowSeconds", intEntry(Config.ASSIST_WINDOW_SECONDS));

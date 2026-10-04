@@ -37,5 +37,15 @@ public final class SpawnZoneEvents {
         }
     }
 
+    @SubscribeEvent
+    public static void onSelfDamage(LivingIncomingDamageEvent event) {
+        if (event.getEntity() instanceof ServerPlayer victim && event.getSource().getEntity() == victim) {
+            double mult = Config.SELF_DAMAGE_MULTIPLIER.get();
+            if (mult != 1.0) {
+                event.setAmount((float) (event.getAmount() * mult));
+            }
+        }
+    }
+
     private SpawnZoneEvents() {}
 }
