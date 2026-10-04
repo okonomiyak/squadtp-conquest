@@ -38,6 +38,7 @@ import uk.iwaservice.squadtpconquest.conquest.ZoneSelection;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -179,7 +180,9 @@ public final class ConquestCommand {
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("color", StringArgumentType.word())
                                 .suggests((ctx, b) -> SharedSuggestionProvider.suggest(NAME_COLOR_CHOICES, b))
-                                .executes(ConquestCommand::nameColor)))
+                                .executes(ConquestCommand::nameColor)
+                                .then(Commands.argument("targets", EntityArgument.players())
+                                        .executes(ConquestCommand::nameColorOther))))
                 .then(Commands.literal("point")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -506,27 +509,40 @@ public final class ConquestCommand {
     }
 
     /**
-     * OP-only, purely cosmetic: picks the color the caller's own name renders in on
+     * OP-only, purely cosmetic: picks the color the caller's own name (or, with the optional
+     * {@code targets} argument, the named players' names) renders in on
      * {@code ConquestScoreScreen} (both round and lifetime tabs), visible to everyone viewing the
-     * scoreboard, not just the caller. "default"/"reset" clears it back to the screen's normal
+     * scoreboard, not just the target. "default"/"reset" clears it back to the screen's normal
      * text color.
      */
     private static int nameColor(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        return applyNameColor(ctx, List.of(ctx.getSource().getPlayerOrException()), false);
+    }
+
+    private static int nameColorOther(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        return applyNameColor(ctx, EntityArgument.getPlayers(ctx, "targets"), true);
+    }
+
+    private static int applyNameColor(CommandContext<CommandSourceStack> ctx, Collection<ServerPlayer> targets,
+                                      boolean other) {
         String raw = StringArgumentType.getString(ctx, "color").toLowerCase(Locale.ROOT);
         ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
         if (raw.equals("default") || raw.equals("reset")) {
-            manager.clearNameColor(player.getUUID());
-            ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.namecolor_reset"), false);
-            return 1;
+            targets.forEach(t -> manager.clearNameColor(t.getUUID()));
+            ctx.getSource().sendSuccess(() -> other
+                    ? Component.translatable("conquest.msg.namecolor_reset_other", targets.size())
+                    : Component.translatable("conquest.msg.namecolor_reset"), false);
+            return targets.size();
         }
         ChatFormatting color = ChatFormatting.getByName(raw);
         if (color == null || !color.isColor()) {
             return fail(ctx, Component.translatable("conquest.msg.namecolor_invalid"));
         }
-        manager.setNameColor(player.getUUID(), color);
-        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.namecolor_set", color.getName()), false);
-        return 1;
+        targets.forEach(t -> manager.setNameColor(t.getUUID(), color));
+        ctx.getSource().sendSuccess(() -> other
+                ? Component.translatable("conquest.msg.namecolor_set_other", targets.size(), color.getName())
+                : Component.translatable("conquest.msg.namecolor_set", color.getName()), false);
+        return targets.size();
     }
 
     private static int setMode(CommandContext<CommandSourceStack> ctx) {

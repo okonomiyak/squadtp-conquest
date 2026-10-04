@@ -21,6 +21,8 @@
   "conquest.msg.unknown_mode": "Unknown game mode (use conquest, tdm or breakthrough)",
   "conquest.msg.namecolor_set": "Your scoreboard name color is now %s.",
   "conquest.msg.namecolor_reset": "Your scoreboard name color has been reset to default.",
+  "conquest.msg.namecolor_set_other": "%s player(s) now have scoreboard name color %s.",
+  "conquest.msg.namecolor_reset_other": "Reset scoreboard name color of %s player(s) to default.",
   "conquest.msg.namecolor_invalid": "Unknown color - try white, red, blue, green, yellow, aqua, light_purple, gold, gray, dark_gray, dark_red, dark_blue, dark_green, dark_aqua, dark_purple, or default.",
   "conquest.msg.mode_locked": "Stop or reset the current round before changing the game mode",
   "conquest.msg.mode_set": "Game mode set to %s",
