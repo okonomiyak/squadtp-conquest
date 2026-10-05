@@ -40,7 +40,7 @@ public class TeamBeaconItem extends Item {
             return InteractionResult.FAIL;
         }
         BlockPos pos = context.getClickedPos().relative(context.getClickedFace());
-        manager.placeTeamBeacon(team, level, pos);
+        manager.placeTeamBeacon(team, level, pos, player);
         player.displayClientMessage(Component.translatable("conquest.msg.beacon_placed", team.display()), true);
         context.getItemInHand().shrink(1);
         return InteractionResult.SUCCESS;

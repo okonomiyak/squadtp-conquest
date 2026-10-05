@@ -25,7 +25,7 @@ description='''Battlefield-style conquest game mode built on top of the squadtp 
 [[dependencies.squadtpconquest]]
     modId="squadtp"
     mandatory=true
-    versionRange="[0.3.3,)"
+    versionRange="[0.3.4,)"
     ordering="AFTER"
     side="BOTH"
 

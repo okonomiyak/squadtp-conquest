@@ -54,7 +54,8 @@ public final class ConquestRespawnChoiceProvider implements RespawnChoiceProvide
         var beaconPos = manager.getTeamBeaconPos(team);
         if (beaconDim != null && beaconPos != null && manager.isDestinationSafe(player, beaconDim, beaconPos)) {
             choices.add(new RespawnChoiceEntry(BEACON_CHOICE,
-                    Component.translatable("conquest.gui.respawn_choice_beacon"), beaconDim.location(), beaconPos));
+                    Component.translatable("conquest.gui.respawn_choice_beacon"), beaconDim.location(), beaconPos,
+                    team.hudColor() & 0xFFFFFF, true));
         }
         if (manager.getMode() == GameMode.CONQUEST && Config.SPAWN_AT_OWNED_POINTS_ENABLED.get()) {
             for (CapturePoint point : manager.getPoints()) {

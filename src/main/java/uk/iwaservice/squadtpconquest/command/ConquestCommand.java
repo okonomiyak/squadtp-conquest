@@ -83,6 +83,7 @@ public final class ConquestCommand {
         CONFIG_KEYS.put("killFeedDurationSeconds", intEntry(Config.KILL_FEED_DURATION_SECONDS));
         CONFIG_KEYS.put("ticketsPerSectorCapture", intEntry(Config.BT_TICKETS_PER_SECTOR_CAPTURE));
         CONFIG_KEYS.put("homeZoneKillSeconds", intEntry(Config.HOME_ZONE_KILL_SECONDS));
+        CONFIG_KEYS.put("teamBeaconWarnSeconds", intEntry(Config.TEAM_BEACON_WARN_SECONDS));
     }
 
     private static ConfigEntry intEntry(ForgeConfigSpec.IntValue value) {
