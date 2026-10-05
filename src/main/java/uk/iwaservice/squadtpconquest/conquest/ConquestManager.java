@@ -2246,9 +2246,23 @@ public class ConquestManager extends SavedData {
 
     private final Map<Team, TeamBeacon> teamBeacons = new EnumMap<>(Team.class);
 
-    /** Places (or replaces) {@code team}'s respawn beacon at {@code pos}, active for teamBeaconLifetimeSeconds. */
-    public void placeTeamBeacon(Team team, ServerLevel level, BlockPos pos) {
+    /**
+     * Places (or replaces) {@code team}'s respawn beacon at {@code pos}, active for teamBeaconLifetimeSeconds,
+     * and tells the placer's team where it is.
+     */
+    public void placeTeamBeacon(Team team, ServerLevel level, BlockPos pos, ServerPlayer placer) {
         teamBeacons.put(team, new TeamBeacon(level.dimension(), pos.immutable(), Config.TEAM_BEACON_LIFETIME_SECONDS.get()));
+        notifyTeam(level.getServer(), team, Component.translatable("conquest.msg.team_beacon_placed_team",
+                placer.getName(), pos.getX(), pos.getY(), pos.getZ()).withStyle(ChatFormatting.GOLD));
+    }
+
+    /** System chat message to every online player currently on {@code team}. */
+    private void notifyTeam(MinecraftServer server, Team team, Component message) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (teamOf(player.getUUID()) == team) {
+                player.sendSystemMessage(message);
+            }
+        }
     }
 
     @Nullable
@@ -2299,9 +2313,25 @@ public class ConquestManager extends SavedData {
         return true;
     }
 
-    /** Once per second while a round is running: counts down every active beacon, clearing expired ones. */
-    private void tickTeamBeacons() {
-        teamBeacons.values().removeIf(beacon -> --beacon.secondsRemaining <= 0);
+    /**
+     * Once per second while a round is running: counts down every active beacon, clearing expired ones
+     * and warning the team teamBeaconWarnSeconds before expiry.
+     */
+    private void tickTeamBeacons(MinecraftServer server) {
+        int warn = Config.TEAM_BEACON_WARN_SECONDS.get();
+        var it = teamBeacons.entrySet().iterator();
+        while (it.hasNext()) {
+            var entry = it.next();
+            int remaining = --entry.getValue().secondsRemaining;
+            if (remaining <= 0) {
+                it.remove();
+                notifyTeam(server, entry.getKey(), Component.translatable("conquest.msg.team_beacon_expired")
+                        .withStyle(ChatFormatting.GOLD));
+            } else if (warn > 0 && remaining == warn) {
+                notifyTeam(server, entry.getKey(), Component.translatable("conquest.msg.team_beacon_expiring", warn)
+                        .withStyle(ChatFormatting.YELLOW));
+            }
+        }
     }
 
     /** Forced end with no winner, or cancels a pending countdown: valid from STARTING or IN_PROGRESS. */
@@ -2594,7 +2624,7 @@ public class ConquestManager extends SavedData {
 
             tickHomeZones(server);
             tickBoundary(server);
-            tickTeamBeacons();
+            tickTeamBeacons(server);
 
             // Team-empty check (only if the round is still running after the checks above).
             if (state == RoundState.IN_PROGRESS && Config.END_ON_TEAM_EMPTY.get()) {

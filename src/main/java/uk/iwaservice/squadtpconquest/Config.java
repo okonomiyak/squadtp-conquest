@@ -29,6 +29,7 @@ public final class Config {
     public static final ModConfigSpec.IntValue HOME_ZONE_KILL_SECONDS;
     public static final ModConfigSpec.IntValue BOUNDARY_KILL_SECONDS;
     public static final ModConfigSpec.IntValue TEAM_BEACON_LIFETIME_SECONDS;
+    public static final ModConfigSpec.IntValue TEAM_BEACON_WARN_SECONDS;
     public static final ModConfigSpec.BooleanValue SPAWN_AT_OWNED_POINTS_ENABLED;
     public static final ModConfigSpec.IntValue SPOT_RANGE_BLOCKS;
     public static final ModConfigSpec.IntValue SPOT_DURATION_SECONDS;
@@ -152,6 +153,9 @@ public final class Config {
                         "with no limit on how many times. Placing a new beacon for a team replaces that team's",
                         "existing one.")
                 .defineInRange("teamBeaconLifetimeSeconds", 30, 5, 600);
+        TEAM_BEACON_WARN_SECONDS = b
+                .comment("Seconds before a team respawn beacon expires to warn its team. 0 = no warning.")
+                .defineInRange("teamBeaconWarnSeconds", 30, 0, 3600);
         SPAWN_AT_OWNED_POINTS_ENABLED = b
                 .comment("Conquest only: if true, respawning teleports to whichever capture point the player's",
                         "team owns that's closest to where they died (falls back to the usual global team",
