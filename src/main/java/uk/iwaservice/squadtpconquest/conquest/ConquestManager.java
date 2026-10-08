@@ -3323,9 +3323,10 @@ public class ConquestManager extends SavedData {
         ConquestScoreboardPacket scoreboard = buildScoreboardPacket(server);
         ScoreboardKey scoreboardKey = new ScoreboardKey(state, scoreboard.entries());
         ConquestZonesPacket zones = buildZonesPacket();
+        List<ConquestSyncPacket.SdmSquadStatus> sdmStatuses = buildSdmSquadStatuses(server);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             UUID id = player.getUUID();
-            ConquestSyncPacket sync = buildSyncPacket(player, occupancyByPoint, false);
+            ConquestSyncPacket sync = buildSyncPacket(player, occupancyByPoint, sdmStatuses, false);
             if (!sync.equals(lastSync.put(id, sync))) {
                 NetworkHandler.send(player, sync);
             }
@@ -3686,7 +3687,7 @@ public class ConquestManager extends SavedData {
 
     /** Snapshot sent to a player, optionally telling their client to pop the GUI. */
     public ConquestSyncPacket buildSyncPacket(ServerPlayer viewer, Map<String, PointOccupancy> occupancyByPoint,
-                                               boolean openScreen) {
+                                               List<ConquestSyncPacket.SdmSquadStatus> sdmStatuses, boolean openScreen) {
         List<ConquestSyncPacket.PointStatus> statuses = new ArrayList<>();
         Sector active = currentSector();
         for (CapturePoint point : points.values()) {
@@ -3715,7 +3716,7 @@ public class ConquestManager extends SavedData {
                 attackerTeam, sectorIndex(), sectorCount(), attackerTickets, attackerTicketsMax,
                 Config.TDM_KILL_LIMIT.get(),
                 callInStatuses, availableScore(viewer.getUUID()), joinableSquadsFor(viewer),
-                buildSdmSquadStatuses(viewer.server), viewerSquad == null ? 0 : viewerSquad,
+                sdmStatuses, viewerSquad == null ? 0 : viewerSquad,
                 Config.SDM_KILL_LIMIT.get(), mode == GameMode.SQUAD_DM && state == RoundState.ENDED ? lastSdmWinner : 0,
                 mode == GameMode.KOTH ? kothHill : "", mode == GameMode.KOTH && kothNextHill != null ? kothNextHill : "",
                 kothSecondsToRotate, Config.KOTH_TARGET_SCORE.get(), kothHolder);
@@ -3726,15 +3727,17 @@ public class ConquestManager extends SavedData {
         if (mode != GameMode.SQUAD_DM) {
             return List.of();
         }
+        Map<Integer, List<String>> namesBySquad = new HashMap<>();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            Integer squad = sdmSquadForResults(player.getUUID());
+            if (squad != null) {
+                namesBySquad.computeIfAbsent(squad, k -> new ArrayList<>()).add(player.getGameProfile().getName());
+            }
+        }
         List<ConquestSyncPacket.SdmSquadStatus> result = new ArrayList<>();
         for (Map.Entry<Integer, Integer> e : sdmKills.entrySet()) {
-            List<String> names = new ArrayList<>();
-            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                if (e.getKey().equals(sdmSquadForResults(player.getUUID()))) {
-                    names.add(player.getGameProfile().getName());
-                }
-            }
-            result.add(new ConquestSyncPacket.SdmSquadStatus(e.getKey(), e.getValue(), names));
+            result.add(new ConquestSyncPacket.SdmSquadStatus(e.getKey(), e.getValue(),
+                    namesBySquad.getOrDefault(e.getKey(), List.of())));
         }
         result.sort(Comparator.comparingInt(ConquestSyncPacket.SdmSquadStatus::kills).reversed()
                 .thenComparingInt(ConquestSyncPacket.SdmSquadStatus::number));
@@ -3787,7 +3790,7 @@ public class ConquestManager extends SavedData {
         for (CapturePoint point : points.values()) {
             occupancyByPoint.put(point.getName(), computeOccupancy(server, point));
         }
-        return buildSyncPacket(viewer, occupancyByPoint, true);
+        return buildSyncPacket(viewer, occupancyByPoint, buildSdmSquadStatuses(server), true);
     }
 
     private static void broadcast(MinecraftServer server, Component message) {
