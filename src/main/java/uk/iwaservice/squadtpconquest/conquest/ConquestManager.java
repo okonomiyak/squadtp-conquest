@@ -2490,7 +2490,8 @@ public class ConquestManager extends SavedData {
      * Splits every eligible player (see {@link #eligiblePlayers}) into squads without changing
      * anything yet: each invite-only squadtp squad stays together as one squad of its own size
      * (as in {@link #shuffleTeams}); everyone else is shuffled and dealt round-robin into
-     * ceil(n / {@code sdmSquadSize}) evenly sized squads (9 players, size 4: 3/3/3). The result is shuffled, so squad numbers carry no meaning.
+     * ceil(n / {@code sdmSquadSize}) evenly sized squads (9 players, size 4: 3/3/3), but at least
+     * enough to make two squads overall when there are players for it (2 players: 1/1). The result is shuffled, so squad numbers carry no meaning.
      */
     private List<SdmGroup> planSdmSquads(MinecraftServer server) {
         List<ServerPlayer> players = eligiblePlayers(server);
@@ -2511,6 +2512,8 @@ public class ConquestManager extends SavedData {
         }
         int size = sdmSquadCap();
         int freeSquads = (free.size() + size - 1) / size;
+        // Small lobbies (e.g. 2-3 players) would otherwise collapse into one squad and never start.
+        freeSquads = Math.max(freeSquads, Math.min(free.size(), 2 - lockedUnits.size()));
         List<List<ServerPlayer>> dealt = new ArrayList<>();
         for (int i = 0; i < freeSquads; i++) {
             dealt.add(new ArrayList<>());
