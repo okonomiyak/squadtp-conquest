@@ -63,6 +63,11 @@ public final class ClientEvents {
             }
         }
 
+        while (ClientModEvents.CALLIN_MENU.consumeClick()) {
+            if (mc.player != null && mc.screen == null) {
+                mc.setScreen(new uk.iwaservice.squadtpconquest.client.gui.CallInRadialScreen());
+            }
+        }
         while (ClientModEvents.SPOT.consumeClick()) {
             trySpot(mc);
         }

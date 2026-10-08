@@ -51,12 +51,21 @@ public final class ClientModEvents {
             GLFW.GLFW_KEY_N,
             "key.categories.squadtpconquest");
 
+    /** Hold to open the radial call-in menu; release uses the highlighted entry. */
+    public static final KeyMapping CALLIN_MENU = new KeyMapping(
+            "key.squadtpconquest.callin_menu",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_B,
+            "key.categories.squadtpconquest");
+
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(OPEN_CONQUEST_SCREEN);
         event.register(OPEN_SCORE_SCREEN);
         event.register(SPOT);
         event.register(PIN);
+        event.register(CALLIN_MENU);
     }
 
     @SubscribeEvent
