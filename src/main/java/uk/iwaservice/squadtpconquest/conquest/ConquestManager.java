@@ -522,6 +522,17 @@ public class ConquestManager extends SavedData {
         return null;
     }
 
+    /** Highest-numbered NORMAL sector below {@code number}, or null if there is none. */
+    @Nullable
+    private Integer previousNormalSector(int number) {
+        for (Sector sector : sectors.headMap(number, false).descendingMap().values()) {
+            if (sector.getRole() == Sector.Role.NORMAL) {
+                return sector.getNumber();
+            }
+        }
+        return null;
+    }
+
     /** The sector holding the given base role, or null if none (NORMAL never matches). */
     @Nullable
     private Sector baseSector(Sector.Role role) {
@@ -541,13 +552,16 @@ public class ConquestManager extends SavedData {
 
     /**
      * Sets a sector's role. A base role is unique, so it is cleared from any other sector first.
-     * Returns -1 if no sector has that number, else the number of the sector that lost the role
-     * (0 if none did).
+     * Returns -1 if no sector has that number, -2 while a round is starting or running (the sector
+     * layout is locked then), else the number of the sector that lost the role (0 if none did).
      */
     public int setSectorRole(int number, Sector.Role role) {
         Sector sector = sectors.get(number);
         if (sector == null) {
             return -1;
+        }
+        if (state == RoundState.STARTING || state == RoundState.IN_PROGRESS) {
+            return -2;
         }
         int cleared = 0;
         if (role != Sector.Role.NORMAL) {
@@ -3039,13 +3053,13 @@ public class ConquestManager extends SavedData {
     private void checkSectorFrontZones(MinecraftServer server, Sector active) {
         // Base sectors are skipped here: tickBreakthrough already runs their zone check every second,
         // and a second pass would double-count the same player's intrusion time.
-        Integer prevNumber = sectors.lowerKey(active.getNumber());
-        if (prevNumber != null && sectors.get(prevNumber).getRole() == Sector.Role.NORMAL) {
+        Integer prevNumber = previousNormalSector(active.getNumber());
+        if (prevNumber != null) {
             Sector prev = sectors.get(prevNumber);
             checkZoneIntrusion(server, attackerTeam, prev.getCombatAreaDim(), prev.getCombatAreaMin(), prev.getCombatAreaMax(), "front-rear");
         }
-        Integer nextNumber = sectors.higherKey(active.getNumber());
-        if (nextNumber != null && sectors.get(nextNumber).getRole() == Sector.Role.NORMAL) {
+        Integer nextNumber = nextNormalSector(active.getNumber());
+        if (nextNumber != null) {
             Sector next = sectors.get(nextNumber);
             checkZoneIntrusion(server, defenderTeam(), next.getCombatAreaDim(), next.getCombatAreaMin(), next.getCombatAreaMax(), "front-ahead");
         }

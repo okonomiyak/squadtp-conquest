@@ -674,8 +674,11 @@ public final class ConquestCommand {
             return fail(ctx, Component.translatable("conquest.msg.sector_unknown_role"));
         }
         int cleared = ConquestManager.get(ctx.getSource().getServer()).setSectorRole(number, role);
-        if (cleared < 0) {
+        if (cleared == -1) {
             return fail(ctx, Component.translatable("conquest.msg.sector_not_found", number));
+        }
+        if (cleared == -2) {
+            return fail(ctx, Component.translatable("conquest.msg.sector_role_locked"));
         }
         ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.sector_role_set", number,
                 Component.translatable("conquest.sector.role." + role.key())), true);

@@ -50,6 +50,7 @@
   "conquest.msg.sector_area_removed": "セクター%sの戦闘エリアを削除した",
   "conquest.msg.sector_area_not_found": "セクター%sが存在しないか、戦闘エリアが未設定です",
   "conquest.msg.sector_not_found": "セクター%sは存在しません",
+  "conquest.msg.sector_role_locked": "ラウンド中はセクターの役割を変更できません",
   "conquest.msg.sector_removed": "セクター%sを削除した",
   "conquest.msg.no_sector": "セクターが未設置です (/conquest sector add)",
   "conquest.msg.sector_list_header": "=== セクター一覧 ===",
