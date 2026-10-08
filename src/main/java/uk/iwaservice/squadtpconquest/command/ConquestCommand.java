@@ -164,14 +164,7 @@ public final class ConquestCommand {
                                                 .executes(ConquestCommand::joinTeamOther))))
                         .then(Commands.literal("shuffle")
                                 .requires(src -> src.hasPermission(2))
-                                .executes(ConquestCommand::shuffleTeams))
-                        .then(Commands.literal("assign")
-                                .requires(src -> src.hasPermission(2))
-                                .then(Commands.argument("role", StringArgumentType.word())
-                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"attacker", "defender"}, b))
-                                        .then(Commands.argument("team", StringArgumentType.word())
-                                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
-                                                .executes(ConquestCommand::teamAssign)))))
+                                .executes(ConquestCommand::shuffleTeams)))
                 .then(Commands.literal("spot")
                         .then(Commands.argument("target", EntityArgument.player())
                                 .executes(ConquestCommand::spot)))
@@ -189,6 +182,12 @@ public final class ConquestCommand {
                                 .executes(ConquestCommand::nameColor)
                                 .then(Commands.argument("targets", EntityArgument.players())
                                         .executes(ConquestCommand::nameColorOther))))
+                .then(Commands.literal("breakthrough")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("attacker")
+                                .then(Commands.argument("team", StringArgumentType.word())
+                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
+                                        .executes(ConquestCommand::teamAssign))))
                 .then(Commands.literal("point")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("add")
@@ -585,15 +584,10 @@ public final class ConquestCommand {
     }
 
     private static int teamAssign(CommandContext<CommandSourceStack> ctx) {
-        String role = StringArgumentType.getString(ctx, "role");
-        if (!role.equalsIgnoreCase("attacker") && !role.equalsIgnoreCase("defender")) {
-            return fail(ctx, Component.translatable("conquest.msg.unknown_role"));
+        Team attackerTeam = Team.byKey(StringArgumentType.getString(ctx, "team"));
+        if (attackerTeam != Team.A && attackerTeam != Team.B) {
+            return fail(ctx, Component.translatable("conquest.msg.attacker_must_be_ab"));
         }
-        Team team = Team.byKey(StringArgumentType.getString(ctx, "team"));
-        if (team == null) {
-            return fail(ctx, Component.translatable("conquest.msg.unknown_team"));
-        }
-        Team attackerTeam = role.equalsIgnoreCase("attacker") ? team : team.opponent();
         ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
         if (!manager.setAttackerTeam(attackerTeam)) {
             return fail(ctx, Component.translatable("conquest.msg.mode_locked"));
