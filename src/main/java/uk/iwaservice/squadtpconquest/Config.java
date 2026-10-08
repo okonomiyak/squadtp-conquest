@@ -160,7 +160,7 @@ public final class Config {
         SDM_SQUAD_SIZE = b
                 .comment("Players per squad when a Squad Deathmatch round forms its squads. Invite-only squadtp",
                         "squads are kept together as one squad of their own size.")
-                .defineInRange("sdmSquadSize", 4, 1, 16);
+                .defineInRange("sdmSquadSize", 4, 1, 8);
         HOME_ZONE_KILL_SECONDS = b
                 .comment("Continuous seconds an enemy player may spend inside a team's home zone before being",
                         "executed. Resets to 0 the instant they leave the zone. Applies in every game mode.")
