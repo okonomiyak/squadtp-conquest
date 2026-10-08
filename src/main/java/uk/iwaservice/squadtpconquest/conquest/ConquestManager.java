@@ -1539,7 +1539,7 @@ public class ConquestManager extends SavedData {
     /**
      * Sets one corner of the boundary to the given position, leaving the other corner untouched
      * (the boundary only becomes active, and gets a fresh snapshot, once both are set). Switching
-     * dimension resets both corners first, same rule as the home zone's corner1/corner2 set.
+     * dimension resets both corners first, same rule as the home zone's corner1/corner2.
      */
     public void setBoundaryCorner(ServerLevel level, boolean corner1, BlockPos pos) {
         ResourceKey<Level> dim = level.dimension();

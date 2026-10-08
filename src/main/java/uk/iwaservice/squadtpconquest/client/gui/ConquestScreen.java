@@ -262,7 +262,7 @@ public class ConquestScreen extends Screen {
         addRenderableWidget(radiusBox);
 
         Button placePoint = Button.builder(Component.translatable("conquest.gui.place_point"),
-                b -> command("conquest point set " + radiusBox.getValue()))
+                b -> command("conquest point add " + DEFAULT_POINT + " " + radiusBox.getValue()))
                 .bounds(panelLeft + panelWidth - PAD - 90, 0, 90, 16).build();
         placeAt(placePoint, cursor - 4);
         addRenderableWidget(placePoint);
@@ -270,12 +270,12 @@ public class ConquestScreen extends Screen {
 
         int half = (panelWidth - 2 * PAD - 4) / 2;
         Button spawnA = Button.builder(Component.translatable("conquest.gui.place_spawn_a"),
-                b -> command("conquest spawn set a"))
+                b -> command("conquest spawn a"))
                 .bounds(panelLeft + PAD, 0, half, 18).build();
         placeAt(spawnA, cursor);
         addRenderableWidget(spawnA);
         Button spawnB = Button.builder(Component.translatable("conquest.gui.place_spawn_b"),
-                b -> command("conquest spawn set b"))
+                b -> command("conquest spawn b"))
                 .bounds(panelLeft + PAD + half + 4, 0, half, 18).build();
         placeAt(spawnB, cursor);
         addRenderableWidget(spawnB);
@@ -287,36 +287,36 @@ public class ConquestScreen extends Screen {
         // set/remove rely on server-side validation for feedback (chat message), same as every
         // other admin button in this tab.
         Button zoneACorner1 = Button.builder(Component.translatable("conquest.gui.zone_a_corner1"),
-                b -> command("conquest zone corner1 set a"))
+                b -> command("conquest zone a corner1"))
                 .bounds(panelLeft + PAD, 0, half, 16).build();
         placeAt(zoneACorner1, cursor);
         addRenderableWidget(zoneACorner1);
         Button zoneACorner2 = Button.builder(Component.translatable("conquest.gui.zone_a_corner2"),
-                b -> command("conquest zone corner2 set a"))
+                b -> command("conquest zone a corner2"))
                 .bounds(panelLeft + PAD + half + 4, 0, half, 16).build();
         placeAt(zoneACorner2, cursor);
         addRenderableWidget(zoneACorner2);
         cursor += 18;
 
         Button zoneBCorner1 = Button.builder(Component.translatable("conquest.gui.zone_b_corner1"),
-                b -> command("conquest zone corner1 set b"))
+                b -> command("conquest zone b corner1"))
                 .bounds(panelLeft + PAD, 0, half, 16).build();
         placeAt(zoneBCorner1, cursor);
         addRenderableWidget(zoneBCorner1);
         Button zoneBCorner2 = Button.builder(Component.translatable("conquest.gui.zone_b_corner2"),
-                b -> command("conquest zone corner2 set b"))
+                b -> command("conquest zone b corner2"))
                 .bounds(panelLeft + PAD + half + 4, 0, half, 16).build();
         placeAt(zoneBCorner2, cursor);
         addRenderableWidget(zoneBCorner2);
         cursor += 18;
 
         Button removeZoneA = Button.builder(Component.translatable("conquest.gui.remove_zone_a"),
-                b -> command("conquest zone remove a"))
+                b -> command("conquest zone a remove"))
                 .bounds(panelLeft + PAD, 0, half, 14).build();
         placeAt(removeZoneA, cursor);
         addRenderableWidget(removeZoneA);
         Button removeZoneB = Button.builder(Component.translatable("conquest.gui.remove_zone_b"),
-                b -> command("conquest zone remove b"))
+                b -> command("conquest zone b remove"))
                 .bounds(panelLeft + PAD + half + 4, 0, half, 14).build();
         placeAt(removeZoneB, cursor);
         addRenderableWidget(removeZoneB);
