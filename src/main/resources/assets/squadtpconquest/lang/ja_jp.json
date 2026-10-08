@@ -52,7 +52,7 @@
   "conquest.msg.sector_not_found": "セクター%sは存在しません",
   "conquest.msg.sector_role_locked": "ラウンド中はセクターの役割を変更できません",
   "conquest.msg.sector_removed": "セクター%sを削除した",
-  "conquest.msg.no_sector": "セクターが未設置です (/conquest sector add)",
+  "conquest.msg.no_sector": "セクターが未設置です (/conquest sector <番号> point)",
   "conquest.msg.sector_list_header": "=== セクター一覧 ===",
   "conquest.msg.point_set": "拠点 %s をここに設置した (半径 %s)",
   "conquest.msg.spawn_set": "%sのスポーン地点をここに設定した",

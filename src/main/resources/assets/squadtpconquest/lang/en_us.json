@@ -52,7 +52,7 @@
   "conquest.msg.sector_not_found": "No sector numbered %s",
   "conquest.msg.sector_role_locked": "Sector roles cannot be changed while a round is running",
   "conquest.msg.sector_removed": "Sector %s removed",
-  "conquest.msg.no_sector": "No sectors set (/conquest sector add)",
+  "conquest.msg.no_sector": "No sectors set (/conquest sector <n> point)",
   "conquest.msg.sector_list_header": "=== Sectors ===",
   "conquest.msg.point_set": "Capture point %s set here (radius %s)",
   "conquest.msg.spawn_set": "%s spawn set here",

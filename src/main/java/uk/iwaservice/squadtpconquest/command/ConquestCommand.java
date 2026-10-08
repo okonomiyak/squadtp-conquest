@@ -337,50 +337,37 @@ public final class ConquestCommand {
                                         .executes(ConquestCommand::setMode))))
                 .then(Commands.literal("sector")
                         .requires(src -> src.hasPermission(2))
-                        .then(Commands.literal("add")
-                                .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                        .then(Commands.literal("list").executes(ConquestCommand::sectorList))
+                        .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                                .then(Commands.literal("point")
                                         .then(Commands.argument("name", StringArgumentType.word())
                                                 .executes(ctx -> sectorAdd(ctx, Config.CAPTURE_RADIUS.get()))
                                                 .then(Commands.argument("radius", IntegerArgumentType.integer(2, 64))
-                                                        .executes(ctx -> sectorAdd(ctx, IntegerArgumentType.getInteger(ctx, "radius")))))))
-                        .then(Commands.literal("spawn")
-                                .then(Commands.literal("set")
-                                        .then(Commands.argument("role", StringArgumentType.word())
+                                                        .executes(ctx -> sectorAdd(ctx, IntegerArgumentType.getInteger(ctx, "radius"))))))
+                                .then(Commands.literal("spawn")
+                                        .then(Commands.argument("side", StringArgumentType.word())
                                                 .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"attacker", "defender"}, b))
-                                                .then(Commands.argument("number", IntegerArgumentType.integer(1))
-                                                        .executes(ConquestCommand::sectorSpawnSet)))))
-                        .then(Commands.literal("timelimit")
-                                .then(Commands.literal("set")
-                                        .then(Commands.argument("number", IntegerArgumentType.integer(1))
-                                                .then(Commands.argument("seconds", IntegerArgumentType.integer(0, 86400))
-                                                        .executes(ConquestCommand::sectorTimeLimitSet)))))
-                        .then(Commands.literal("area")
-                                .then(Commands.literal("set")
-                                        .then(Commands.argument("number", IntegerArgumentType.integer(1))
-                                                .executes(ConquestCommand::sectorAreaSetFromWand)
-                                                .then(Commands.argument("pos1", BlockPosArgument.blockPos())
-                                                        .then(Commands.argument("pos2", BlockPosArgument.blockPos())
-                                                                .executes(ConquestCommand::sectorAreaSet)))))
-                                .then(Commands.literal("corner1")
-                                        .then(Commands.literal("set")
-                                                .then(Commands.argument("number", IntegerArgumentType.integer(1))
-                                                        .executes(ctx -> sectorAreaCornerSet(ctx, true)))))
-                                .then(Commands.literal("corner2")
-                                        .then(Commands.literal("set")
-                                                .then(Commands.argument("number", IntegerArgumentType.integer(1))
-                                                        .executes(ctx -> sectorAreaCornerSet(ctx, false)))))
-                                .then(Commands.literal("remove")
-                                        .then(Commands.argument("number", IntegerArgumentType.integer(1))
-                                                .executes(ConquestCommand::sectorAreaRemove))))
-                        .then(Commands.literal("remove")
-                                .then(Commands.argument("number", IntegerArgumentType.integer(1))
-                                        .executes(ConquestCommand::sectorRemove)))
-                        .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                                                .executes(ConquestCommand::sectorSpawnSet)))
+                                .then(Commands.literal("timelimit")
+                                        .then(Commands.argument("seconds", IntegerArgumentType.integer(0, 86400))
+                                                .executes(ConquestCommand::sectorTimeLimitSet)))
+                                .then(Commands.literal("area")
+                                        .executes(ConquestCommand::sectorAreaSetFromWand)
+                                        .then(Commands.argument("pos1", BlockPosArgument.blockPos())
+                                                .then(Commands.argument("pos2", BlockPosArgument.blockPos())
+                                                        .executes(ConquestCommand::sectorAreaSet)))
+                                        .then(Commands.literal("corner1")
+                                                .executes(ctx -> sectorAreaCornerSet(ctx, true)))
+                                        .then(Commands.literal("corner2")
+                                                .executes(ctx -> sectorAreaCornerSet(ctx, false)))
+                                        .then(Commands.literal("remove")
+                                                .executes(ConquestCommand::sectorAreaRemove)))
                                 .then(Commands.literal("role")
                                         .then(Commands.argument("role", StringArgumentType.word())
                                                 .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"normal", "attacker_base", "defender_base"}, b))
-                                                .executes(ConquestCommand::sectorRoleSet))))
-                        .then(Commands.literal("list").executes(ConquestCommand::sectorList)))
+                                                .executes(ConquestCommand::sectorRoleSet)))
+                                .then(Commands.literal("remove")
+                                        .executes(ConquestCommand::sectorRemove))))
                 .then(Commands.literal("preset")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("save")
@@ -651,7 +638,7 @@ public final class ConquestCommand {
     }
 
     private static int sectorSpawnSet(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        String role = StringArgumentType.getString(ctx, "role");
+        String role = StringArgumentType.getString(ctx, "side");
         if (!role.equalsIgnoreCase("attacker") && !role.equalsIgnoreCase("defender")) {
             return fail(ctx, Component.translatable("conquest.msg.unknown_role"));
         }
@@ -711,7 +698,7 @@ public final class ConquestCommand {
         return 1;
     }
 
-    /** {@code /conquest sector area set <number>} with no coordinates: uses the sender's zone wand selection instead. */
+    /** {@code /conquest sector <number> area} with no coordinates: uses the sender's zone wand selection instead. */
     private static int sectorAreaSetFromWand(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
         int number = IntegerArgumentType.getInteger(ctx, "number");
