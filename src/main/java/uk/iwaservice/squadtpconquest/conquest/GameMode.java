@@ -8,12 +8,14 @@ import javax.annotation.Nullable;
 
 /**
  * Which ruleset a round uses. CONQUEST is the original capture-point mode;
- * TDM (Team Deathmatch) needs no capture points and is won by kills instead.
+ * TDM (Team Deathmatch) needs no capture points and is won by kills instead. SQUAD_DM (Squad
+ * Deathmatch) is a free-for-all between numbered squads, also won by kills.
  */
 public enum GameMode implements StringRepresentable {
     CONQUEST("conquest"),
     TDM("tdm"),
-    BREAKTHROUGH("breakthrough");
+    BREAKTHROUGH("breakthrough"),
+    SQUAD_DM("sdm");
 
     private final String key;
 

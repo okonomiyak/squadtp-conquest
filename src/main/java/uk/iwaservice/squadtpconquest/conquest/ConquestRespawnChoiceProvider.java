@@ -29,7 +29,7 @@ public final class ConquestRespawnChoiceProvider implements RespawnChoiceProvide
     @Override
     public List<RespawnChoiceEntry> getChoices(ServerPlayer player) {
         ConquestManager manager = ConquestManager.get(player.server);
-        if (manager.getState() != RoundState.IN_PROGRESS) {
+        if (manager.getState() != RoundState.IN_PROGRESS || manager.getMode() == GameMode.SQUAD_DM) {
             return List.of();
         }
         Team team = manager.teamOf(player.getUUID());

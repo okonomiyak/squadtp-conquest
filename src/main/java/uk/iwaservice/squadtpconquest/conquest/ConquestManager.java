@@ -19,6 +19,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.Item;
@@ -26,6 +27,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -61,6 +63,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /**
  * Server-authoritative conquest state, persisted with the overworld.
@@ -94,6 +97,23 @@ public class ConquestManager extends SavedData {
     private int ticketsB;
     /** CONQUEST (capture points, tickets drain) or TDM (no points, tickets count kills up). */
     private GameMode mode = GameMode.CONQUEST;
+
+    // --- squad deathmatch ---
+
+    /**
+     * Squad Deathmatch: player -> squad number (1-based), assigned at {@link #start} (or by
+     * {@link #sdmAssignLateJoiner}) and kept after the round for the result screen, until the next
+     * start clears it. Persisted so a restart mid-round keeps everyone on their side. Read it via
+     * {@link #sdmSquadOf}/{@link #sameSide}, never directly: it only counts for players still on
+     * {@link Team#SQUAD}.
+     */
+    private final Map<UUID, Integer> sdmSquadOf = new HashMap<>();
+    /** Squad number -> kills this round; the key set doubles as the list of squads that exist. */
+    private final Map<Integer, Integer> sdmKills = new TreeMap<>();
+    /** Winning squad of the last Squad Deathmatch round; 0 means a draw or none yet. */
+    private int lastSdmWinner;
+    /** Random spawn candidates sampled per {@link #teleportToSdmSpawn}. */
+    private static final int SDM_SPAWN_SAMPLES = 16;
 
     private static final int BEACON_VISUAL_RADIUS = 2;
     private static final int SPAWN_ZONE_RGB = 0xFAD933;
@@ -332,6 +352,39 @@ public class ConquestManager extends SavedData {
         return playerTeams.getOrDefault(player, Team.NEUTRAL);
     }
 
+    /** The player's Squad Deathmatch squad number, or null if they have none (or aren't on {@link Team#SQUAD}). */
+    @Nullable
+    public Integer sdmSquadOf(UUID player) {
+        return teamOf(player) == Team.SQUAD ? sdmSquadOf.get(player) : null;
+    }
+
+    /**
+     * Whether two players fight on the same side, the one check every friend-or-foe decision
+     * (kill/assist/revive credit, spotting, ...) goes through: in Squad Deathmatch both must be in
+     * the same numbered squad; in every other mode simply on the same conquest team. Callers still
+     * check {@link Team#isCombatant} themselves, since two non-combatants "share a side" here too.
+     */
+    public boolean sameSide(UUID a, UUID b) {
+        if (mode == GameMode.SQUAD_DM) {
+            Integer squadA = sdmSquadOf(a);
+            return squadA != null && squadA.equals(sdmSquadOf(b));
+        }
+        return teamOf(a) == teamOf(b);
+    }
+
+    /** Kills of one Squad Deathmatch squad this round (0 for an unknown squad). */
+    public int sdmKills(int squad) {
+        return sdmKills.getOrDefault(squad, 0);
+    }
+
+    public int sdmSquadCount() {
+        return sdmKills.size();
+    }
+
+    public int getLastSdmWinner() {
+        return lastSdmWinner;
+    }
+
     @Nullable
     public ChatFormatting getNameColor(UUID player) {
         return nameColors.get(player);
@@ -375,7 +428,7 @@ public class ConquestManager extends SavedData {
 
     /** Assigns which of Team A/B plays attacker. Rejected while a round is running or showing a result. */
     public boolean setAttackerTeam(Team team) {
-        if (state != RoundState.WAITING || !team.isCombatant()) {
+        if (state != RoundState.WAITING || (team != Team.A && team != Team.B)) {
             return false;
         }
         attackerTeam = team;
@@ -558,9 +611,8 @@ public class ConquestManager extends SavedData {
         SpotPacket packet = new SpotPacket(target.getUUID(), target.getGameProfile().getName(),
                 target.level().dimension().location(), target.blockPosition(),
                 Config.SPOT_DURATION_SECONDS.get() * 20);
-        Team spotterTeam = teamOf(spotter.getUUID());
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (teamOf(player.getUUID()) == spotterTeam) {
+            if (sameSide(player.getUUID(), spotter.getUUID())) {
                 NetworkHandler.send(player, packet);
             }
         }
@@ -622,12 +674,21 @@ public class ConquestManager extends SavedData {
     /**
      * Records the kill and, in TDM, credits the killer's team a point toward
      * the kill limit (reusing the ticket counters as an up-counting score
-     * since the HUD/GUI/scoreboard already render them generically).
+     * since the HUD/GUI/scoreboard already render them generically). In Squad
+     * Deathmatch the killer's squad gets the point instead, ending the round at
+     * {@code sdmKillLimit}.
      */
     public void recordKill(MinecraftServer server, UUID player) {
         scoreOf(player).kills++;
         lifetimeScoreOf(player).kills++;
         setDirty();
+        if (mode == GameMode.SQUAD_DM && state == RoundState.IN_PROGRESS) {
+            Integer squad = sdmSquadOf(player);
+            if (squad != null && sdmKills.merge(squad, 1, Integer::sum) >= Config.SDM_KILL_LIMIT.get()) {
+                endSdmRound(server, squad);
+            }
+            return;
+        }
         if (mode == GameMode.TDM && state == RoundState.IN_PROGRESS) {
             Team team = teamOf(player);
             if (team == Team.A) {
@@ -766,7 +827,10 @@ public class ConquestManager extends SavedData {
      * Assigns the conquest team and mirrors it onto a dedicated vanilla
      * scoreboard team ("conquest_a"/"conquest_b": friendly fire off, colored
      * to match) so squadtp's requireSameTeam keeps squads confined to one
-     * conquest side, and so team-colored nameplates/glow come for free.
+     * conquest side, and so team-colored nameplates/glow come for free. In Squad Deathmatch each
+     * squad gets its own vanilla team ("conquest_sq<N>") instead, which keeps squadtp squads
+     * confined to one squad number the same way. Joining team A/B while a Squad Deathmatch round is
+     * starting or running puts the player on {@link Team#SQUAD} instead (see {@link #sdmAssignLateJoiner}).
      */
     public void joinTeam(ServerPlayer player, Team team) {
         boolean leaveSquad = true;
@@ -788,6 +852,10 @@ public class ConquestManager extends SavedData {
      * later is needless churn.
      */
     private void joinTeam(ServerPlayer player, Team team, boolean leaveSquad) {
+        if (mode == GameMode.SQUAD_DM && (state == RoundState.STARTING || state == RoundState.IN_PROGRESS)
+                && (team == Team.A || team == Team.B)) {
+            team = Team.SQUAD;
+        }
         Team previous = playerTeams.put(player.getUUID(), team);
         setDirty();
         syncVanillaTeam(player, team);
@@ -808,10 +876,15 @@ public class ConquestManager extends SavedData {
                 player.getInventory().clearContent();
             }
             if (team.isCombatant() && state == RoundState.IN_PROGRESS) {
-                teleportToRoleSpawn(player, team);
+                if (team == Team.SQUAD) {
+                    teleportToSdmSpawn(player);
+                } else {
+                    teleportToRoleSpawn(player, team);
+                }
                 ClassLoadoutCompat.equip(player);
             }
         }
+        sdmAssignLateJoiner(player);
     }
 
     /**
@@ -871,35 +944,13 @@ public class ConquestManager extends SavedData {
      * break randomly) so the strongest units get first pick of which team needs them most.
      */
     public int shuffleTeams(MinecraftServer server) {
-        List<ServerPlayer> players = new ArrayList<>();
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            Team current = teamOf(player.getUUID());
-            if (current != Team.ADMIN && current != Team.SPECTATOR) {
-                players.add(player);
-            }
-        }
-        Set<ServerPlayer> eligible = new HashSet<>(players);
+        List<ServerPlayer> players = eligiblePlayers(server);
         SquadManager squadManager = SquadManager.get(server);
 
         // First pass: every invite-only squad becomes one unit, claiming all its eligible members.
-        List<List<ServerPlayer>> lockedUnits = new ArrayList<>();
+        List<List<ServerPlayer>> lockedUnits = inviteOnlyUnits(server, squadManager, players);
         Set<ServerPlayer> lockedPlayers = new HashSet<>();
-        Set<UUID> seenLockedSquads = new HashSet<>();
-        for (ServerPlayer player : players) {
-            Squad squad = squadManager.getSquadOf(player.getUUID());
-            if (squad == null || squad.isOpenJoin() || !seenLockedSquads.add(squad.getId())) {
-                continue;
-            }
-            List<ServerPlayer> unit = new ArrayList<>();
-            for (UUID memberId : squad.getMembers().keySet()) {
-                ServerPlayer member = server.getPlayerList().getPlayer(memberId);
-                if (member != null && eligible.contains(member)) {
-                    unit.add(member);
-                    lockedPlayers.add(member);
-                }
-            }
-            lockedUnits.add(unit);
-        }
+        lockedUnits.forEach(lockedPlayers::addAll);
 
         // Second pass: everyone not claimed by a locked unit shuffles individually as before.
         List<ServerPlayer> freePlayers = new ArrayList<>();
@@ -956,6 +1007,41 @@ public class ConquestManager extends SavedData {
         return players.size();
     }
 
+    /** Every online player who isn't on the admin or spectator team: who {@link #shuffleTeams} and Squad Deathmatch's start put into the match. */
+    private List<ServerPlayer> eligiblePlayers(MinecraftServer server) {
+        List<ServerPlayer> players = new ArrayList<>();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            Team current = teamOf(player.getUUID());
+            if (current != Team.ADMIN && current != Team.SPECTATOR) {
+                players.add(player);
+            }
+        }
+        return players;
+    }
+
+    /** Each invite-only squad among {@code players} as one unit of its eligible online members. */
+    private static List<List<ServerPlayer>> inviteOnlyUnits(MinecraftServer server, SquadManager squadManager,
+                                                            List<ServerPlayer> players) {
+        Set<ServerPlayer> eligible = new HashSet<>(players);
+        List<List<ServerPlayer>> units = new ArrayList<>();
+        Set<UUID> seenSquads = new HashSet<>();
+        for (ServerPlayer player : players) {
+            Squad squad = squadManager.getSquadOf(player.getUUID());
+            if (squad == null || squad.isOpenJoin() || !seenSquads.add(squad.getId())) {
+                continue;
+            }
+            List<ServerPlayer> unit = new ArrayList<>();
+            for (UUID memberId : squad.getMembers().keySet()) {
+                ServerPlayer member = server.getPlayerList().getPlayer(memberId);
+                if (member != null && eligible.contains(member)) {
+                    unit.add(member);
+                }
+            }
+            units.add(unit);
+        }
+        return units;
+    }
+
     /** See {@link #shuffleTeams}'s doc for the balancing rule this implements. */
     private static Team pickBalancedTeam(int countA, int countB, double ratingSumA, double ratingSumB) {
         if (countA != countB) {
@@ -1000,7 +1086,12 @@ public class ConquestManager extends SavedData {
 
     /** Groups same-team players into new squads of at most squadtp's maxSquadSize; lone leftovers stay squadless. */
     private static void formSquads(MinecraftServer server, SquadManager squadManager, List<ServerPlayer> teamPlayers) {
-        int maxSize = uk.iwaservice.squadtp.Config.MAX_SQUAD_SIZE.get();
+        formSquads(server, squadManager, teamPlayers, uk.iwaservice.squadtp.Config.MAX_SQUAD_SIZE.get());
+    }
+
+    /** As above, but chunked to an explicit {@code maxSize} (Squad Deathmatch passes each squad's own size). */
+    private static void formSquads(MinecraftServer server, SquadManager squadManager, List<ServerPlayer> teamPlayers,
+                                   int maxSize) {
         for (int i = 0; i < teamPlayers.size(); i += maxSize) {
             List<ServerPlayer> chunk = teamPlayers.subList(i, Math.min(i + maxSize, teamPlayers.size()));
             if (chunk.size() < 2) {
@@ -1013,37 +1104,28 @@ public class ConquestManager extends SavedData {
         }
     }
 
-    private static void syncVanillaTeam(ServerPlayer player, Team team) {
+    private void syncVanillaTeam(ServerPlayer player, Team team) {
         Scoreboard scoreboard = player.server.getScoreboard();
         String playerName = player.getGameProfile().getName();
+        Integer squad = team == Team.SQUAD ? sdmSquadOf.get(player.getUUID()) : null;
+        String targetName = squad != null ? "conquest_sq" + squad : vanillaTeamName(team);
 
         PlayerTeam current = scoreboard.getPlayersTeam(playerName);
-        if (current != null && isConquestTeam(current) && current != vanillaTeam(scoreboard, team)) {
+        if (current != null && isConquestTeam(current) && !current.getName().equals(targetName)) {
             scoreboard.removePlayerFromTeam(playerName, current);
         }
 
-        PlayerTeam target = getOrCreateVanillaTeam(scoreboard, team);
+        PlayerTeam target = scoreboard.getPlayerTeam(targetName);
+        if (target == null) {
+            target = scoreboard.addPlayerTeam(targetName);
+            target.setColor(squad != null ? Team.sdmSquadColor(squad) : team.color());
+            target.setAllowFriendlyFire(false);
+        }
         scoreboard.addPlayerToTeam(playerName, target);
     }
 
-    private static PlayerTeam vanillaTeam(Scoreboard scoreboard, Team team) {
-        return scoreboard.getPlayerTeam(vanillaTeamName(team));
-    }
-
-    private static PlayerTeam getOrCreateVanillaTeam(Scoreboard scoreboard, Team team) {
-        String name = vanillaTeamName(team);
-        PlayerTeam existing = scoreboard.getPlayerTeam(name);
-        if (existing != null) {
-            return existing;
-        }
-        PlayerTeam created = scoreboard.addPlayerTeam(name);
-        created.setColor(team.color());
-        created.setAllowFriendlyFire(false);
-        return created;
-    }
-
     private static boolean isConquestTeam(PlayerTeam team) {
-        return team.getName().equals(vanillaTeamName(Team.A)) || team.getName().equals(vanillaTeamName(Team.B))
+        return team.getName().startsWith("conquest_sq") || team.getName().equals(vanillaTeamName(Team.A)) || team.getName().equals(vanillaTeamName(Team.B))
                 || team.getName().equals(vanillaTeamName(Team.ADMIN)) || team.getName().equals(vanillaTeamName(Team.RANGE))
                 || team.getName().equals(vanillaTeamName(Team.SPECTATOR)) || team.getName().equals(vanillaTeamName(Team.WAITING));
     }
@@ -2060,7 +2142,8 @@ public class ConquestManager extends SavedData {
     }
 
     /** Outcome of a /conquest start attempt, used to pick the right failure message. */
-    public enum StartResult { OK, ALREADY_RUNNING, RESULT_PENDING, NO_POINT, NO_SECTOR, TEAM_A_EMPTY, TEAM_B_EMPTY }
+    public enum StartResult { OK, ALREADY_RUNNING, RESULT_PENDING, NO_POINT, NO_SECTOR, TEAM_A_EMPTY, TEAM_B_EMPTY,
+        NO_BOUNDARY, NOT_ENOUGH_SQUADS }
 
     /**
      * Validates, resets all points/tickets, teleports teams, then either goes
@@ -2080,11 +2163,29 @@ public class ConquestManager extends SavedData {
         if (mode == GameMode.BREAKTHROUGH && sectors.isEmpty()) {
             return StartResult.NO_SECTOR;
         }
-        if (onlineCount(server, Team.A) == 0) {
-            return StartResult.TEAM_A_EMPTY;
-        }
-        if (onlineCount(server, Team.B) == 0) {
-            return StartResult.TEAM_B_EMPTY;
+        List<SdmGroup> sdmGroups = null;
+        if (mode == GameMode.SQUAD_DM) {
+            // Random spawns need an area to roll in; there are no per-team spawns or zones to fall back on.
+            if (boundaryDim == null || getBoundaryMin() == null || getBoundaryMax() == null) {
+                return StartResult.NO_BOUNDARY;
+            }
+            sdmGroups = planSdmSquads(server);
+            if (sdmGroups.size() < 2) {
+                return StartResult.NOT_ENOUGH_SQUADS;
+            }
+        } else {
+            if (onlineCount(server, Team.A) == 0) {
+                return StartResult.TEAM_A_EMPTY;
+            }
+            if (onlineCount(server, Team.B) == 0) {
+                return StartResult.TEAM_B_EMPTY;
+            }
+            // Leftovers from a Squad Deathmatch round must not fight as a stray third side here.
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if (teamOf(player.getUUID()) == Team.SQUAD) {
+                    joinTeam(player, Team.WAITING);
+                }
+            }
         }
 
         // The snapshot is normally captured once, when the boundary (or, in breakthrough without a
@@ -2119,6 +2220,12 @@ public class ConquestManager extends SavedData {
         pinCooldownUntilTick.clear();
         sectorAreaGraceSecondsRemaining = 0;
         teamBeacons.clear();
+        sdmSquadOf.clear();
+        sdmKills.clear();
+        lastSdmWinner = 0;
+        if (sdmGroups != null) {
+            applySdmSquads(server, sdmGroups);
+        }
         if (mode == GameMode.BREAKTHROUGH) {
             activeSectorNumber = sectors.firstKey();
             attackerTickets = Config.BT_ATTACKER_TICKETS.get();
@@ -2152,6 +2259,13 @@ public class ConquestManager extends SavedData {
                     Component.translatable("conquest.title.started_tdm_sub", limitText));
             return;
         }
+        if (mode == GameMode.SQUAD_DM) {
+            String limitText = String.valueOf(Config.SDM_KILL_LIMIT.get());
+            broadcast(server, Component.translatable("conquest.msg.started_sdm", limitText).withStyle(ChatFormatting.GOLD));
+            broadcastTitle(server, Component.translatable("conquest.title.started_sdm").withStyle(ChatFormatting.GOLD),
+                    Component.translatable("conquest.title.started_sdm_sub", limitText));
+            return;
+        }
         if (mode == GameMode.BREAKTHROUGH) {
             broadcast(server, Component.translatable("conquest.msg.started_breakthrough", attackerTickets)
                     .withStyle(ChatFormatting.GOLD));
@@ -2177,9 +2291,196 @@ public class ConquestManager extends SavedData {
                 continue;
             }
             applyMaxHealth(player, team);
-            teleportToRoleSpawn(player, team);
+            if (team == Team.SQUAD) {
+                teleportToSdmSpawn(player);
+            } else {
+                teleportToRoleSpawn(player, team);
+            }
             ClassLoadoutCompat.equip(player);
         }
+    }
+
+    // --- squad deathmatch: squads, spawning, late joiners ---
+
+    /** One planned Squad Deathmatch squad; {@code keepSquad} for an invite-only squadtp squad that stays as it is. */
+    private record SdmGroup(List<ServerPlayer> members, boolean keepSquad) {}
+
+    /**
+     * Splits every eligible player (see {@link #eligiblePlayers}) into squads without changing
+     * anything yet: each invite-only squadtp squad stays together as one squad of its own size
+     * (as in {@link #shuffleTeams}); everyone else is shuffled and chunked into groups of
+     * {@code sdmSquadSize}. The result is shuffled, so squad numbers carry no meaning.
+     */
+    private List<SdmGroup> planSdmSquads(MinecraftServer server) {
+        List<ServerPlayer> players = eligiblePlayers(server);
+        List<List<ServerPlayer>> lockedUnits = inviteOnlyUnits(server, SquadManager.get(server), players);
+        Set<ServerPlayer> locked = new HashSet<>();
+        lockedUnits.forEach(locked::addAll);
+        List<ServerPlayer> free = new ArrayList<>();
+        for (ServerPlayer player : players) {
+            if (!locked.contains(player)) {
+                free.add(player);
+            }
+        }
+        Collections.shuffle(free);
+
+        List<SdmGroup> groups = new ArrayList<>();
+        for (List<ServerPlayer> unit : lockedUnits) {
+            groups.add(new SdmGroup(unit, true));
+        }
+        int size = Config.SDM_SQUAD_SIZE.get();
+        for (int i = 0; i < free.size(); i += size) {
+            groups.add(new SdmGroup(new ArrayList<>(free.subList(i, Math.min(i + size, free.size()))), false));
+        }
+        Collections.shuffle(groups);
+        return groups;
+    }
+
+    /**
+     * Numbers the planned squads 1..N, puts every member on {@link Team#SQUAD} (each squad on its own
+     * vanilla team, see {@link #syncVanillaTeam}) and forms fresh squadtp squads for the non-kept
+     * groups, disbanding whatever squads their members were in first.
+     */
+    private void applySdmSquads(MinecraftServer server, List<SdmGroup> groups) {
+        SquadManager squadManager = SquadManager.get(server);
+        List<ServerPlayer> freePlayers = new ArrayList<>();
+        for (SdmGroup group : groups) {
+            if (!group.keepSquad()) {
+                freePlayers.addAll(group.members());
+            }
+        }
+        disbandSquadsOf(server, squadManager, freePlayers);
+
+        int number = 0;
+        for (SdmGroup group : groups) {
+            number++;
+            sdmKills.put(number, 0);
+            for (ServerPlayer player : group.members()) {
+                sdmSquadOf.put(player.getUUID(), number);
+            }
+        }
+        for (SdmGroup group : groups) {
+            for (ServerPlayer player : group.members()) {
+                joinTeam(player, Team.SQUAD, false);
+            }
+        }
+        for (SdmGroup group : groups) {
+            if (!group.keepSquad()) {
+                formSquads(server, squadManager, group.members(), group.members().size());
+            }
+        }
+    }
+
+    /**
+     * Gives a {@link Team#SQUAD} player who has no squad number yet (joined mid-round, or lost it to
+     * a restart) the squad with the fewest online members, ties to the lowest number, and moves
+     * them into that squad's squadtp squad (creating it around a lone squadmate if need be). No-op
+     * outside a starting/running Squad Deathmatch round or for anyone already numbered.
+     */
+    public void sdmAssignLateJoiner(ServerPlayer player) {
+        UUID id = player.getUUID();
+        if (mode != GameMode.SQUAD_DM || (state != RoundState.STARTING && state != RoundState.IN_PROGRESS)
+                || teamOf(id) != Team.SQUAD || sdmSquadOf.containsKey(id)) {
+            return;
+        }
+        MinecraftServer server = player.server;
+        if (sdmKills.isEmpty()) {
+            sdmKills.put(1, 0);
+        }
+        int best = 0;
+        int bestCount = Integer.MAX_VALUE;
+        for (int squad : sdmKills.keySet()) {
+            int count = 0;
+            for (ServerPlayer other : server.getPlayerList().getPlayers()) {
+                if (Integer.valueOf(squad).equals(sdmSquadOf(other.getUUID()))) {
+                    count++;
+                }
+            }
+            if (count < bestCount) {
+                best = squad;
+                bestCount = count;
+            }
+        }
+        sdmSquadOf.put(id, best);
+        setDirty();
+        syncVanillaTeam(player, Team.SQUAD);
+        leaveSquadIfAny(player);
+
+        SquadManager squadManager = SquadManager.get(server);
+        for (ServerPlayer mate : server.getPlayerList().getPlayers()) {
+            if (mate == player || !Integer.valueOf(best).equals(sdmSquadOf(mate.getUUID()))) {
+                continue;
+            }
+            Squad squad = squadManager.getSquadOf(mate.getUUID());
+            if (squad == null) {
+                squad = squadManager.create(mate);
+            }
+            squadManager.join(server, squad, player);
+            break;
+        }
+    }
+
+    /** On login: numbers a returning Squad Deathmatch player if needed, and strips a stale {@link Team#SQUAD} outside that mode. */
+    public void onLogin(ServerPlayer player) {
+        if (teamOf(player.getUUID()) == Team.SQUAD && mode != GameMode.SQUAD_DM) {
+            joinTeam(player, Team.WAITING);
+            return;
+        }
+        sdmAssignLateJoiner(player);
+    }
+
+    /**
+     * Squad Deathmatch spawn: samples {@value #SDM_SPAWN_SAMPLES} random columns of the battlefield
+     * boundary (top of the terrain, clamped into the box's Y range), keeps the ones that are a safe
+     * spot and not next to an enemy, and picks the one farthest from every online enemy. Falls back to
+     * the box center when no sample qualifies. No-op if the boundary is gone.
+     */
+    void teleportToSdmSpawn(ServerPlayer player) {
+        BlockPos min = getBoundaryMin();
+        BlockPos max = getBoundaryMax();
+        if (boundaryDim == null || min == null || max == null) {
+            return;
+        }
+        ServerLevel level = player.server.getLevel(boundaryDim);
+        if (level == null) {
+            return;
+        }
+        BlockPos best = null;
+        double bestDistSq = -1;
+        for (int i = 0; i < SDM_SPAWN_SAMPLES; i++) {
+            int x = min.getX() + level.getRandom().nextInt(max.getX() - min.getX() + 1);
+            int z = min.getZ() + level.getRandom().nextInt(max.getZ() - min.getZ() + 1);
+            int topY = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 0, z)).getY();
+            BlockPos candidate = TeleportHelper.findSafeSpot(level,
+                    new BlockPos(x, Mth.clamp(topY, min.getY(), max.getY()), z));
+            if (!containsPos(min, max, candidate) || !isDestinationSafe(player, boundaryDim, candidate)) {
+                continue;
+            }
+            double distSq = nearestEnemyDistanceSqr(player, level, candidate);
+            if (distSq > bestDistSq) {
+                best = candidate;
+                bestDistSq = distSq;
+            }
+        }
+        if (best == null) {
+            best = TeleportHelper.findSafeSpot(level,
+                    new BlockPos((min.getX() + max.getX()) / 2, max.getY(), (min.getZ() + max.getZ()) / 2));
+        }
+        player.teleportTo(level, best.getX() + 0.5, best.getY(), best.getZ() + 0.5,
+                Set.of(), player.getYRot(), player.getXRot());
+    }
+
+    /** Squared distance from {@code pos} to the nearest living enemy combatant in {@code level}; MAX_VALUE if none. */
+    private double nearestEnemyDistanceSqr(ServerPlayer self, ServerLevel level, BlockPos pos) {
+        double nearest = Double.MAX_VALUE;
+        for (ServerPlayer other : level.getServer().getPlayerList().getPlayers()) {
+            if (other == self || other.level() != level || !other.isAlive() || !teamOf(other.getUUID()).isCombatant()
+                    || sameSide(self.getUUID(), other.getUUID())) {
+                continue;
+            }
+            nearest = Math.min(nearest, other.distanceToSqr(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5));
+        }
+        return nearest;
     }
 
     /** A team's configured role spawn, before the world-spawn fallback used at actual teleport time. */
@@ -2343,7 +2644,7 @@ public class ConquestManager extends SavedData {
         // Only once the round was actually in progress - cancelling the "Get Ready!" countdown
         // means combat never happened, so there's no round to have earned points for yet.
         if (!wasStarting) {
-            awardClassloadoutPoints(server, null);
+            awardClassloadoutPoints(server, uuid -> false);
             lastRoundTeams.clear();
             lastRoundTeams.putAll(playerTeams);
         }
@@ -2622,12 +2923,28 @@ public class ConquestManager extends SavedData {
                 tickBreakthrough(server, occupancyByPoint);
             }
 
-            tickHomeZones(server);
+            if (mode != GameMode.SQUAD_DM) {
+                tickHomeZones(server);
+            }
             tickBoundary(server);
             tickTeamBeacons(server);
 
+            // Squad Deathmatch: the round ends once at most one squad still has anyone online.
+            if (state == RoundState.IN_PROGRESS && mode == GameMode.SQUAD_DM) {
+                Set<Integer> onlineSquads = new HashSet<>();
+                for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                    Integer squad = sdmSquadOf(player.getUUID());
+                    if (squad != null) {
+                        onlineSquads.add(squad);
+                    }
+                }
+                if (onlineSquads.size() <= 1) {
+                    endSdmRound(server, onlineSquads.isEmpty() ? null : onlineSquads.iterator().next());
+                }
+            }
+
             // Team-empty check (only if the round is still running after the checks above).
-            if (state == RoundState.IN_PROGRESS && Config.END_ON_TEAM_EMPTY.get()) {
+            if (state == RoundState.IN_PROGRESS && mode != GameMode.SQUAD_DM && Config.END_ON_TEAM_EMPTY.get()) {
                 if (onlineCount(server, Team.A) == 0) {
                     endRound(server, Team.B);
                 } else if (onlineCount(server, Team.B) == 0) {
@@ -2639,8 +2956,23 @@ public class ConquestManager extends SavedData {
             // sector-timer-based ending instead (ticketsA/B are unused in that mode).
             int limit = Config.ROUND_TIME_LIMIT_SECONDS.get();
             if (state == RoundState.IN_PROGRESS && mode != GameMode.BREAKTHROUGH && limit > 0 && roundElapsedSeconds >= limit) {
-                Team winner = ticketsA > ticketsB ? Team.A : ticketsB > ticketsA ? Team.B : null;
-                endRound(server, winner);
+                if (mode == GameMode.SQUAD_DM) {
+                    // Most kills wins; a tie at the top is a draw.
+                    int topKills = -1;
+                    Integer topSquad = null;
+                    for (Map.Entry<Integer, Integer> e : sdmKills.entrySet()) {
+                        if (e.getValue() > topKills) {
+                            topKills = e.getValue();
+                            topSquad = e.getKey();
+                        } else if (e.getValue() == topKills) {
+                            topSquad = null;
+                        }
+                    }
+                    endSdmRound(server, topSquad);
+                } else {
+                    Team winner = ticketsA > ticketsB ? Team.A : ticketsB > ticketsA ? Team.B : null;
+                    endRound(server, winner);
+                }
             }
         } else if (state == RoundState.ENDED) {
             resultElapsedSeconds++;
@@ -2761,6 +3093,7 @@ public class ConquestManager extends SavedData {
     private void endRound(MinecraftServer server, @Nullable Team winner) {
         state = RoundState.ENDED;
         lastWinner = winner;
+        lastSdmWinner = 0;
         resultElapsedSeconds = 0;
         lastRoundTeams.clear();
         lastRoundTeams.putAll(playerTeams);
@@ -2793,8 +3126,53 @@ public class ConquestManager extends SavedData {
                     .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
         }
         broadcastTitle(server, title, subtitle);
+        finishRound(server, uuid -> winner != null && teamOf(uuid) == winner);
+    }
+
+    /**
+     * Squad Deathmatch's {@link #endRound}: {@code winnerSquad} null is a draw. Members of the
+     * winning squad get a lifetime win, every other participant a loss (a draw records nothing).
+     */
+    private void endSdmRound(MinecraftServer server, @Nullable Integer winnerSquad) {
+        state = RoundState.ENDED;
+        lastWinner = null;
+        lastSdmWinner = winnerSquad == null ? 0 : winnerSquad;
+        resultElapsedSeconds = 0;
+        lastRoundTeams.clear();
+        lastRoundTeams.putAll(playerTeams);
+        if (winnerSquad != null) {
+            for (Map.Entry<UUID, Integer> e : sdmSquadOf.entrySet()) {
+                if (teamOf(e.getKey()) == Team.SQUAD) {
+                    PlayerScore lifetime = lifetimeScoreOf(e.getKey());
+                    if (e.getValue().equals(winnerSquad)) {
+                        lifetime.wins++;
+                    } else {
+                        lifetime.losses++;
+                    }
+                }
+            }
+        }
+        setDirty();
+
+        if (winnerSquad == null) {
+            broadcastTitle(server, Component.translatable("conquest.title.draw").withStyle(ChatFormatting.YELLOW),
+                    Component.empty());
+            broadcast(server, Component.translatable("conquest.msg.draw").withStyle(ChatFormatting.YELLOW));
+        } else {
+            Component number = Component.literal(String.valueOf(winnerSquad)).withStyle(Team.sdmSquadColor(winnerSquad));
+            broadcastTitle(server,
+                    Component.translatable("conquest.title.sdm_victory", number).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
+                    Component.translatable("conquest.title.sdm_victory_sub", sdmKills(winnerSquad)));
+            broadcast(server, Component.translatable("conquest.msg.sdm_victory", number)
+                    .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+        }
+        finishRound(server, uuid -> winnerSquad != null && winnerSquad.equals(sdmSquadOf(uuid)));
+    }
+
+    /** The shared tail of {@link #endRound}/{@link #endSdmRound}: MVP, rewards, gather teleport, terrain, revive reset. */
+    private void finishRound(MinecraftServer server, Predicate<UUID> onWinningSide) {
         announceMvp(server);
-        awardClassloadoutPoints(server, winner);
+        awardClassloadoutPoints(server, onWinningSide);
         teleportToGatherPoint(server);
         restoreTerrainSnapshot(server);
 
@@ -2810,19 +3188,21 @@ public class ConquestManager extends SavedData {
     /**
      * Awards every online combatant a flat classloadout shop point amount via
      * {@link ClassLoadoutCompat#awardPoints} - {@link Config#CLASSLOADOUT_POINTS_WIN} for
-     * {@code winner}'s team, {@link Config#CLASSLOADOUT_POINTS_LOSE} for everyone else. Same
-     * regardless of individual score - unconditional per combatant, not scaled by performance.
-     * {@code winner} null means a draw or an admin-forced {@link #stop} - both teams get the
-     * "lose" amount, since neither has a winning side. {@link ClassLoadoutCompat#awardPoints}
-     * itself already no-ops when classloadout isn't installed or the amount is 0.
+     * players on the winning side ({@code onWinningSide}), {@link Config#CLASSLOADOUT_POINTS_LOSE}
+     * for everyone else. Same regardless of individual score - unconditional per combatant, not
+     * scaled by performance. A predicate that is always false (a draw, or an admin-forced
+     * {@link #stop}) gives everyone the "lose" amount, since there is no winning side.
+     * {@link ClassLoadoutCompat#awardPoints} itself already no-ops when classloadout isn't
+     * installed or the amount is 0.
      */
-    private void awardClassloadoutPoints(MinecraftServer server, @Nullable Team winner) {
+    private void awardClassloadoutPoints(MinecraftServer server, Predicate<UUID> onWinningSide) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             Team team = teamOf(player.getUUID());
             if (!team.isCombatant()) {
                 continue;
             }
-            int amount = team == winner ? Config.CLASSLOADOUT_POINTS_WIN.get() : Config.CLASSLOADOUT_POINTS_LOSE.get();
+            int amount = onWinningSide.test(player.getUUID())
+                    ? Config.CLASSLOADOUT_POINTS_WIN.get() : Config.CLASSLOADOUT_POINTS_LOSE.get();
             ClassLoadoutCompat.awardPoints(player, amount);
         }
     }
@@ -2909,7 +3289,10 @@ public class ConquestManager extends SavedData {
             return;
         }
         applyMaxHealth(player, team);
-        if (mode == GameMode.CONQUEST) {
+        if (mode == GameMode.SQUAD_DM) {
+            sdmAssignLateJoiner(player);
+            teleportToSdmSpawn(player);
+        } else if (mode == GameMode.CONQUEST) {
             int cost = Config.TICKET_COST_PER_RESPAWN.get();
             if (cost > 0) {
                 drainTickets(player.server, team, cost);
@@ -2975,11 +3358,34 @@ public class ConquestManager extends SavedData {
             callInStatuses.add(new ConquestSyncPacket.CallInStatus(
                     callIn.getName(), callIn.getScoreCost(), callIn.getItemId(), callIn.getCount()));
         }
+        Integer viewerSquad = sdmSquadOf(viewer.getUUID());
         return new ConquestSyncPacket(statuses, ticketsA, ticketsB, isActive(), state, mode,
                 teamOf(viewer.getUUID()), viewer.hasPermissions(2), openScreen,
                 attackerTeam, sectorIndex(), sectorCount(), attackerTickets, attackerTicketsMax,
                 Config.TDM_KILL_LIMIT.get(),
-                callInStatuses, availableScore(viewer.getUUID()), joinableSquadsFor(viewer));
+                callInStatuses, availableScore(viewer.getUUID()), joinableSquadsFor(viewer),
+                buildSdmSquadStatuses(viewer.server), viewerSquad == null ? 0 : viewerSquad,
+                Config.SDM_KILL_LIMIT.get(), mode == GameMode.SQUAD_DM && state == RoundState.ENDED ? lastSdmWinner : 0);
+    }
+
+    /** Squad Deathmatch standings (empty in other modes): kills descending, then squad number. */
+    private List<ConquestSyncPacket.SdmSquadStatus> buildSdmSquadStatuses(MinecraftServer server) {
+        if (mode != GameMode.SQUAD_DM) {
+            return List.of();
+        }
+        List<ConquestSyncPacket.SdmSquadStatus> result = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> e : sdmKills.entrySet()) {
+            List<String> names = new ArrayList<>();
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if (e.getKey().equals(sdmSquadOf(player.getUUID()))) {
+                    names.add(player.getGameProfile().getName());
+                }
+            }
+            result.add(new ConquestSyncPacket.SdmSquadStatus(e.getKey(), e.getValue(), names));
+        }
+        result.sort(Comparator.comparingInt(ConquestSyncPacket.SdmSquadStatus::kills).reversed()
+                .thenComparingInt(ConquestSyncPacket.SdmSquadStatus::number));
+        return result;
     }
 
     /**
@@ -3003,7 +3409,8 @@ public class ConquestManager extends SavedData {
         List<ConquestSyncPacket.SquadStatus> result = new ArrayList<>();
         Set<UUID> seenSquads = new HashSet<>();
         for (ServerPlayer player : viewer.server.getPlayerList().getPlayers()) {
-            if (player == viewer || teamOf(player.getUUID()) != viewerTeam) {
+            if (player == viewer || teamOf(player.getUUID()) != viewerTeam
+                    || !sameSide(player.getUUID(), viewer.getUUID())) {
                 continue;
             }
             Squad squad = squadManager.getSquadOf(player.getUUID());
@@ -3011,7 +3418,7 @@ public class ConquestManager extends SavedData {
                 continue;
             }
             boolean allSameTeam = squad.getMembers().keySet().stream()
-                    .allMatch(memberId -> teamOf(memberId) == viewerTeam);
+                    .allMatch(memberId -> teamOf(memberId) == viewerTeam && sameSide(memberId, viewer.getUUID()));
             if (!allSameTeam) {
                 continue;
             }
@@ -3053,8 +3460,11 @@ public class ConquestManager extends SavedData {
         Component title = Component.literal(String.valueOf(secondsRemaining)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             Team team = teamOf(player.getUUID());
+            Integer squad = sdmSquadOf(player.getUUID());
+            Component teamName = squad == null ? team.display()
+                    : Component.translatable("conquest.team.squad").append(" " + squad).withStyle(Team.sdmSquadColor(squad));
             Component subtitle = team.isCombatant()
-                    ? Component.translatable("conquest.title.get_ready_team", team.display())
+                    ? Component.translatable("conquest.title.get_ready_team", teamName)
                     : Component.translatable("conquest.title.get_ready");
             player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 60, 20));
             player.connection.send(new ClientboundSetTitleTextPacket(title));
@@ -3097,6 +3507,17 @@ public class ConquestManager extends SavedData {
         manager.resultElapsedSeconds = tag.getInt("ResultElapsedSeconds");
         if (tag.contains("LastWinner")) {
             manager.lastWinner = Team.valueOf(tag.getString("LastWinner"));
+        }
+        manager.lastSdmWinner = tag.getInt("LastSdmWinner");
+        ListTag sdmSquadList = tag.getList("SdmSquads", Tag.TAG_COMPOUND);
+        for (int i = 0; i < sdmSquadList.size(); i++) {
+            CompoundTag s = sdmSquadList.getCompound(i);
+            manager.sdmSquadOf.put(s.getUUID("Uuid"), s.getInt("Squad"));
+        }
+        ListTag sdmKillList = tag.getList("SdmKills", Tag.TAG_COMPOUND);
+        for (int i = 0; i < sdmKillList.size(); i++) {
+            CompoundTag s = sdmKillList.getCompound(i);
+            manager.sdmKills.put(s.getInt("Squad"), s.getInt("Kills"));
         }
         if (tag.contains("SpawnADim")) {
             manager.spawnADim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("SpawnADim")));
@@ -3257,6 +3678,23 @@ public class ConquestManager extends SavedData {
         if (lastWinner != null) {
             tag.putString("LastWinner", lastWinner.name());
         }
+        tag.putInt("LastSdmWinner", lastSdmWinner);
+        ListTag sdmSquadList = new ListTag();
+        for (Map.Entry<UUID, Integer> e : sdmSquadOf.entrySet()) {
+            CompoundTag s = new CompoundTag();
+            s.putUUID("Uuid", e.getKey());
+            s.putInt("Squad", e.getValue());
+            sdmSquadList.add(s);
+        }
+        tag.put("SdmSquads", sdmSquadList);
+        ListTag sdmKillList = new ListTag();
+        for (Map.Entry<Integer, Integer> e : sdmKills.entrySet()) {
+            CompoundTag s = new CompoundTag();
+            s.putInt("Squad", e.getKey());
+            s.putInt("Kills", e.getValue());
+            sdmKillList.add(s);
+        }
+        tag.put("SdmKills", sdmKillList);
         if (spawnADim != null && spawnAPos != null) {
             tag.putString("SpawnADim", spawnADim.location().toString());
             tag.put("SpawnAPos", NbtUtils.writeBlockPos(spawnAPos));

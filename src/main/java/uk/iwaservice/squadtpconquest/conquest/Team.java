@@ -8,7 +8,8 @@ import net.minecraft.util.StringRepresentable;
 import javax.annotation.Nullable;
 
 /**
- * The two fighting teams, NEUTRAL (= no team / unowned point), ADMIN (an OP-only spectator side:
+ * The two fighting teams (plus SQUAD, the single combat team of Squad Deathmatch, where the real
+ * sides are the numbered squads tracked by {@link ConquestManager#sdmSquadOf}), NEUTRAL (= no team / unowned point), ADMIN (an OP-only spectator side:
  * joinable like A/B but excluded from capture occupancy, ticket/respawn cost and kill/death/assist
  * scoring), RANGE (the training range: same exclusions as ADMIN, open to anyone, tied to its own
  * area instead of the match — see {@link ConquestManager#setRange}), SPECTATOR (same match
@@ -20,6 +21,7 @@ import javax.annotation.Nullable;
 public enum Team implements StringRepresentable {
     A("a", ChatFormatting.BLUE),
     B("b", ChatFormatting.RED),
+    SQUAD("squad", ChatFormatting.WHITE),
     ADMIN("admin", ChatFormatting.GOLD),
     RANGE("range", ChatFormatting.GREEN),
     SPECTATOR("spectator", ChatFormatting.AQUA),
@@ -51,6 +53,7 @@ public enum Team implements StringRepresentable {
         return switch (this) {
             case A -> 0xFF3B6FE0;
             case B -> 0xFFE03B3B;
+            case SQUAD -> 0xFFE0E0E0;
             case ADMIN -> 0xFFFFC83B;
             case RANGE -> 0xFF3BE05E;
             case SPECTATOR -> 0xFF3BC8E0;
@@ -78,9 +81,20 @@ public enum Team implements StringRepresentable {
         return this == A ? B : this == B ? A : NEUTRAL;
     }
 
-    /** True for the two fighting sides; false for NEUTRAL, ADMIN, RANGE, SPECTATOR and WAITING. */
+    /** True for the fighting sides (A, B and SQUAD); false for NEUTRAL, ADMIN, RANGE, SPECTATOR and WAITING. */
     public boolean isCombatant() {
-        return this == A || this == B;
+        return this == A || this == B || this == SQUAD;
+    }
+
+    private static final ChatFormatting[] SDM_SQUAD_COLORS = {
+            ChatFormatting.BLUE, ChatFormatting.RED, ChatFormatting.GREEN, ChatFormatting.YELLOW,
+            ChatFormatting.AQUA, ChatFormatting.LIGHT_PURPLE, ChatFormatting.GOLD, ChatFormatting.DARK_GREEN,
+            ChatFormatting.DARK_AQUA, ChatFormatting.DARK_PURPLE, ChatFormatting.DARK_RED, ChatFormatting.DARK_BLUE,
+            ChatFormatting.GRAY, ChatFormatting.WHITE};
+
+    /** Color of Squad Deathmatch squad {@code squad} (1-based; wraps after 14). Common code, usable client-side. */
+    public static ChatFormatting sdmSquadColor(int squad) {
+        return SDM_SQUAD_COLORS[Math.floorMod(squad - 1, SDM_SQUAD_COLORS.length)];
     }
 
     /**
@@ -98,11 +112,11 @@ public enum Team implements StringRepresentable {
         return NEUTRAL;
     }
 
-    /** Parses "a"/"b" (case-insensitive); null for anything else. */
+    /** Parses "a"/"b"/... (case-insensitive); null for anything else, and for NEUTRAL and SQUAD (never joined by hand). */
     @Nullable
     public static Team byKey(String key) {
         for (Team team : values()) {
-            if (team != NEUTRAL && team.key.equalsIgnoreCase(key)) {
+            if (team != NEUTRAL && team != SQUAD && team.key.equalsIgnoreCase(key)) {
                 return team;
             }
         }

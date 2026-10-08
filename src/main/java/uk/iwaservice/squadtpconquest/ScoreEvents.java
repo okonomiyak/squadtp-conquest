@@ -41,7 +41,7 @@ public final class ScoreEvents {
         }
         Team victimTeam = manager.teamOf(victim.getUUID());
         Team attackerTeam = manager.teamOf(attacker.getUUID());
-        if (!victimTeam.isCombatant() || !attackerTeam.isCombatant() || victimTeam == attackerTeam) {
+        if (!victimTeam.isCombatant() || !attackerTeam.isCombatant() || manager.sameSide(victim.getUUID(), attacker.getUUID())) {
             return;
         }
         DamageLog.record(victim.getUUID(), attacker.getUUID(), server.getTickCount());
@@ -70,7 +70,7 @@ public final class ScoreEvents {
             return;
         }
         Team attackerTeam = manager.teamOf(attacker.getUUID());
-        if (!attackerTeam.isCombatant() || attackerTeam == victimTeam) {
+        if (!attackerTeam.isCombatant() || manager.sameSide(attacker.getUUID(), victim.getUUID())) {
             return;
         }
         manager.recordKill(server, attacker.getUUID());
@@ -111,7 +111,7 @@ public final class ScoreEvents {
         UUID killerUuid = null;
         if (event.getSource().getEntity() instanceof ServerPlayer killer) {
             Team killerTeam = manager.teamOf(killer.getUUID());
-            if (killerTeam.isCombatant() && killerTeam != victimTeam) {
+            if (killerTeam.isCombatant() && !manager.sameSide(killer.getUUID(), victim.getUUID())) {
                 manager.recordKill(server, killer.getUUID());
                 broadcastKillFeed(killer, victim);
                 killerUuid = killer.getUUID();
@@ -122,7 +122,7 @@ public final class ScoreEvents {
         List<UUID> attackers = DamageLog.recentAttackers(victim.getUUID(), server.getTickCount(), windowTicks, killerUuid);
         for (UUID attacker : attackers) {
             Team attackerTeam = manager.teamOf(attacker);
-            if (attackerTeam.isCombatant() && attackerTeam != victimTeam) {
+            if (attackerTeam.isCombatant() && !manager.sameSide(attacker, victim.getUUID())) {
                 manager.recordAssist(attacker);
             }
         }
@@ -146,7 +146,7 @@ public final class ScoreEvents {
             return;
         }
         Team targetTeam = manager.teamOf(target.getUUID());
-        if (targetTeam.isCombatant() && manager.teamOf(reviver.getUUID()) == targetTeam) {
+        if (targetTeam.isCombatant() && manager.sameSide(reviver.getUUID(), target.getUUID())) {
             manager.recordRevive(reviver.getUUID());
         }
     }

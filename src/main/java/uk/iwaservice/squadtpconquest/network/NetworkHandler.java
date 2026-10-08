@@ -15,7 +15,7 @@ public final class NetworkHandler {
     // Bump whenever a packet's wire format changes (field added/removed/reordered).
     // A mismatch then fails the connection handshake with a clear message instead
     // of silently decoding a malformed packet and crashing the client mid-game.
-    private static final String PROTOCOL_VERSION = "23";
+    private static final String PROTOCOL_VERSION = "24";
 
     public static void register(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(PROTOCOL_VERSION);

@@ -56,6 +56,10 @@ public final class ConquestClientData {
     private static List<ConquestSyncPacket.CallInStatus> callIns = List.of();
     private static int availableScore;
     private static List<ConquestSyncPacket.SquadStatus> joinableSquads = List.of();
+    private static List<ConquestSyncPacket.SdmSquadStatus> sdmSquads = List.of();
+    private static int yourSdmSquad;
+    private static int sdmKillLimit;
+    private static int sdmWinner;
     /** Incremented on every update; lets the GUI detect changes cheaply. */
     private static int revision;
 
@@ -65,7 +69,9 @@ public final class ConquestClientData {
                                           Team newAttackerTeam, int newSectorIndex, int newSectorCount,
                                           int newAttackerTickets, int newAttackerTicketsMax, int newTdmKillLimit,
                                           List<ConquestSyncPacket.CallInStatus> newCallIns, int newAvailableScore,
-                                          List<ConquestSyncPacket.SquadStatus> newJoinableSquads) {
+                                          List<ConquestSyncPacket.SquadStatus> newJoinableSquads,
+                                          List<ConquestSyncPacket.SdmSquadStatus> newSdmSquads, int newYourSdmSquad,
+                                          int newSdmKillLimit, int newSdmWinner) {
         points = List.copyOf(newPoints);
         ticketsA = newTicketsA;
         ticketsB = newTicketsB;
@@ -83,6 +89,10 @@ public final class ConquestClientData {
         callIns = List.copyOf(newCallIns);
         availableScore = newAvailableScore;
         joinableSquads = List.copyOf(newJoinableSquads);
+        sdmSquads = List.copyOf(newSdmSquads);
+        yourSdmSquad = newYourSdmSquad;
+        sdmKillLimit = newSdmKillLimit;
+        sdmWinner = newSdmWinner;
         revision++;
     }
 
@@ -267,6 +277,25 @@ public final class ConquestClientData {
 
     public static synchronized List<ConquestSyncPacket.SquadStatus> getJoinableSquads() {
         return joinableSquads;
+    }
+
+    /** Squad Deathmatch squads, sorted by kills descending then number; empty outside SQUAD_DM. */
+    public static synchronized List<ConquestSyncPacket.SdmSquadStatus> getSdmSquads() {
+        return sdmSquads;
+    }
+
+    /** The viewer's own Squad Deathmatch squad number; 0 = none. */
+    public static synchronized int getYourSdmSquad() {
+        return yourSdmSquad;
+    }
+
+    public static synchronized int getSdmKillLimit() {
+        return sdmKillLimit;
+    }
+
+    /** Winning squad number once the round is ENDED; 0 = no winner (draw) or not Squad Deathmatch. */
+    public static synchronized int getSdmWinner() {
+        return sdmWinner;
     }
 
     private ConquestClientData() {}

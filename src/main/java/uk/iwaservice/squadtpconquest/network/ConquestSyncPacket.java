@@ -25,7 +25,8 @@ public record ConquestSyncPacket(List<PointStatus> points,
                                   Team attackerTeam, int sectorIndex, int sectorCount,
                                   int attackerTickets, int attackerTicketsMax, int tdmKillLimit,
                                   List<CallInStatus> callIns, int availableScore,
-                                  List<SquadStatus> joinableSquads) implements CustomPacketPayload {
+                                  List<SquadStatus> joinableSquads,
+                                  List<SdmSquadStatus> sdmSquads, int yourSdmSquad, int sdmKillLimit, int sdmWinner) implements CustomPacketPayload {
 
     public static final Type<ConquestSyncPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(uk.iwaservice.squadtpconquest.SquadTpConquest.MODID, "conquest_sync"));
@@ -61,6 +62,15 @@ public record ConquestSyncPacket(List<PointStatus> points,
      * display, in squadtp's own member-map order.
      */
     public record SquadStatus(String leaderName, List<String> memberNames) {}
+
+    /**
+     * One Squad Deathmatch squad: its number (1-based; color via {@code Team.sdmSquadColor}), kills
+     * so far and the online member names. Empty list outside SQUAD_DM. Sent sorted by kills
+     * descending, then number ascending. Of the surrounding fields, {@code yourSdmSquad} is the
+     * viewer's own squad number (0 = none) and {@code sdmWinner} the winning squad's number once ENDED
+     * (0 = no winner / draw / not SQUAD_DM).
+     */
+    public record SdmSquadStatus(int number, int kills, List<String> memberNames) {}
 
     public static void encode(ConquestSyncPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.points.size());
@@ -107,6 +117,18 @@ public record ConquestSyncPacket(List<PointStatus> points,
                 buf.writeUtf(name);
             }
         }
+        buf.writeVarInt(msg.sdmSquads.size());
+        for (SdmSquadStatus s : msg.sdmSquads) {
+            buf.writeVarInt(s.number());
+            buf.writeVarInt(s.kills());
+            buf.writeVarInt(s.memberNames().size());
+            for (String name : s.memberNames()) {
+                buf.writeUtf(name);
+            }
+        }
+        buf.writeVarInt(msg.yourSdmSquad);
+        buf.writeVarInt(msg.sdmKillLimit);
+        buf.writeVarInt(msg.sdmWinner);
     }
 
     public static ConquestSyncPacket decode(FriendlyByteBuf buf) {
@@ -148,8 +170,23 @@ public record ConquestSyncPacket(List<PointStatus> points,
             }
             joinableSquads.add(new SquadStatus(leaderName, memberNames));
         }
+        int sdmSquadCount = buf.readVarInt();
+        List<SdmSquadStatus> sdmSquads = new ArrayList<>(sdmSquadCount);
+        for (int i = 0; i < sdmSquadCount; i++) {
+            int number = buf.readVarInt();
+            int kills = buf.readVarInt();
+            int memberCount = buf.readVarInt();
+            List<String> memberNames = new ArrayList<>(memberCount);
+            for (int j = 0; j < memberCount; j++) {
+                memberNames.add(buf.readUtf());
+            }
+            sdmSquads.add(new SdmSquadStatus(number, kills, memberNames));
+        }
+        int yourSdmSquad = buf.readVarInt();
+        int sdmKillLimit = buf.readVarInt();
+        int sdmWinner = buf.readVarInt();
         return new ConquestSyncPacket(points, ticketsA, ticketsB, active, state, mode, yourTeam, canAdmin, openScreen,
                 attackerTeam, sectorIndex, sectorCount, attackerTickets, attackerTicketsMax, tdmKillLimit,
-                callIns, availableScore, joinableSquads);
+                callIns, availableScore, joinableSquads, sdmSquads, yourSdmSquad, sdmKillLimit, sdmWinner);
     }
 }
