@@ -9,13 +9,15 @@ import javax.annotation.Nullable;
 /**
  * Which ruleset a round uses. CONQUEST is the original capture-point mode;
  * TDM (Team Deathmatch) needs no capture points and is won by kills instead. SQUAD_DM (Squad
- * Deathmatch) is a free-for-all between numbered squads, also won by kills.
+ * Deathmatch) is a free-for-all between numbered squads, also won by kills. KOTH (King of the Hill)
+ * is a two-team mode where teams score by holding one rotating capture point alone.
  */
 public enum GameMode implements StringRepresentable {
     CONQUEST("conquest"),
     TDM("tdm"),
     BREAKTHROUGH("breakthrough"),
-    SQUAD_DM("sdm");
+    SQUAD_DM("sdm"),
+    KOTH("koth");
 
     private final String key;
 

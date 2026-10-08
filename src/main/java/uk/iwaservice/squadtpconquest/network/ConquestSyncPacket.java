@@ -28,7 +28,9 @@ public record ConquestSyncPacket(List<PointStatus> points,
                                   int attackerTickets, int attackerTicketsMax, int tdmKillLimit,
                                   List<CallInStatus> callIns, int availableScore,
                                   List<SquadStatus> joinableSquads,
-                                  List<SdmSquadStatus> sdmSquads, int yourSdmSquad, int sdmKillLimit, int sdmWinner) {
+                                  List<SdmSquadStatus> sdmSquads, int yourSdmSquad, int sdmKillLimit, int sdmWinner,
+                                  String kothHill, String kothNextHill, int kothSecondsToRotate, int kothTargetScore,
+                                  Team kothHolder) {
 
     /**
      * One capture point as seen by a specific viewer (contested/inZone are per-viewer).
@@ -62,6 +64,13 @@ public record ConquestSyncPacket(List<PointStatus> points,
      * (0 = no winner / draw / not SQUAD_DM).
      */
     public record SdmSquadStatus(int number, int kills, List<String> memberNames) {}
+
+    /**
+     * King of the Hill fields: {@code kothHill}/{@code kothNextHill} name the active and the announced
+     * next hill ("" = none; both "" outside KOTH), {@code kothSecondsToRotate} counts down to the move,
+     * {@code kothTargetScore} is the score to win and {@code kothHolder} the team holding the hill alone
+     * (NEUTRAL when contested or empty). In KOTH, PointStatus.active marks exactly the hill and the next hill.
+     */
 
     public static void encode(ConquestSyncPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.points.size());
@@ -120,6 +129,11 @@ public record ConquestSyncPacket(List<PointStatus> points,
         buf.writeVarInt(msg.yourSdmSquad);
         buf.writeVarInt(msg.sdmKillLimit);
         buf.writeVarInt(msg.sdmWinner);
+        buf.writeUtf(msg.kothHill);
+        buf.writeUtf(msg.kothNextHill);
+        buf.writeVarInt(msg.kothSecondsToRotate);
+        buf.writeVarInt(msg.kothTargetScore);
+        buf.writeEnum(msg.kothHolder);
     }
 
     public static ConquestSyncPacket decode(FriendlyByteBuf buf) {
@@ -176,9 +190,15 @@ public record ConquestSyncPacket(List<PointStatus> points,
         int yourSdmSquad = buf.readVarInt();
         int sdmKillLimit = buf.readVarInt();
         int sdmWinner = buf.readVarInt();
+        String kothHill = buf.readUtf();
+        String kothNextHill = buf.readUtf();
+        int kothSecondsToRotate = buf.readVarInt();
+        int kothTargetScore = buf.readVarInt();
+        Team kothHolder = buf.readEnum(Team.class);
         return new ConquestSyncPacket(points, ticketsA, ticketsB, active, state, mode, yourTeam, canAdmin, openScreen,
                 attackerTeam, sectorIndex, sectorCount, attackerTickets, attackerTicketsMax, tdmKillLimit,
-                callIns, availableScore, joinableSquads, sdmSquads, yourSdmSquad, sdmKillLimit, sdmWinner);
+                callIns, availableScore, joinableSquads, sdmSquads, yourSdmSquad, sdmKillLimit, sdmWinner,
+                kothHill, kothNextHill, kothSecondsToRotate, kothTargetScore, kothHolder);
     }
 
     public static void handle(ConquestSyncPacket msg, java.util.function.Supplier<NetworkEvent.Context> ctx) {

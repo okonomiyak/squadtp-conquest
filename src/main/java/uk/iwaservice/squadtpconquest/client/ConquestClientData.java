@@ -60,6 +60,11 @@ public final class ConquestClientData {
     private static int yourSdmSquad;
     private static int sdmKillLimit;
     private static int sdmWinner;
+    private static String kothHill = "";
+    private static String kothNextHill = "";
+    private static int kothSecondsToRotate;
+    private static int kothTargetScore;
+    private static Team kothHolder = Team.NEUTRAL;
     /** Incremented on every update; lets the GUI detect changes cheaply. */
     private static int revision;
 
@@ -71,7 +76,9 @@ public final class ConquestClientData {
                                           List<ConquestSyncPacket.CallInStatus> newCallIns, int newAvailableScore,
                                           List<ConquestSyncPacket.SquadStatus> newJoinableSquads,
                                           List<ConquestSyncPacket.SdmSquadStatus> newSdmSquads, int newYourSdmSquad,
-                                          int newSdmKillLimit, int newSdmWinner) {
+                                          int newSdmKillLimit, int newSdmWinner,
+                                          String newKothHill, String newKothNextHill, int newKothSecondsToRotate,
+                                          int newKothTargetScore, Team newKothHolder) {
         points = List.copyOf(newPoints);
         ticketsA = newTicketsA;
         ticketsB = newTicketsB;
@@ -93,6 +100,11 @@ public final class ConquestClientData {
         yourSdmSquad = newYourSdmSquad;
         sdmKillLimit = newSdmKillLimit;
         sdmWinner = newSdmWinner;
+        kothHill = newKothHill;
+        kothNextHill = newKothNextHill;
+        kothSecondsToRotate = newKothSecondsToRotate;
+        kothTargetScore = newKothTargetScore;
+        kothHolder = newKothHolder;
         revision++;
     }
 
@@ -296,6 +308,40 @@ public final class ConquestClientData {
     /** Winning squad number once the round is ENDED; 0 = no winner (draw) or not Squad Deathmatch. */
     public static synchronized int getSdmWinner() {
         return sdmWinner;
+    }
+
+    /** King of the Hill: the active hill's name, "" if none. */
+    public static synchronized String getKothHill() {
+        return kothHill;
+    }
+
+    /** King of the Hill: the announced next hill's name, "" while none is announced. */
+    public static synchronized String getKothNextHill() {
+        return kothNextHill;
+    }
+
+    public static synchronized int getKothSecondsToRotate() {
+        return kothSecondsToRotate;
+    }
+
+    public static synchronized int getKothTargetScore() {
+        return kothTargetScore;
+    }
+
+    /** King of the Hill: the team holding the hill alone; NEUTRAL when contested or empty. */
+    public static synchronized Team getKothHolder() {
+        return kothHolder;
+    }
+
+    /**
+     * The team a point is shown as holding (HUD icons, particles, map markers): in KOTH the hill's
+     * current holder and neutral for the next hill; otherwise the usual owner/capturing resolution.
+     */
+    public static synchronized Team displayTeam(ConquestSyncPacket.PointStatus p) {
+        if (mode == GameMode.KOTH) {
+            return p.name().equals(kothHill) ? kothHolder : Team.NEUTRAL;
+        }
+        return Team.resolveActive(p.owner(), p.capturingTeam(), p.flagLevel());
     }
 
     private ConquestClientData() {}

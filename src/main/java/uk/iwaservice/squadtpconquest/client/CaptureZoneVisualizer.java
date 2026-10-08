@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.resources.ResourceLocation;
 import org.joml.Vector3f;
+import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestZonesPacket;
@@ -22,15 +23,27 @@ public final class CaptureZoneVisualizer {
     private static final float PARTICLE_SCALE = 3.0f;
     /** Heights (relative to ground) stacked at each boundary point so the ring reads as a wall, not a floor stripe. */
     private static final double[] HEIGHT_OFFSETS = {0.1, 0.9, 1.7};
+    /** Dim ring of the announced next King of the Hill point. */
+    private static final int KOTH_NEXT_RGB = 0x808080;
 
     /** Spawns one refresh of every zone in the client's current dimension. */
     public static void render(ClientLevel level) {
         ResourceLocation dim = level.dimension().location();
         for (ConquestSyncPacket.PointStatus point : ConquestClientData.getPoints()) {
-            if (point.dimension().equals(dim)) {
-                Team color = Team.resolveActive(point.owner(), point.capturingTeam(), point.flagLevel());
-                renderRing(level, point.pos(), point.radius(), color.zoneRgb());
+            if (!point.dimension().equals(dim)) {
+                continue;
             }
+            if (ConquestClientData.getMode() == GameMode.KOTH) {
+                // Only the hill (holder's color) and the announced next hill (dim); nothing else is in play.
+                if (point.active()) {
+                    boolean hill = point.name().equals(ConquestClientData.getKothHill());
+                    renderRing(level, point.pos(), point.radius(),
+                            hill ? ConquestClientData.displayTeam(point).zoneRgb() : KOTH_NEXT_RGB);
+                }
+                continue;
+            }
+            Team color = Team.resolveActive(point.owner(), point.capturingTeam(), point.flagLevel());
+            renderRing(level, point.pos(), point.radius(), color.zoneRgb());
         }
         ConquestZonesPacket zones = ConquestClientData.getZones();
         for (ConquestZonesPacket.Box box : zones.boxes()) {

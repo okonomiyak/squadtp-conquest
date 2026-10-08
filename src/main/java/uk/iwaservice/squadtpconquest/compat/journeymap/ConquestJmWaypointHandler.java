@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import uk.iwaservice.squadtpconquest.SquadTpConquest;
 import uk.iwaservice.squadtpconquest.client.ConquestClientData;
+import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 
@@ -48,8 +49,12 @@ public final class ConquestJmWaypointHandler {
         List<Wp> desired = new ArrayList<>();
         if (ConquestClientData.getState() == RoundState.IN_PROGRESS
                 && api.playerAccepts(SquadTpConquest.MODID, DisplayType.Waypoint)) {
+            boolean koth = ConquestClientData.getMode() == GameMode.KOTH;
             for (ConquestSyncPacket.PointStatus point : ConquestClientData.getPoints()) {
-                int color = point.owner().hudColor() & 0xFFFFFF;
+                if (koth && !point.active()) {
+                    continue; // King of the Hill: only the hill and the announced next hill
+                }
+                int color = (koth ? ConquestClientData.displayTeam(point) : point.owner()).hudColor() & 0xFFFFFF;
                 desired.add(new Wp(point.name(), point.name(), point.dimension(), point.pos(), color));
             }
 

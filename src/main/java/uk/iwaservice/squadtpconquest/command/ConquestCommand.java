@@ -75,6 +75,9 @@ public final class ConquestCommand {
         CONFIG_KEYS.put("selfDamageMultiplier", doubleEntry(Config.SELF_DAMAGE_MULTIPLIER));
         CONFIG_KEYS.put("startCountdownSeconds", intEntry(Config.START_COUNTDOWN_SECONDS));
         CONFIG_KEYS.put("tdmKillLimit", intEntry(Config.TDM_KILL_LIMIT));
+        CONFIG_KEYS.put("kothTargetScore", intEntry(Config.KOTH_TARGET_SCORE));
+        CONFIG_KEYS.put("kothRotationSeconds", intEntry(Config.KOTH_ROTATION_SECONDS));
+        CONFIG_KEYS.put("kothAnnounceSeconds", intEntry(Config.KOTH_ANNOUNCE_SECONDS));
         CONFIG_KEYS.put("sdmKillLimit", intEntry(Config.SDM_KILL_LIMIT));
         CONFIG_KEYS.put("sdmSquadSize", intEntry(Config.SDM_SQUAD_SIZE));
         CONFIG_KEYS.put("assistWindowSeconds", intEntry(Config.ASSIST_WINDOW_SECONDS));
@@ -330,7 +333,7 @@ public final class ConquestCommand {
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
                                 .then(Commands.argument("mode", StringArgumentType.word())
-                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"conquest", "tdm", "breakthrough", "sdm"}, b))
+                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"conquest", "tdm", "breakthrough", "sdm", "koth"}, b))
                                         .executes(ConquestCommand::setMode))))
                 .then(Commands.literal("sector")
                         .requires(src -> src.hasPermission(2))
@@ -1312,6 +1315,7 @@ public final class ConquestCommand {
             case TEAM_B_EMPTY -> fail(ctx, Component.translatable("conquest.msg.team_empty", Team.B.display()));
             case NO_BOUNDARY -> fail(ctx, Component.translatable("conquest.msg.no_boundary"));
             case NOT_ENOUGH_SQUADS -> fail(ctx, Component.translatable("conquest.msg.not_enough_squads"));
+            case KOTH_NEEDS_POINTS -> fail(ctx, Component.translatable("conquest.msg.koth_needs_points"));
         };
     }
 
@@ -1347,7 +1351,8 @@ public final class ConquestCommand {
         MutableComponent msg = Component.translatable("conquest.status.header").withStyle(ChatFormatting.GOLD);
         msg.append("\n").append(Component.translatable("conquest.status.mode", manager.getMode().display())
                 .withStyle(ChatFormatting.GRAY));
-        String countsKey = manager.getMode() == GameMode.TDM ? "conquest.status.kills" : "conquest.status.tickets";
+        String countsKey = manager.getMode() == GameMode.TDM ? "conquest.status.kills"
+                : manager.getMode() == GameMode.KOTH ? "conquest.status.koth_score" : "conquest.status.tickets";
         if (manager.getMode() == GameMode.SQUAD_DM) {
             msg.append("\n").append(Component.translatable("conquest.status.sdm", manager.sdmSquadCount(),
                     Component.translatable(stateKey)));
@@ -1366,6 +1371,14 @@ public final class ConquestCommand {
             if (remaining >= 0) {
                 msg.append("\n").append(Component.translatable("conquest.status.time_left", remaining)
                         .withStyle(ChatFormatting.GRAY));
+            }
+            if (manager.getMode() == GameMode.KOTH) {
+                msg.append("\n").append(Component.translatable("conquest.status.koth_hill", manager.getKothHill(),
+                        manager.getKothSecondsToRotate()).withStyle(ChatFormatting.GRAY));
+                if (manager.getKothNextHill() != null) {
+                    msg.append("\n").append(Component.translatable("conquest.status.koth_next", manager.getKothNextHill())
+                            .withStyle(ChatFormatting.GRAY));
+                }
             }
         } else if (state == RoundState.ENDED) {
             Team winner = manager.getLastWinner();

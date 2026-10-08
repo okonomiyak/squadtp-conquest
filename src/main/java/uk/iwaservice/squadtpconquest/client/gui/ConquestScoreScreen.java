@@ -252,13 +252,23 @@ public class ConquestScoreScreen extends Screen {
         int ticketsB = ConquestClientData.getTicketsB();
         int total = Math.max(1, ticketsA + ticketsB);
         int split = Math.round(barWidth * ticketsA / (float) total);
+        boolean koth = ConquestClientData.getMode() == GameMode.KOTH;
+        int target = Math.max(1, ConquestClientData.getKothTargetScore());
 
         graphics.fill(x - 1, y - 1, x + barWidth + 1, y + barHeight + 1, 0xA0000000);
-        graphics.fill(x, y, x + split, y + barHeight, Team.A.hudColor());
-        graphics.fill(x + split, y, x + barWidth, y + barHeight, Team.B.hudColor());
+        if (koth) {
+            // Each side fills from its own end toward the middle as it nears the target score.
+            int fillA = Math.round(barWidth / 2f * Math.min(1f, ticketsA / (float) target));
+            int fillB = Math.round(barWidth / 2f * Math.min(1f, ticketsB / (float) target));
+            graphics.fill(x, y, x + fillA, y + barHeight, Team.A.hudColor());
+            graphics.fill(x + barWidth - fillB, y, x + barWidth, y + barHeight, Team.B.hudColor());
+        } else {
+            graphics.fill(x, y, x + split, y + barHeight, Team.A.hudColor());
+            graphics.fill(x + split, y, x + barWidth, y + barHeight, Team.B.hudColor());
+        }
 
-        String aText = String.valueOf(ticketsA);
-        String bText = String.valueOf(ticketsB);
+        String aText = koth ? ticketsA + "/" + target : String.valueOf(ticketsA);
+        String bText = koth ? ticketsB + "/" + target : String.valueOf(ticketsB);
         graphics.drawString(this.font, aText, x - this.font.width(aText) - 4, y + 1, COLOR_TEXT);
         graphics.drawString(this.font, bText, x + barWidth + 4, y + 1, COLOR_TEXT);
         return y + barHeight;
@@ -270,9 +280,14 @@ public class ConquestScoreScreen extends Screen {
         }
         record PointIcon(String name, Team activeTeam, boolean contested) {}
         List<PointIcon> points = new ArrayList<>();
+        boolean koth = ConquestClientData.getMode() == GameMode.KOTH;
         for (ConquestSyncPacket.PointStatus p : ConquestClientData.getPoints()) {
-            points.add(new PointIcon(p.name(),
-                    Team.resolveActive(p.owner(), p.capturingTeam(), p.flagLevel()), p.contested()));
+            if (!koth || p.active()) { // King of the Hill: only the hill and the announced next hill
+                points.add(new PointIcon(p.name(), ConquestClientData.displayTeam(p), p.contested()));
+            }
+        }
+        if (points.isEmpty()) {
+            return y;
         }
 
         int totalWidth = points.size() * ICON_SIZE + (points.size() - 1) * ICON_GAP;
@@ -327,7 +342,7 @@ public class ConquestScoreScreen extends Screen {
         }
 
         MutableComponent line = Component.empty();
-        if (!ConquestClientData.getPoints().isEmpty()) {
+        if (!ConquestClientData.getPoints().isEmpty() && ConquestClientData.getMode() != GameMode.KOTH) {
             line.append(Component.translatable("conquest.score.sectors", sectorsA, sectorsB)
                     .withStyle(ChatFormatting.GRAY))
                     .append("   ");

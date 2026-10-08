@@ -115,6 +115,16 @@ public class ConquestManager extends SavedData {
     /** Random spawn candidates sampled per {@link #teleportToSdmSpawn}. */
     private static final int SDM_SPAWN_SAMPLES = 16;
 
+    // --- king of the hill ---
+
+    /** King of the Hill: name of the capture point currently worth score; empty outside a KOTH round. */
+    private String kothHill = "";
+    /** The already announced next hill, or null while none has been announced. */
+    @Nullable
+    private String kothNextHill;
+    /** Seconds until the hill moves; counted down only while IN_PROGRESS. */
+    private int kothSecondsToRotate;
+
     private static final int BEACON_VISUAL_RADIUS = 2;
     private static final int SPAWN_ZONE_RGB = 0xFAD933;
 
@@ -2220,7 +2230,7 @@ public class ConquestManager extends SavedData {
 
     /** Outcome of a /conquest start attempt, used to pick the right failure message. */
     public enum StartResult { OK, ALREADY_RUNNING, RESULT_PENDING, NO_POINT, NO_SECTOR, TEAM_A_EMPTY, TEAM_B_EMPTY,
-        NO_BOUNDARY, NOT_ENOUGH_SQUADS }
+        NO_BOUNDARY, NOT_ENOUGH_SQUADS, KOTH_NEEDS_POINTS }
 
     /**
      * Validates, resets all points/tickets, teleports teams, then either goes
@@ -2239,6 +2249,9 @@ public class ConquestManager extends SavedData {
         }
         if (mode == GameMode.BREAKTHROUGH && firstNormalSector() == null) {
             return StartResult.NO_SECTOR;
+        }
+        if (mode == GameMode.KOTH && points.size() < 2) {
+            return StartResult.KOTH_NEEDS_POINTS;
         }
         List<SdmGroup> sdmGroups = null;
         if (mode == GameMode.SQUAD_DM) {
@@ -2274,7 +2287,7 @@ public class ConquestManager extends SavedData {
             captureTerrainSnapshot(server);
         }
 
-        if (mode == GameMode.CONQUEST || mode == GameMode.BREAKTHROUGH) {
+        if (mode == GameMode.CONQUEST || mode == GameMode.BREAKTHROUGH || mode == GameMode.KOTH) {
             for (CapturePoint point : points.values()) {
                 point.reset();
                 ServerLevel level = server.getLevel(point.getDimension());
@@ -2300,6 +2313,9 @@ public class ConquestManager extends SavedData {
         sdmSquadOf.clear();
         sdmKills.clear();
         lastSdmWinner = 0;
+        kothHill = mode == GameMode.KOTH ? Objects.requireNonNullElse(randomKothHill(null), "") : "";
+        kothNextHill = null;
+        kothSecondsToRotate = mode == GameMode.KOTH ? Config.KOTH_ROTATION_SECONDS.get() : 0;
         if (sdmGroups != null) {
             applySdmSquads(server, sdmGroups);
         }
@@ -2334,6 +2350,14 @@ public class ConquestManager extends SavedData {
             broadcast(server, Component.translatable("conquest.msg.started_tdm", limitText).withStyle(ChatFormatting.GOLD));
             broadcastTitle(server, Component.translatable("conquest.title.started_tdm").withStyle(ChatFormatting.GOLD),
                     Component.translatable("conquest.title.started_tdm_sub", limitText));
+            return;
+        }
+        if (mode == GameMode.KOTH) {
+            String targetText = String.valueOf(Config.KOTH_TARGET_SCORE.get());
+            broadcast(server, Component.translatable("conquest.msg.started_koth", targetText, kothHill)
+                    .withStyle(ChatFormatting.GOLD));
+            broadcastTitle(server, Component.translatable("conquest.title.started_koth").withStyle(ChatFormatting.GOLD),
+                    Component.translatable("conquest.title.started_koth_sub", kothHill, targetText));
             return;
         }
         if (mode == GameMode.SQUAD_DM) {
@@ -2858,6 +2882,91 @@ public class ConquestManager extends SavedData {
         return occ;
     }
 
+    /**
+     * King of the Hill per-second logic (no flag capture in this mode): the active hill's lone
+     * holder team scores a point (ticketsA/ticketsB, counting up), then the rotation clock runs,
+     * announcing the next hill {@code kothAnnounceSeconds} ahead of the move.
+     */
+    private void tickKoth(MinecraftServer server, Map<String, PointOccupancy> occupancyByPoint) {
+        if (!points.containsKey(kothHill)) {
+            // The hill was deleted mid-round: move on to another point right away.
+            String replacement = randomKothHill(null);
+            if (replacement == null) {
+                return;
+            }
+            switchKothHill(server, replacement);
+        }
+        CapturePoint hill = points.get(kothHill);
+        PointOccupancy occ = computeOccupancy(server, hill);
+        occupancyByPoint.put(hill.getName(), occ);
+        // One team alone holds it; contested or empty scores nothing.
+        if (occ.countA() > 0 ^ occ.countB() > 0) {
+            Team holder = occ.countA() > 0 ? Team.A : Team.B;
+            if (holder == Team.A) {
+                ticketsA++;
+            } else {
+                ticketsB++;
+            }
+            if (tickets(holder) >= Config.KOTH_TARGET_SCORE.get()) {
+                endRound(server, holder);
+                return;
+            }
+        }
+
+        if (--kothSecondsToRotate <= 0) {
+            String next = kothNextHill != null && points.containsKey(kothNextHill) ? kothNextHill : randomKothHill(kothHill);
+            if (next != null) {
+                switchKothHill(server, next);
+            } else {
+                kothSecondsToRotate = Config.KOTH_ROTATION_SECONDS.get();
+            }
+        }
+        // Also reached right after a switch, so an announce time >= the rotation time warns at once.
+        int announce = Config.KOTH_ANNOUNCE_SECONDS.get();
+        if (kothNextHill == null && announce > 0 && kothSecondsToRotate <= announce) {
+            kothNextHill = randomKothHill(kothHill);
+            if (kothNextHill != null) {
+                Component message = Component.translatable("conquest.msg.koth_next", kothNextHill, kothSecondsToRotate)
+                        .withStyle(ChatFormatting.YELLOW);
+                broadcast(server, message);
+                for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                    player.displayClientMessage(message, true);
+                }
+            }
+        }
+        setDirty();
+    }
+
+    private void switchKothHill(MinecraftServer server, String name) {
+        kothHill = name;
+        kothNextHill = null;
+        kothSecondsToRotate = Config.KOTH_ROTATION_SECONDS.get();
+        Component message = Component.translatable("conquest.msg.koth_moved", name).withStyle(ChatFormatting.GOLD);
+        broadcast(server, message);
+        broadcastTitle(server, message, Component.empty());
+    }
+
+    /** A random capture point other than {@code except}; null if there is none. */
+    @Nullable
+    private String randomKothHill(@Nullable String except) {
+        List<String> names = new ArrayList<>(points.keySet());
+        names.remove(except);
+        return names.isEmpty() ? null : names.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(names.size()));
+    }
+
+    public String getKothHill() {
+        return kothHill;
+    }
+
+    @Nullable
+    public String getKothNextHill() {
+        return kothNextHill;
+    }
+
+    public int getKothSecondsToRotate() {
+        return kothSecondsToRotate;
+    }
+
     /** Breakthrough per-second logic: active sector's capture points, sector clock, front-line zones, win checks. */
     private void tickBreakthrough(MinecraftServer server, Map<String, PointOccupancy> occupancyByPoint) {
         Sector sector = currentSector();
@@ -3025,6 +3134,8 @@ public class ConquestManager extends SavedData {
                 }
             } else if (mode == GameMode.BREAKTHROUGH) {
                 tickBreakthrough(server, occupancyByPoint);
+            } else if (mode == GameMode.KOTH) {
+                tickKoth(server, occupancyByPoint);
             }
 
             if (mode != GameMode.SQUAD_DM) {
@@ -3459,7 +3570,9 @@ public class ConquestManager extends SavedData {
         Sector active = currentSector();
         for (CapturePoint point : points.values()) {
             PointOccupancy occ = occupancyByPoint.getOrDefault(point.getName(), EMPTY_OCCUPANCY);
-            boolean pointActive = mode != GameMode.BREAKTHROUGH
+            boolean pointActive = mode == GameMode.KOTH
+                    ? point.getName().equals(kothHill) || point.getName().equals(kothNextHill)
+                    : mode != GameMode.BREAKTHROUGH
                     || (active != null && active.getPointNames().contains(point.getName()));
             statuses.add(new ConquestSyncPacket.PointStatus(point.getName(), point.getRadius(), point.getOwner(),
                     point.getCapturingTeam(), point.getFlagLevel(), occ.contested(),
@@ -3472,13 +3585,19 @@ public class ConquestManager extends SavedData {
                     callIn.getName(), callIn.getScoreCost(), callIn.getItemId(), callIn.getCount()));
         }
         Integer viewerSquad = sdmSquadOf(viewer.getUUID());
+        // KOTH: the hill's lone holder (neutral when contested or empty), from this tick's occupancy.
+        PointOccupancy hillOcc = mode == GameMode.KOTH ? occupancyByPoint.get(kothHill) : null;
+        Team kothHolder = hillOcc == null || hillOcc.contested() ? Team.NEUTRAL
+                : hillOcc.countA() > 0 ? Team.A : hillOcc.countB() > 0 ? Team.B : Team.NEUTRAL;
         return new ConquestSyncPacket(statuses, ticketsA, ticketsB, isActive(), state, mode,
                 teamOf(viewer.getUUID()), viewer.hasPermissions(2), openScreen,
                 attackerTeam, sectorIndex(), sectorCount(), attackerTickets, attackerTicketsMax,
                 Config.TDM_KILL_LIMIT.get(),
                 callInStatuses, availableScore(viewer.getUUID()), joinableSquadsFor(viewer),
                 buildSdmSquadStatuses(viewer.server), viewerSquad == null ? 0 : viewerSquad,
-                Config.SDM_KILL_LIMIT.get(), mode == GameMode.SQUAD_DM && state == RoundState.ENDED ? lastSdmWinner : 0);
+                Config.SDM_KILL_LIMIT.get(), mode == GameMode.SQUAD_DM && state == RoundState.ENDED ? lastSdmWinner : 0,
+                mode == GameMode.KOTH ? kothHill : "", mode == GameMode.KOTH && kothNextHill != null ? kothNextHill : "",
+                kothSecondsToRotate, Config.KOTH_TARGET_SCORE.get(), kothHolder);
     }
 
     /** Squad Deathmatch standings (empty in other modes): kills descending, then squad number. */
@@ -3622,6 +3741,9 @@ public class ConquestManager extends SavedData {
             manager.lastWinner = Team.valueOf(tag.getString("LastWinner"));
         }
         manager.lastSdmWinner = tag.getInt("LastSdmWinner");
+        manager.kothHill = tag.getString("KothHill");
+        manager.kothNextHill = tag.contains("KothNextHill") ? tag.getString("KothNextHill") : null;
+        manager.kothSecondsToRotate = tag.getInt("KothSecondsToRotate");
         ListTag sdmSquadList = tag.getList("SdmSquads", Tag.TAG_COMPOUND);
         for (int i = 0; i < sdmSquadList.size(); i++) {
             CompoundTag s = sdmSquadList.getCompound(i);
@@ -3792,6 +3914,11 @@ public class ConquestManager extends SavedData {
             tag.putString("LastWinner", lastWinner.name());
         }
         tag.putInt("LastSdmWinner", lastSdmWinner);
+        tag.putString("KothHill", kothHill);
+        if (kothNextHill != null) {
+            tag.putString("KothNextHill", kothNextHill);
+        }
+        tag.putInt("KothSecondsToRotate", kothSecondsToRotate);
         ListTag sdmSquadList = new ListTag();
         for (Map.Entry<UUID, Integer> e : sdmSquadOf.entrySet()) {
             CompoundTag s = new CompoundTag();
