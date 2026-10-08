@@ -232,7 +232,7 @@ public class ConquestScoreScreen extends Screen {
         for (int i = sdmScroll; i < Math.min(rows.size(), sdmScroll + visible); i++) {
             SdmRow row = rows.get(i);
             if (row.entry() == null) {
-                graphics.fill(x - 2, y - 1, x + width, y + 9, 0x60000000 | squadRgb(row.squad()));
+                graphics.fill(x - 2, y - 1, x + width, y + 9, 0x60000000 | Team.sdmSquadRgb(row.squad()));
                 graphics.drawString(this.font, Component.empty().append(ConquestHudOverlay.squadLabel(row.squad()))
                         .append("  ").append(Component.translatable("conquest.score.sdm_kills", row.kills())), x, y, COLOR_TEXT);
             } else {
@@ -252,11 +252,6 @@ public class ConquestScoreScreen extends Screen {
         }
     }
 
-    private static int squadRgb(int squad) {
-        Integer rgb = Team.sdmSquadColor(squad).getColor();
-        return rgb == null ? 0xFFFFFF : rgb;
-    }
-
     private int renderTicketBar(GuiGraphics graphics, int panelLeft, int panelRight, int y) {
         int barWidth = 260;
         int barHeight = 10;
@@ -270,11 +265,8 @@ public class ConquestScoreScreen extends Screen {
 
         graphics.fill(x - 1, y - 1, x + barWidth + 1, y + barHeight + 1, 0xA0000000);
         if (koth) {
-            // Each side fills from its own end toward the middle as it nears the target score.
-            int fillA = Math.round(barWidth / 2f * Math.min(1f, ticketsA / (float) target));
-            int fillB = Math.round(barWidth / 2f * Math.min(1f, ticketsB / (float) target));
-            graphics.fill(x, y, x + fillA, y + barHeight, Team.A.hudColor());
-            graphics.fill(x + barWidth - fillB, y, x + barWidth, y + barHeight, Team.B.hudColor());
+            ConquestHudOverlay.fillKothBar(graphics, x, y, barWidth, barHeight, ticketsA, ticketsB, target,
+                    Team.A.hudColor(), Team.B.hudColor());
         } else {
             graphics.fill(x, y, x + split, y + barHeight, Team.A.hudColor());
             graphics.fill(x + split, y, x + barWidth, y + barHeight, Team.B.hudColor());
