@@ -17,6 +17,7 @@
   "conquest.msg.team_joined": "%sに参加した",
   "conquest.msg.team_joined_other": "%s人を%sに参加させた",
   "conquest.msg.unknown_team": "チームは a か b を指定してください",
+  "conquest.msg.attacker_must_be_ab": "攻撃側はチームAかBを指定してください",
   "conquest.msg.unknown_role": "役割は attacker か defender を指定してください",
   "conquest.msg.admin_team_requires_op": "管理者チームにはOPのみ参加できます",
   "conquest.msg.shuffled": "%s人をチームA/Bにシャッフルした",

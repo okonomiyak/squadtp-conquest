@@ -17,6 +17,7 @@
   "conquest.msg.team_joined": "Joined %s",
   "conquest.msg.team_joined_other": "%s player(s) joined %s",
   "conquest.msg.unknown_team": "Unknown team (use a or b)",
+  "conquest.msg.attacker_must_be_ab": "Attacker team must be a or b",
   "conquest.msg.unknown_role": "Unknown role (use attacker or defender)",
   "conquest.msg.admin_team_requires_op": "Only operators can join the admin team",
   "conquest.msg.shuffled": "Shuffled %s players into Team A/B",
