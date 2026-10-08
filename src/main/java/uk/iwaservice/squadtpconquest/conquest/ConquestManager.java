@@ -2441,11 +2441,14 @@ public class ConquestManager extends SavedData {
                 squads.computeIfAbsent(squad, k -> new ArrayList<>()).add(player);
             }
         }
+        // One shared pool, sampled once and allowed to load chunks: a round start is a one-off, and
+        // the arena may be entirely unloaded while everyone still stands in a distant lobby.
+        List<BlockPos> pool = sampleSdmSpots(level, min, max, Math.max(SDM_SPAWN_SAMPLES, squads.size() * 4), false);
         List<BlockPos> anchors = new ArrayList<>();
         for (List<ServerPlayer> members : squads.values()) {
             BlockPos anchor = null;
             double bestMinDistSq = -1;
-            for (BlockPos spot : sampleSdmSpots(level, min, max)) {
+            for (BlockPos spot : pool) {
                 double minDistSq = Double.MAX_VALUE;
                 for (BlockPos other : anchors) {
                     minDistSq = Math.min(minDistSq, other.distSqr(spot));
@@ -2457,12 +2460,14 @@ public class ConquestManager extends SavedData {
             }
             if (anchor == null) {
                 anchor = sdmCenterSpot(level, min, max);
+            } else {
+                pool.remove(anchor);
             }
             anchors.add(anchor);
             for (ServerPlayer member : members) {
                 BlockPos spot = anchor;
                 BlockPos nearby = anchor.offset(level.getRandom().nextInt(5) - 2, 0, level.getRandom().nextInt(5) - 2);
-                if (level.hasChunkAt(nearby) && containsPos(min, max, nearby)) {
+                if (containsPos(min, max, nearby)) {
                     BlockPos safe = TeleportHelper.findSafeSpot(level, nearby);
                     if (containsPos(min, max, safe)) {
                         spot = safe;
@@ -2652,7 +2657,7 @@ public class ConquestManager extends SavedData {
         }
         BlockPos best = null;
         double bestDistSq = -1;
-        for (BlockPos candidate : sampleSdmSpots(level, min, max)) {
+        for (BlockPos candidate : sampleSdmSpots(level, min, max, SDM_SPAWN_SAMPLES, true)) {
             if (!isDestinationSafe(player, boundaryDim, candidate)) {
                 continue;
             }
@@ -2670,16 +2675,17 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Up to {@value #SDM_SPAWN_SAMPLES} safe spots at random columns of the box (top of the terrain,
-     * clamped into its Y range) that lie inside it. Only columns whose chunk is already loaded are
-     * considered, so sampling never loads or generates terrain.
+     * Up to {@code samples} safe spots at random columns of the box (top of the terrain, clamped
+     * into its Y range) that lie inside it. With {@code loadedOnly}, columns whose chunk isn't
+     * loaded are skipped so sampling never loads or generates terrain (respawns); round start
+     * passes false since the arena may not be loaded yet.
      */
-    private List<BlockPos> sampleSdmSpots(ServerLevel level, BlockPos min, BlockPos max) {
+    private List<BlockPos> sampleSdmSpots(ServerLevel level, BlockPos min, BlockPos max, int samples, boolean loadedOnly) {
         List<BlockPos> spots = new ArrayList<>();
-        for (int i = 0; i < SDM_SPAWN_SAMPLES; i++) {
+        for (int i = 0; i < samples; i++) {
             int x = min.getX() + level.getRandom().nextInt(max.getX() - min.getX() + 1);
             int z = min.getZ() + level.getRandom().nextInt(max.getZ() - min.getZ() + 1);
-            if (!level.hasChunkAt(new BlockPos(x, min.getY(), z))) {
+            if (loadedOnly && !level.hasChunkAt(new BlockPos(x, min.getY(), z))) {
                 continue;
             }
             int topY = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 0, z)).getY();
