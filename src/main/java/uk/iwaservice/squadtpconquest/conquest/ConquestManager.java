@@ -455,23 +455,91 @@ public class ConquestManager extends SavedData {
         return activeSectorNumber == 0 ? null : sectors.get(activeSectorNumber);
     }
 
-    /** 1-based position of the active sector among all sectors, for "Sector X/Y" display; 0 if none active. */
+    /** 1-based position of the active sector among NORMAL sectors, for "Sector X/Y" display; 0 if none active. */
     public int sectorIndex() {
         if (activeSectorNumber == 0) {
             return 0;
         }
         int idx = 0;
-        for (int key : sectors.keySet()) {
+        for (Sector sector : sectors.values()) {
+            if (sector.getRole() != Sector.Role.NORMAL) {
+                continue;
+            }
             idx++;
-            if (key == activeSectorNumber) {
+            if (sector.getNumber() == activeSectorNumber) {
                 break;
             }
         }
         return idx;
     }
 
+    /** Number of NORMAL sectors (base sectors are not part of the attack sequence). */
     public int sectorCount() {
-        return sectors.size();
+        int count = 0;
+        for (Sector sector : sectors.values()) {
+            if (sector.getRole() == Sector.Role.NORMAL) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /** Lowest-numbered NORMAL sector, or null if there is none. */
+    @Nullable
+    private Integer firstNormalSector() {
+        return nextNormalSector(0);
+    }
+
+    /** Lowest-numbered NORMAL sector above {@code number}, or null if there is none. */
+    @Nullable
+    private Integer nextNormalSector(int number) {
+        for (Sector sector : sectors.tailMap(number, false).values()) {
+            if (sector.getRole() == Sector.Role.NORMAL) {
+                return sector.getNumber();
+            }
+        }
+        return null;
+    }
+
+    /** The sector holding the given base role, or null if none (NORMAL never matches). */
+    @Nullable
+    private Sector baseSector(Sector.Role role) {
+        for (Sector sector : sectors.values()) {
+            if (sector.getRole() == role) {
+                return sector;
+            }
+        }
+        return null;
+    }
+
+    /** The base sector a team owns this round (attackers: ATTACKER_BASE, defenders: DEFENDER_BASE), or null. */
+    @Nullable
+    private Sector ownBaseSector(Team team) {
+        return baseSector(team == attackerTeam ? Sector.Role.ATTACKER_BASE : Sector.Role.DEFENDER_BASE);
+    }
+
+    /**
+     * Sets a sector's role. A base role is unique, so it is cleared from any other sector first.
+     * Returns -1 if no sector has that number, else the number of the sector that lost the role
+     * (0 if none did).
+     */
+    public int setSectorRole(int number, Sector.Role role) {
+        Sector sector = sectors.get(number);
+        if (sector == null) {
+            return -1;
+        }
+        int cleared = 0;
+        if (role != Sector.Role.NORMAL) {
+            for (Sector other : sectors.values()) {
+                if (other != sector && other.getRole() == role) {
+                    other.setRole(Sector.Role.NORMAL);
+                    cleared = other.getNumber();
+                }
+            }
+        }
+        sector.setRole(role);
+        setDirty();
+        return cleared;
     }
 
     public int attackerTickets() {
@@ -1782,6 +1850,15 @@ public class ConquestManager extends SavedData {
                     && player.getX() >= min.getX() && player.getX() < max.getX() + 1
                     && player.getY() >= min.getY() && player.getY() < max.getY() + 1
                     && player.getZ() >= min.getZ() && player.getZ() < max.getZ() + 1;
+            if (!inside && mode == GameMode.BREAKTHROUGH && state == RoundState.IN_PROGRESS) {
+                // A team's own base area is always allowed ground, besides the active sector.
+                Sector base = ownBaseSector(teamOf(uuid));
+                inside = base != null && base.getCombatAreaDim() == player.level().dimension()
+                        && base.getCombatAreaMin() != null && base.getCombatAreaMax() != null
+                        && player.getX() >= base.getCombatAreaMin().getX() && player.getX() < base.getCombatAreaMax().getX() + 1
+                        && player.getY() >= base.getCombatAreaMin().getY() && player.getY() < base.getCombatAreaMax().getY() + 1
+                        && player.getZ() >= base.getCombatAreaMin().getZ() && player.getZ() < base.getCombatAreaMax().getZ() + 1;
+            }
             if (inside) {
                 boundaryOutsideSeconds.remove(uuid);
                 continue;
@@ -2160,7 +2237,7 @@ public class ConquestManager extends SavedData {
         if (mode == GameMode.CONQUEST && points.isEmpty()) {
             return StartResult.NO_POINT;
         }
-        if (mode == GameMode.BREAKTHROUGH && sectors.isEmpty()) {
+        if (mode == GameMode.BREAKTHROUGH && firstNormalSector() == null) {
             return StartResult.NO_SECTOR;
         }
         List<SdmGroup> sdmGroups = null;
@@ -2227,7 +2304,7 @@ public class ConquestManager extends SavedData {
             applySdmSquads(server, sdmGroups);
         }
         if (mode == GameMode.BREAKTHROUGH) {
-            activeSectorNumber = sectors.firstKey();
+            activeSectorNumber = firstNormalSector();
             attackerTickets = Config.BT_ATTACKER_TICKETS.get();
             attackerTicketsMax = attackerTickets;
             sectorSecondsRemaining = currentSectorTimeLimit();
@@ -2496,15 +2573,22 @@ public class ConquestManager extends SavedData {
         }
     }
 
-    /** In breakthrough, the active sector's attacker/defender spawn if set; else the global spawnA/B. */
+    /**
+     * In breakthrough, the active sector's attacker/defender spawn if set; else the team's own base
+     * sector's spawn; else the global spawnA/B.
+     */
     RoleSpawn resolveRoleSpawn(Team team) {
-        Sector sector = mode == GameMode.BREAKTHROUGH ? currentSector() : null;
-        if (sector != null) {
-            RoleSpawn sectorSpawn = team == attackerTeam
-                    ? new RoleSpawn(sector.getAttackerSpawnDim(), sector.getAttackerSpawnPos())
-                    : new RoleSpawn(sector.getDefenderSpawnDim(), sector.getDefenderSpawnPos());
-            if (sectorSpawn.isSet()) {
-                return sectorSpawn;
+        if (mode == GameMode.BREAKTHROUGH) {
+            for (Sector sector : new Sector[]{currentSector(), ownBaseSector(team)}) {
+                if (sector == null) {
+                    continue;
+                }
+                RoleSpawn sectorSpawn = team == attackerTeam
+                        ? new RoleSpawn(sector.getAttackerSpawnDim(), sector.getAttackerSpawnPos())
+                        : new RoleSpawn(sector.getDefenderSpawnDim(), sector.getDefenderSpawnPos());
+                if (sectorSpawn.isSet()) {
+                    return sectorSpawn;
+                }
             }
         }
         return team == Team.A ? new RoleSpawn(spawnADim, spawnAPos) : new RoleSpawn(spawnBDim, spawnBPos);
@@ -2802,6 +2886,18 @@ public class ConquestManager extends SavedData {
             }
         }
 
+        if (state == RoundState.IN_PROGRESS) {
+            // Base areas are rear zones for the whole round: the enemy side is executed there.
+            Sector attackerBase = baseSector(Sector.Role.ATTACKER_BASE);
+            if (attackerBase != null) {
+                checkZoneIntrusion(server, attackerTeam, attackerBase.getCombatAreaDim(), attackerBase.getCombatAreaMin(), attackerBase.getCombatAreaMax(), "base-attacker");
+            }
+            Sector defenderBase = baseSector(Sector.Role.DEFENDER_BASE);
+            if (defenderBase != null) {
+                checkZoneIntrusion(server, defenderTeam(), defenderBase.getCombatAreaDim(), defenderBase.getCombatAreaMin(), defenderBase.getCombatAreaMax(), "base-defender");
+            }
+        }
+
         if (state == RoundState.IN_PROGRESS && --sectorSecondsRemaining <= 0) {
             endRound(server, defenderTeam());
         }
@@ -2821,13 +2917,15 @@ public class ConquestManager extends SavedData {
      * {@link #advanceSector} moves to the next sector, with no separate zones to configure.
      */
     private void checkSectorFrontZones(MinecraftServer server, Sector active) {
+        // Base sectors are skipped here: tickBreakthrough already runs their zone check every second,
+        // and a second pass would double-count the same player's intrusion time.
         Integer prevNumber = sectors.lowerKey(active.getNumber());
-        if (prevNumber != null) {
+        if (prevNumber != null && sectors.get(prevNumber).getRole() == Sector.Role.NORMAL) {
             Sector prev = sectors.get(prevNumber);
             checkZoneIntrusion(server, attackerTeam, prev.getCombatAreaDim(), prev.getCombatAreaMin(), prev.getCombatAreaMax(), "front-rear");
         }
         Integer nextNumber = sectors.higherKey(active.getNumber());
-        if (nextNumber != null) {
+        if (nextNumber != null && sectors.get(nextNumber).getRole() == Sector.Role.NORMAL) {
             Sector next = sectors.get(nextNumber);
             checkZoneIntrusion(server, defenderTeam(), next.getCombatAreaDim(), next.getCombatAreaMin(), next.getCombatAreaMax(), "front-ahead");
         }
@@ -2835,7 +2933,7 @@ public class ConquestManager extends SavedData {
 
     /** Clears the active sector and moves to the next one, or ends the round if that was the last. */
     private void advanceSector(MinecraftServer server) {
-        Integer next = sectors.higherKey(activeSectorNumber);
+        Integer next = nextNormalSector(activeSectorNumber);
         if (next == null) {
             endRound(server, attackerTeam);
             return;
@@ -3024,6 +3122,14 @@ public class ConquestManager extends SavedData {
         }
         for (ProtectZone zone : getProtectZones()) {
             addBox(boxes, zone.getDim(), zone.getMin(), zone.getMax(), Team.NEUTRAL.zoneRgb());
+        }
+        if (mode == GameMode.BREAKTHROUGH) {
+            for (Sector base : sectors.values()) {
+                if (base.getRole() != Sector.Role.NORMAL) {
+                    Team owner = base.getRole() == Sector.Role.ATTACKER_BASE ? attackerTeam : defenderTeam();
+                    addBox(boxes, base.getCombatAreaDim(), base.getCombatAreaMin(), base.getCombatAreaMax(), owner.zoneRgb());
+                }
+            }
         }
         for (SpawnZone zone : getSpawnZones()) {
             addBox(boxes, zone.getDim(), zone.getMin(), zone.getMax(), SPAWN_ZONE_RGB);
