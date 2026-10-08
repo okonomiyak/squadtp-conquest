@@ -1382,8 +1382,10 @@ public final class ConquestCommand {
             }
         } else if (state == RoundState.ENDED) {
             Team winner = manager.getLastWinner();
+            int sdmWinner = manager.getMode() == GameMode.SQUAD_DM ? manager.getLastSdmWinner() : 0;
             msg.append("\n").append(Component.translatable("conquest.status.last_result",
-                    winner == null ? Component.translatable("conquest.title.draw") : winner.display()));
+                    sdmWinner > 0 ? Component.translatable("conquest.sdm.squad", sdmWinner).withStyle(Team.sdmSquadColor(sdmWinner))
+                    : winner == null ? Component.translatable("conquest.title.draw") : winner.display()));
             int remaining = manager.remainingResultSeconds();
             if (remaining >= 0) {
                 msg.append("\n").append(Component.translatable("conquest.status.reset_in", remaining)

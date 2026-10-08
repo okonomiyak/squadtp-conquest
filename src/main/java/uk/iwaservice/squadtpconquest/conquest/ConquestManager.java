@@ -368,6 +368,17 @@ public class ConquestManager extends SavedData {
         return teamOf(player) == Team.SQUAD ? sdmSquadOf.get(player) : null;
     }
 
+    /** Whether the scoreboard/standings show a finished round (team and squad come from the round's own snapshot). */
+    private boolean showingFinishedRound() {
+        return (state == RoundState.WAITING || state == RoundState.ENDED) && !lastRoundTeams.isEmpty();
+    }
+
+    /** The stored squad assignment of a finished round's participant, whatever team they're on now. */
+    @Nullable
+    private Integer sdmSquadForResults(UUID player) {
+        return showingFinishedRound() ? sdmSquadOf.get(player) : sdmSquadOf(player);
+    }
+
     /**
      * Whether two players fight on the same side, the one check every friend-or-foe decision
      * (kill/assist/revive credit, spotting, ...) goes through: in Squad Deathmatch both must be in
@@ -3283,7 +3294,7 @@ public class ConquestManager extends SavedData {
      */
     private ConquestScoreboardPacket buildScoreboardPacket(MinecraftServer server) {
         List<ConquestScoreboardPacket.Entry> entries = new ArrayList<>();
-        boolean useLastRoundTeams = (state == RoundState.WAITING || state == RoundState.ENDED) && !lastRoundTeams.isEmpty();
+        boolean useLastRoundTeams = showingFinishedRound();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             Team team = useLastRoundTeams ? lastRoundTeams.get(player.getUUID()) : teamOf(player.getUUID());
             if (team == null || team == Team.NEUTRAL) {
@@ -3303,7 +3314,7 @@ public class ConquestManager extends SavedData {
             int lifetimeLosses = lifetime == null ? 0 : lifetime.losses;
             ChatFormatting nameColor = nameColors.get(player.getUUID());
             Integer nameColorRgb = nameColor == null ? null : nameColor.getColor();
-            Integer sdmSquad = sdmSquadOf(player.getUUID());
+            Integer sdmSquad = sdmSquadForResults(player.getUUID());
             entries.add(new ConquestScoreboardPacket.Entry(player.getUUID(), player.getGameProfile().getName(),
                     team, kills, deaths, revives, captures, totalScore(player.getUUID()),
                     lifetimeKills, lifetimeDeaths, lifetimeRevives, lifetimeCaptures, lifetimeWins, lifetimeLosses,
@@ -3609,7 +3620,7 @@ public class ConquestManager extends SavedData {
         for (Map.Entry<Integer, Integer> e : sdmKills.entrySet()) {
             List<String> names = new ArrayList<>();
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                if (e.getKey().equals(sdmSquadOf(player.getUUID()))) {
+                if (e.getKey().equals(sdmSquadForResults(player.getUUID()))) {
                     names.add(player.getGameProfile().getName());
                 }
             }
