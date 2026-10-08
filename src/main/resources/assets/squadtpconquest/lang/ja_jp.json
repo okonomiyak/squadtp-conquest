@@ -21,6 +21,7 @@
   "conquest.msg.unknown_role": "役割は attacker か defender を指定してください",
   "conquest.msg.admin_team_requires_op": "管理者チームにはOPのみ参加できます",
   "conquest.msg.shuffled": "%s人をチームA/Bにシャッフルした",
+  "conquest.msg.shuffle_during_sdm": "分隊デスマッチの試合中はシャッフルできません",
   "conquest.msg.team_assigned": "%s=攻撃側、%s=防衛側 に設定した",
   "conquest.msg.unknown_mode": "不明なゲームモードです (conquest か tdm か breakthrough か sdm か koth を指定してください)",
   "conquest.msg.namecolor_set": "スコアボードの名前の色を%sに変更しました。",

@@ -21,6 +21,7 @@
   "conquest.msg.unknown_role": "Unknown role (use attacker or defender)",
   "conquest.msg.admin_team_requires_op": "Only operators can join the admin team",
   "conquest.msg.shuffled": "Shuffled %s players into Team A/B",
+  "conquest.msg.shuffle_during_sdm": "Can't shuffle teams during a Squad Deathmatch round",
   "conquest.msg.team_assigned": "%s = Attacker, %s = Defender",
   "conquest.msg.unknown_mode": "Unknown game mode (use conquest, tdm, breakthrough, sdm or koth)",
   "conquest.msg.namecolor_set": "Your scoreboard name color is now %s.",

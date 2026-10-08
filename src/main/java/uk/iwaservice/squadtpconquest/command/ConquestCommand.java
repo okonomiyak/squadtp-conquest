@@ -737,6 +737,10 @@ public final class ConquestCommand {
     private static int shuffleTeams(CommandContext<CommandSourceStack> ctx) {
         MinecraftServer server = ctx.getSource().getServer();
         ConquestManager manager = ConquestManager.get(server);
+        if (manager.getMode() == GameMode.SQUAD_DM
+                && (manager.getState() == RoundState.STARTING || manager.getState() == RoundState.IN_PROGRESS)) {
+            return fail(ctx, Component.translatable("conquest.msg.shuffle_during_sdm"));
+        }
         int count = manager.shuffleTeams(server);
         ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.shuffled", count), true);
         return count;
