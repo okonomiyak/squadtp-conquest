@@ -191,10 +191,6 @@ public final class ConquestCommand {
                                         .executes(ConquestCommand::nameColorOther))))
                 .then(Commands.literal("point")
                         .requires(src -> src.hasPermission(2))
-                        .then(Commands.literal("set")
-                                .executes(ctx -> setPoint(ctx, Config.CAPTURE_RADIUS.get()))
-                                .then(Commands.argument("radius", IntegerArgumentType.integer(2, 64))
-                                        .executes(ctx -> setPoint(ctx, IntegerArgumentType.getInteger(ctx, "radius")))))
                         .then(Commands.literal("add")
                                 .then(Commands.argument("name", StringArgumentType.word())
                                         .executes(ctx -> addPoint(ctx, Config.CAPTURE_RADIUS.get()))
@@ -207,13 +203,10 @@ public final class ConquestCommand {
                         .then(Commands.literal("list").executes(ConquestCommand::pointList)))
                 .then(Commands.literal("spawn")
                         .requires(src -> src.hasPermission(2))
-                        .then(Commands.literal("set")
-                                .then(Commands.argument("team", StringArgumentType.word())
-                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
-                                        .executes(ConquestCommand::setSpawn)))
-                        .then(Commands.literal("set2")
-                                .then(Commands.argument("team", StringArgumentType.word())
-                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
+                        .then(Commands.argument("team", StringArgumentType.word())
+                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
+                                .executes(ConquestCommand::setSpawn)
+                                .then(Commands.literal("second")
                                         .executes(ConquestCommand::setSpawn2))))
                 .then(Commands.literal("gather")
                         .requires(src -> src.hasPermission(2))
@@ -222,27 +215,16 @@ public final class ConquestCommand {
                         .then(Commands.literal("list").executes(ConquestCommand::gatherList)))
                 .then(Commands.literal("zone")
                         .requires(src -> src.hasPermission(2))
-                        .then(Commands.literal("set")
-                                .then(Commands.argument("team", StringArgumentType.word())
-                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
+                        .then(Commands.argument("team", StringArgumentType.word())
+                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
+                                .then(Commands.literal("set")
                                         .executes(ConquestCommand::setZoneFromWand)
                                         .then(Commands.argument("pos1", BlockPosArgument.blockPos())
                                                 .then(Commands.argument("pos2", BlockPosArgument.blockPos())
-                                                        .executes(ConquestCommand::setZone)))))
-                        .then(Commands.literal("corner1")
-                                .then(Commands.literal("set")
-                                        .then(Commands.argument("team", StringArgumentType.word())
-                                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
-                                                .executes(ctx -> setZoneCorner(ctx, true)))))
-                        .then(Commands.literal("corner2")
-                                .then(Commands.literal("set")
-                                        .then(Commands.argument("team", StringArgumentType.word())
-                                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
-                                                .executes(ctx -> setZoneCorner(ctx, false)))))
-                        .then(Commands.literal("remove")
-                                .then(Commands.argument("team", StringArgumentType.word())
-                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"a", "b"}, b))
-                                        .executes(ConquestCommand::removeZone)))
+                                                        .executes(ConquestCommand::setZone))))
+                                .then(Commands.literal("corner1").executes(ctx -> setZoneCorner(ctx, true)))
+                                .then(Commands.literal("corner2").executes(ctx -> setZoneCorner(ctx, false)))
+                                .then(Commands.literal("remove").executes(ConquestCommand::removeZone)))
                         .then(Commands.literal("list").executes(ConquestCommand::zoneList)))
                 .then(Commands.literal("protectzone")
                         .requires(src -> src.hasPermission(2))
@@ -286,10 +268,8 @@ public final class ConquestCommand {
                                 .then(Commands.argument("pos1", BlockPosArgument.blockPos())
                                         .then(Commands.argument("pos2", BlockPosArgument.blockPos())
                                                 .executes(ConquestCommand::setBoundary))))
-                        .then(Commands.literal("corner1")
-                                .then(Commands.literal("set").executes(ctx -> setBoundaryCorner(ctx, true))))
-                        .then(Commands.literal("corner2")
-                                .then(Commands.literal("set").executes(ctx -> setBoundaryCorner(ctx, false))))
+                        .then(Commands.literal("corner1").executes(ctx -> setBoundaryCorner(ctx, true)))
+                        .then(Commands.literal("corner2").executes(ctx -> setBoundaryCorner(ctx, false)))
                         .then(Commands.literal("remove").executes(ConquestCommand::removeBoundary))
                         .then(Commands.literal("list").executes(ConquestCommand::boundaryList))
                         .then(Commands.literal("restore").executes(ConquestCommand::boundaryRestore)))
@@ -300,10 +280,8 @@ public final class ConquestCommand {
                                 .then(Commands.argument("pos1", BlockPosArgument.blockPos())
                                         .then(Commands.argument("pos2", BlockPosArgument.blockPos())
                                                 .executes(ConquestCommand::setRange))))
-                        .then(Commands.literal("corner1")
-                                .then(Commands.literal("set").executes(ctx -> setRangeCorner(ctx, true))))
-                        .then(Commands.literal("corner2")
-                                .then(Commands.literal("set").executes(ctx -> setRangeCorner(ctx, false))))
+                        .then(Commands.literal("corner1").executes(ctx -> setRangeCorner(ctx, true)))
+                        .then(Commands.literal("corner2").executes(ctx -> setRangeCorner(ctx, false)))
                         .then(Commands.literal("remove").executes(ConquestCommand::removeRange))
                         .then(Commands.literal("list").executes(ConquestCommand::rangeList))
                         .then(Commands.literal("reset").executes(ConquestCommand::rangeReset))
@@ -770,16 +748,6 @@ public final class ConquestCommand {
         return count;
     }
 
-    private static int setPoint(CommandContext<CommandSourceStack> ctx, int radius) throws CommandSyntaxException {
-        ServerPlayer player = ctx.getSource().getPlayerOrException();
-        ServerLevel level = player.serverLevel();
-        ConquestManager.get(ctx.getSource().getServer())
-                .setPoint(level, "Alpha", player.blockPosition(), radius);
-        ctx.getSource().sendSuccess(() ->
-                Component.translatable("conquest.msg.point_set", "Alpha", radius), true);
-        return 1;
-    }
-
     private static int addPoint(CommandContext<CommandSourceStack> ctx, int radius) throws CommandSyntaxException {
         String name = StringArgumentType.getString(ctx, "name");
         ServerPlayer player = ctx.getSource().getPlayerOrException();
@@ -884,7 +852,7 @@ public final class ConquestCommand {
         return 1;
     }
 
-    /** {@code /conquest zone set <a|b>} with no coordinates: uses the sender's zone wand selection instead. */
+    /** {@code /conquest zone <a|b> set} with no coordinates: uses the sender's zone wand selection instead. */
     private static int setZoneFromWand(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
         Team team = Team.byKey(StringArgumentType.getString(ctx, "team"));

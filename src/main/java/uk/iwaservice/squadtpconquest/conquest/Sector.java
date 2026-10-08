@@ -148,7 +148,7 @@ public final class Sector {
     /**
      * Sets one corner of the combat area, leaving the other corner untouched (the area only
      * becomes active once both are set). If it already had a corner in a different dimension,
-     * both corners are reset first — same rule as the home zone's corner1/corner2 set.
+     * both corners are reset first — same rule as the home zone's corner1/corner2.
      */
     public void setCombatAreaCorner(ResourceKey<Level> dim, boolean corner1, BlockPos pos) {
         if (combatAreaDim != null && !combatAreaDim.equals(dim)) {

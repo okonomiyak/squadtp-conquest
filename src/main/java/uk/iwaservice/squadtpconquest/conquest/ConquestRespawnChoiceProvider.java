@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Offers the team's configured spawn ({@code /conquest spawn set}), the team respawn beacon,
+ * Offers the team's configured spawn ({@code /conquest spawn <team>}), the team respawn beacon,
  * and (in conquest, if enabled) each owned capture point as player-picked options in squadtp's
  * respawn chooser, instead of squadtp-conquest silently picking one automatically.
  */
