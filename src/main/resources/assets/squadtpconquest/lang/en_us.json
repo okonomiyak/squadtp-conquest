@@ -50,6 +50,7 @@
   "conquest.msg.sector_area_removed": "Sector %s combat area removed",
   "conquest.msg.sector_area_not_found": "No sector numbered %s, or it has no combat area set",
   "conquest.msg.sector_not_found": "No sector numbered %s",
+  "conquest.msg.sector_role_locked": "Sector roles cannot be changed while a round is running",
   "conquest.msg.sector_removed": "Sector %s removed",
   "conquest.msg.no_sector": "No sectors set (/conquest sector add)",
   "conquest.msg.sector_list_header": "=== Sectors ===",
