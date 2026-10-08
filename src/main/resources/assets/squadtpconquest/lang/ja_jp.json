@@ -288,5 +288,8 @@
   "conquest.sdm.squad": "分隊%s",
   "conquest.hud.sdm_rank": "%s位",
   "conquest.score.sdm_limit": "キル上限: %s",
-  "conquest.score.sdm_kills": "%sキル"
+  "conquest.score.sdm_kills": "%sキル",
+  "key.squadtpconquest.callin_menu": "コールインメニュー",
+  "conquest.gui.callin_none": "使えるコールインがありません",
+  "conquest.gui.callin_cost": "%s pt"
 }

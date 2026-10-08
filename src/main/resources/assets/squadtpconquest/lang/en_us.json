@@ -288,5 +288,8 @@
   "conquest.sdm.squad": "Squad %s",
   "conquest.hud.sdm_rank": "#%s",
   "conquest.score.sdm_limit": "Kill limit: %s",
-  "conquest.score.sdm_kills": "%s kills"
+  "conquest.score.sdm_kills": "%s kills",
+  "key.squadtpconquest.callin_menu": "Call-in menu",
+  "conquest.gui.callin_none": "No call-ins available",
+  "conquest.gui.callin_cost": "%s pt"
 }
