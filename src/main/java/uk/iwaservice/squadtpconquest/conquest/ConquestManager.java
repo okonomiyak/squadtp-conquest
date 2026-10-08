@@ -2057,7 +2057,7 @@ public class ConquestManager extends SavedData {
      * Takes a whole-region snapshot of {@link #resolveSnapshotRegion} for later restoration by
      * {@link #restoreTerrainSnapshot}. No-op (leaves {@link #terrainSnapshot} null) if terrain
      * destruction is disabled or no region is available — automatic terrain reset is opt-in via
-     * {@code /conquest boundary set} (or, in breakthrough, {@code /conquest sector area set}).
+     * {@code /conquest boundary set} (or, in breakthrough, {@code /conquest sector <n> area}).
      */
     private void captureTerrainSnapshot(MinecraftServer server) {
         terrainSnapshot = null;

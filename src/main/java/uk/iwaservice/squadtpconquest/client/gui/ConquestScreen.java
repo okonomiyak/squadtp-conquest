@@ -403,7 +403,7 @@ public class ConquestScreen extends Screen {
         for (int row = 0; row < sectorRows; row++) {
             int number = sectorNumbersOrdered.get(sectorScrollOffset + row);
             Button remove = Button.builder(Component.literal("x"),
-                    b -> command("conquest sector remove " + number))
+                    b -> command("conquest sector " + number + " remove"))
                     .bounds(panelLeft + panelWidth - PAD - 16, 0, 16, 12).build();
             placeAt(remove, cursor + row * 12);
             addRenderableWidget(remove);
@@ -443,7 +443,7 @@ public class ConquestScreen extends Screen {
         cursor += 20;
 
         Button addSectorPoint = Button.builder(Component.translatable("conquest.gui.sector_add_point"),
-                b -> command("conquest sector add " + sectorNumberBox.getValue() + " "
+                b -> command("conquest sector " + sectorNumberBox.getValue() + " point "
                         + pointNameBox.getValue() + " " + sectorRadiusBox.getValue()))
                 .bounds(panelLeft + PAD, 0, panelWidth - 2 * PAD, 18).build();
         placeAt(addSectorPoint, cursor);
@@ -452,12 +452,12 @@ public class ConquestScreen extends Screen {
 
         int sectorHalf = (panelWidth - 2 * PAD - 4) / 2;
         Button attackerSpawn = Button.builder(Component.translatable("conquest.gui.sector_spawn_attacker"),
-                b -> command("conquest sector spawn set attacker " + sectorNumberBox.getValue()))
+                b -> command("conquest sector " + sectorNumberBox.getValue() + " spawn attacker"))
                 .bounds(panelLeft + PAD, 0, sectorHalf, 18).build();
         placeAt(attackerSpawn, cursor);
         addRenderableWidget(attackerSpawn);
         Button defenderSpawn = Button.builder(Component.translatable("conquest.gui.sector_spawn_defender"),
-                b -> command("conquest sector spawn set defender " + sectorNumberBox.getValue()))
+                b -> command("conquest sector " + sectorNumberBox.getValue() + " spawn defender"))
                 .bounds(panelLeft + PAD + sectorHalf + 4, 0, sectorHalf, 18).build();
         placeAt(defenderSpawn, cursor);
         addRenderableWidget(defenderSpawn);
@@ -470,7 +470,7 @@ public class ConquestScreen extends Screen {
         placeAt(timeLimitBox, cursor);
         addRenderableWidget(timeLimitBox);
         Button setTimeLimit = Button.builder(Component.translatable("conquest.gui.sector_timelimit_button"),
-                b -> command("conquest sector timelimit set " + sectorNumberBox.getValue() + " " + timeLimitBox.getValue()))
+                b -> command("conquest sector " + sectorNumberBox.getValue() + " timelimit " + timeLimitBox.getValue()))
                 .bounds(panelLeft + PAD + 54, 0, panelWidth - 2 * PAD - 54, 18).build();
         placeAt(setTimeLimit, cursor);
         addRenderableWidget(setTimeLimit);

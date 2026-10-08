@@ -242,7 +242,7 @@ public final class Config {
                 .defineInRange("attackerTickets", 30, 1, 100000);
         BT_SECTOR_TIME_LIMIT_SECONDS = b
                 .comment("Default seconds the attacker has to clear the active sector before the defenders win.",
-                        "Overridable per sector with /conquest sector timelimit set.")
+                        "Overridable per sector with /conquest sector <n> timelimit.")
                 .defineInRange("sectorTimeLimitSeconds", 300, 10, 86400);
         BT_SECTOR_TIME_EXTENSION_ON_CAPTURE = b
                 .comment("Seconds added to the active sector's remaining time whenever the attacker captures",
@@ -250,7 +250,7 @@ public final class Config {
                 .defineInRange("sectorTimeExtensionOnCapture", 120, 0, 3600);
         BT_SECTOR_AREA_TRANSITION_GRACE_SECONDS = b
                 .comment("Seconds after a sector is cleared before the next sector's combat area (if it has",
-                        "one, see /conquest sector area set) starts being enforced as an out-of-bounds",
+                        "one, see /conquest sector <n> area) starts being enforced as an out-of-bounds",
                         "boundary. Gives players time to walk into the new area without being executed for",
                         "still being outside it. No effect on sectors with no combat area set.")
                 .defineInRange("sectorAreaTransitionGraceSeconds", 20, 0, 600);
