@@ -147,6 +147,34 @@ public final class ConquestCommand {
                     ConquestManager.get(ctx.getSource().getServer()).getCallIns().stream()
                             .map(CallIn::getName), builder);
 
+    private static final com.mojang.brigadier.suggestion.SuggestionProvider<CommandSourceStack> SECTOR_NUMBERS =
+            (ctx, builder) -> SharedSuggestionProvider.suggest(
+                    ConquestManager.get(ctx.getSource().getServer()).getSectors().stream()
+                            .map(sector -> String.valueOf(sector.getNumber())), builder);
+
+    private static final com.mojang.brigadier.suggestion.SuggestionProvider<CommandSourceStack> PROTECTED_BLOCKS =
+            (ctx, builder) -> SharedSuggestionProvider.suggest(
+                    ConquestManager.get(ctx.getSource().getServer()).getProtectedBlocks(), builder);
+
+    private static final com.mojang.brigadier.suggestion.SuggestionProvider<CommandSourceStack> ALL_BLOCKS =
+            (ctx, builder) -> SharedSuggestionProvider.suggestResource(BuiltInRegistries.BLOCK.keySet(), builder);
+
+    private static final com.mojang.brigadier.suggestion.SuggestionProvider<CommandSourceStack> ALL_ITEMS =
+            (ctx, builder) -> SharedSuggestionProvider.suggestResource(BuiltInRegistries.ITEM.keySet(), builder);
+
+    /** Suggests true/false when the chosen config key currently holds a boolean. */
+    private static final com.mojang.brigadier.suggestion.SuggestionProvider<CommandSourceStack> CONFIG_VALUES =
+            (ctx, builder) -> {
+                ConfigEntry entry = CONFIG_KEYS.get(StringArgumentType.getString(ctx, "key"));
+                if (entry != null) {
+                    String current = entry.getter().get();
+                    if (current.equals("true") || current.equals("false")) {
+                        return SharedSuggestionProvider.suggest(new String[]{"true", "false"}, builder);
+                    }
+                }
+                return builder.buildFuture();
+            };
+
     /** Readable colors only (no BLACK - unreadable against the scoreboard's dark panel) plus "default" to reset. */
     private static final String[] NAME_COLOR_CHOICES = {"white", "red", "blue", "green", "yellow", "aqua",
             "light_purple", "gold", "gray", "dark_gray", "dark_red", "dark_blue", "dark_green", "dark_aqua",
@@ -255,9 +283,11 @@ public final class ConquestCommand {
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("add")
                                 .then(Commands.argument("block", ResourceLocationArgument.id())
+                                        .suggests(ALL_BLOCKS)
                                         .executes(ConquestCommand::protectBlockAdd)))
                         .then(Commands.literal("remove")
                                 .then(Commands.argument("block", ResourceLocationArgument.id())
+                                        .suggests(PROTECTED_BLOCKS)
                                         .executes(ConquestCommand::protectBlockRemove)))
                         .then(Commands.literal("list").executes(ConquestCommand::protectBlockList)))
                 .then(Commands.literal("boundary")
@@ -293,6 +323,7 @@ public final class ConquestCommand {
                                 .then(Commands.argument("name", StringArgumentType.word())
                                         .then(Commands.argument("cost", IntegerArgumentType.integer(0))
                                                 .then(Commands.argument("item", ResourceLocationArgument.id())
+                                                        .suggests(ALL_ITEMS)
                                                         .executes(ctx -> callInAdd(ctx, 1))
                                                         .then(Commands.argument("count", IntegerArgumentType.integer(1, 64))
                                                                 .executes(ctx -> callInAdd(ctx, IntegerArgumentType.getInteger(ctx, "count"))))))))
@@ -316,6 +347,7 @@ public final class ConquestCommand {
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("list").executes(ConquestCommand::sectorList))
                         .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                                .suggests(SECTOR_NUMBERS)
                                 .then(Commands.literal("point")
                                         .then(Commands.argument("name", StringArgumentType.word())
                                                 .executes(ctx -> sectorAdd(ctx, Config.CAPTURE_RADIUS.get()))
@@ -349,6 +381,7 @@ public final class ConquestCommand {
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("save")
                                 .then(Commands.argument("name", StringArgumentType.word())
+                                        .suggests(PRESET_NAMES)
                                         .executes(ConquestCommand::presetSave)))
                         .then(Commands.literal("load")
                                 .then(Commands.argument("name", StringArgumentType.word())
@@ -375,6 +408,7 @@ public final class ConquestCommand {
                                 .then(Commands.argument("key", StringArgumentType.word())
                                         .suggests((ctx, b) -> SharedSuggestionProvider.suggest(CONFIG_KEYS.keySet(), b))
                                         .then(Commands.argument("value", StringArgumentType.greedyString())
+                                                .suggests(CONFIG_VALUES)
                                                 .executes(ConquestCommand::configSet)))))
                 .then(Commands.literal("status")
                         .executes(ConquestCommand::status)));
