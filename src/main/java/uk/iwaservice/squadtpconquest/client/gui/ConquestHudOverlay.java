@@ -77,12 +77,8 @@ public class ConquestHudOverlay implements IGuiOverlay {
         graphics.fill(barX - 1, barY - 1, barX + BAR_WIDTH + 1, barY + BAR_HEIGHT + 1, 0xA0000000);
         boolean koth = ConquestClientData.getMode() == GameMode.KOTH;
         if (koth) {
-            // Each side fills from its own end toward the middle as it nears the target score.
-            float target = Math.max(1, ConquestClientData.getKothTargetScore());
-            int leftFill = Math.round(BAR_WIDTH / 2f * Math.min(1f, leftTickets / target));
-            int rightFill = Math.round(BAR_WIDTH / 2f * Math.min(1f, rightTickets / target));
-            graphics.fill(barX, barY, barX + leftFill, barY + BAR_HEIGHT, leftColor);
-            graphics.fill(barX + BAR_WIDTH - rightFill, barY, barX + BAR_WIDTH, barY + BAR_HEIGHT, rightColor);
+            fillKothBar(graphics, barX, barY, BAR_WIDTH, BAR_HEIGHT, leftTickets, rightTickets,
+                    ConquestClientData.getKothTargetScore(), leftColor, rightColor);
         } else {
             int total = Math.max(1, leftTickets + rightTickets);
             int split = Math.round(BAR_WIDTH * leftTickets / (float) total);
@@ -163,7 +159,7 @@ public class ConquestHudOverlay implements IGuiOverlay {
         int barX = (width - BAR_WIDTH) / 2;
         int fill = limit > 0 ? Math.round(BAR_WIDTH * Math.min(1f, mine.kills() / (float) limit)) : 0;
         graphics.fill(barX - 1, BAR_Y - 1, barX + BAR_WIDTH + 1, BAR_Y + BAR_HEIGHT + 1, 0xA0000000);
-        graphics.fill(barX, BAR_Y, barX + fill, BAR_Y + BAR_HEIGHT, 0xFF000000 | squadRgb(yours));
+        graphics.fill(barX, BAR_Y, barX + fill, BAR_Y + BAR_HEIGHT, 0xFF000000 | Team.sdmSquadRgb(yours));
         Component label = squadLabel(yours);
         String text = killText(mine.kills(), limit);
         graphics.drawString(font, label, barX - font.width(label) - 4, BAR_Y + 1, 0xFFFFFF);
@@ -182,9 +178,13 @@ public class ConquestHudOverlay implements IGuiOverlay {
         return limit > 0 ? kills + "/" + limit : String.valueOf(kills);
     }
 
-    private static int squadRgb(int squad) {
-        Integer rgb = Team.sdmSquadColor(squad).getColor();
-        return rgb == null ? 0xFFFFFF : rgb;
+    /** King of the Hill bar: each side fills from its own end toward the middle as it nears {@code target}. */
+    static void fillKothBar(GuiGraphics graphics, int x, int y, int width, int height, int leftScore, int rightScore,
+                            int target, int leftColor, int rightColor) {
+        int leftFill = Math.round(width / 2f * Math.min(1f, leftScore / (float) Math.max(1, target)));
+        int rightFill = Math.round(width / 2f * Math.min(1f, rightScore / (float) Math.max(1, target)));
+        graphics.fill(x, y, x + leftFill, y + height, leftColor);
+        graphics.fill(x + width - rightFill, y, x + width, y + height, rightColor);
     }
 
     /**

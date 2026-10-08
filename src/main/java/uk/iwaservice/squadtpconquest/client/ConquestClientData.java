@@ -59,7 +59,6 @@ public final class ConquestClientData {
     private static List<ConquestSyncPacket.SdmSquadStatus> sdmSquads = List.of();
     private static int yourSdmSquad;
     private static int sdmKillLimit;
-    private static int sdmWinner;
     private static String kothHill = "";
     private static String kothNextHill = "";
     private static int kothSecondsToRotate;
@@ -76,7 +75,7 @@ public final class ConquestClientData {
                                           List<ConquestSyncPacket.CallInStatus> newCallIns, int newAvailableScore,
                                           List<ConquestSyncPacket.SquadStatus> newJoinableSquads,
                                           List<ConquestSyncPacket.SdmSquadStatus> newSdmSquads, int newYourSdmSquad,
-                                          int newSdmKillLimit, int newSdmWinner,
+                                          int newSdmKillLimit,
                                           String newKothHill, String newKothNextHill, int newKothSecondsToRotate,
                                           int newKothTargetScore, Team newKothHolder) {
         points = List.copyOf(newPoints);
@@ -99,7 +98,6 @@ public final class ConquestClientData {
         sdmSquads = List.copyOf(newSdmSquads);
         yourSdmSquad = newYourSdmSquad;
         sdmKillLimit = newSdmKillLimit;
-        sdmWinner = newSdmWinner;
         kothHill = newKothHill;
         kothNextHill = newKothNextHill;
         kothSecondsToRotate = newKothSecondsToRotate;
@@ -303,11 +301,6 @@ public final class ConquestClientData {
 
     public static synchronized int getSdmKillLimit() {
         return sdmKillLimit;
-    }
-
-    /** Winning squad number once the round is ENDED; 0 = no winner (draw) or not Squad Deathmatch. */
-    public static synchronized int getSdmWinner() {
-        return sdmWinner;
     }
 
     /** King of the Hill: the active hill's name, "" if none. */

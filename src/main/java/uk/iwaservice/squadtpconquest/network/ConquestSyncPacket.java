@@ -28,7 +28,7 @@ public record ConquestSyncPacket(List<PointStatus> points,
                                   int attackerTickets, int attackerTicketsMax, int tdmKillLimit,
                                   List<CallInStatus> callIns, int availableScore,
                                   List<SquadStatus> joinableSquads,
-                                  List<SdmSquadStatus> sdmSquads, int yourSdmSquad, int sdmKillLimit, int sdmWinner,
+                                  List<SdmSquadStatus> sdmSquads, int yourSdmSquad, int sdmKillLimit,
                                   String kothHill, String kothNextHill, int kothSecondsToRotate, int kothTargetScore,
                                   Team kothHolder) {
 
@@ -60,8 +60,7 @@ public record ConquestSyncPacket(List<PointStatus> points,
      * One Squad Deathmatch squad: its number (1-based; color via {@code Team.sdmSquadColor}), kills
      * so far and the online member names. Empty list outside SQUAD_DM. Sent sorted by kills
      * descending, then number ascending. Of the surrounding fields, {@code yourSdmSquad} is the
-     * viewer's own squad number (0 = none) and {@code sdmWinner} the winning squad's number once ENDED
-     * (0 = no winner / draw / not SQUAD_DM).
+     * viewer's own squad number (0 = none).
      */
     public record SdmSquadStatus(int number, int kills, List<String> memberNames) {}
 
@@ -128,7 +127,6 @@ public record ConquestSyncPacket(List<PointStatus> points,
         }
         buf.writeVarInt(msg.yourSdmSquad);
         buf.writeVarInt(msg.sdmKillLimit);
-        buf.writeVarInt(msg.sdmWinner);
         buf.writeUtf(msg.kothHill);
         buf.writeUtf(msg.kothNextHill);
         buf.writeVarInt(msg.kothSecondsToRotate);
@@ -189,7 +187,6 @@ public record ConquestSyncPacket(List<PointStatus> points,
         }
         int yourSdmSquad = buf.readVarInt();
         int sdmKillLimit = buf.readVarInt();
-        int sdmWinner = buf.readVarInt();
         String kothHill = buf.readUtf();
         String kothNextHill = buf.readUtf();
         int kothSecondsToRotate = buf.readVarInt();
@@ -197,7 +194,7 @@ public record ConquestSyncPacket(List<PointStatus> points,
         Team kothHolder = buf.readEnum(Team.class);
         return new ConquestSyncPacket(points, ticketsA, ticketsB, active, state, mode, yourTeam, canAdmin, openScreen,
                 attackerTeam, sectorIndex, sectorCount, attackerTickets, attackerTicketsMax, tdmKillLimit,
-                callIns, availableScore, joinableSquads, sdmSquads, yourSdmSquad, sdmKillLimit, sdmWinner,
+                callIns, availableScore, joinableSquads, sdmSquads, yourSdmSquad, sdmKillLimit,
                 kothHill, kothNextHill, kothSecondsToRotate, kothTargetScore, kothHolder);
     }
 

@@ -19,6 +19,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.Item;
@@ -979,11 +980,7 @@ public class ConquestManager extends SavedData {
                 player.getInventory().clearContent();
             }
             if (team.isCombatant() && state == RoundState.IN_PROGRESS) {
-                if (team == Team.SQUAD) {
-                    teleportToSdmSpawn(player);
-                } else {
-                    teleportToRoleSpawn(player, team);
-                }
+                teleportToCombatSpawn(player, team);
                 ClassLoadoutCompat.equip(player);
             }
         }
@@ -1476,11 +1473,7 @@ public class ConquestManager extends SavedData {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             UUID uuid = player.getUUID();
             ZoneIntrusionKey key = new ZoneIntrusionKey(uuid, zoneKey);
-            boolean inside = teamOf(uuid) == intruderTeam && player.isAlive()
-                    && player.level().dimension() == dim
-                    && player.getX() >= min.getX() && player.getX() < max.getX() + 1
-                    && player.getY() >= min.getY() && player.getY() < max.getY() + 1
-                    && player.getZ() >= min.getZ() && player.getZ() < max.getZ() + 1;
+            boolean inside = teamOf(uuid) == intruderTeam && player.isAlive() && isInside(player, dim, min, max);
             if (!inside) {
                 zoneIntrusionSeconds.remove(key);
                 continue;
@@ -1881,18 +1874,12 @@ public class ConquestManager extends SavedData {
                 boundaryOutsideSeconds.remove(uuid);
                 continue;
             }
-            boolean inside = player.level().dimension() == dim
-                    && player.getX() >= min.getX() && player.getX() < max.getX() + 1
-                    && player.getY() >= min.getY() && player.getY() < max.getY() + 1
-                    && player.getZ() >= min.getZ() && player.getZ() < max.getZ() + 1;
+            boolean inside = isInside(player, dim, min, max);
             if (!inside && mode == GameMode.BREAKTHROUGH && state == RoundState.IN_PROGRESS) {
                 // A team's own base area is always allowed ground, besides the active sector.
                 Sector base = ownBaseSector(teamOf(uuid));
-                inside = base != null && base.getCombatAreaDim() == player.level().dimension()
-                        && base.getCombatAreaMin() != null && base.getCombatAreaMax() != null
-                        && player.getX() >= base.getCombatAreaMin().getX() && player.getX() < base.getCombatAreaMax().getX() + 1
-                        && player.getY() >= base.getCombatAreaMin().getY() && player.getY() < base.getCombatAreaMax().getY() + 1
-                        && player.getZ() >= base.getCombatAreaMin().getZ() && player.getZ() < base.getCombatAreaMax().getZ() + 1;
+                inside = base != null && base.getCombatAreaMin() != null && base.getCombatAreaMax() != null
+                        && isInside(player, base.getCombatAreaDim(), base.getCombatAreaMin(), base.getCombatAreaMax());
             }
             if (inside) {
                 boundaryOutsideSeconds.remove(uuid);
@@ -1939,6 +1926,14 @@ public class ConquestManager extends SavedData {
             }
         }
         return false;
+    }
+
+    /** Whether the entity stands in the block box {@code min}..{@code max} (inclusive of the max blocks) of {@code dim}. */
+    private static boolean isInside(Entity entity, @Nullable ResourceKey<Level> dim, BlockPos min, BlockPos max) {
+        return entity.level().dimension() == dim
+                && entity.getX() >= min.getX() && entity.getX() < max.getX() + 1
+                && entity.getY() >= min.getY() && entity.getY() < max.getY() + 1
+                && entity.getZ() >= min.getZ() && entity.getZ() < max.getZ() + 1;
     }
 
     private static boolean containsPos(BlockPos min, BlockPos max, BlockPos pos) {
@@ -2418,12 +2413,8 @@ public class ConquestManager extends SavedData {
                 continue;
             }
             applyMaxHealth(player, team);
-            if (team == Team.SQUAD) {
-                if (!placed.contains(player.getUUID())) {
-                    teleportToSdmSpawn(player);
-                }
-            } else {
-                teleportToRoleSpawn(player, team);
+            if (!placed.contains(player.getUUID())) {
+                teleportToCombatSpawn(player, team);
             }
             ClassLoadoutCompat.equip(player);
         }
@@ -2632,6 +2623,15 @@ public class ConquestManager extends SavedData {
             return;
         }
         sdmAssignLateJoiner(player);
+    }
+
+    /** Puts a combatant at their spawn: the squad-deathmatch spread spawn for {@link Team#SQUAD}, else their role spawn. */
+    private void teleportToCombatSpawn(ServerPlayer player, Team team) {
+        if (team == Team.SQUAD) {
+            teleportToSdmSpawn(player);
+        } else {
+            teleportToRoleSpawn(player, team);
+        }
     }
 
     /**
@@ -3637,7 +3637,7 @@ public class ConquestManager extends SavedData {
         applyMaxHealth(player, team);
         if (mode == GameMode.SQUAD_DM) {
             sdmAssignLateJoiner(player);
-            teleportToSdmSpawn(player);
+            teleportToCombatSpawn(player, team);
         } else if (mode == GameMode.CONQUEST) {
             int cost = Config.TICKET_COST_PER_RESPAWN.get();
             if (cost > 0) {
@@ -3717,7 +3717,7 @@ public class ConquestManager extends SavedData {
                 Config.TDM_KILL_LIMIT.get(),
                 callInStatuses, availableScore(viewer.getUUID()), joinableSquadsFor(viewer),
                 sdmStatuses, viewerSquad == null ? 0 : viewerSquad,
-                Config.SDM_KILL_LIMIT.get(), mode == GameMode.SQUAD_DM && state == RoundState.ENDED ? lastSdmWinner : 0,
+                Config.SDM_KILL_LIMIT.get(),
                 mode == GameMode.KOTH ? kothHill : "", mode == GameMode.KOTH && kothNextHill != null ? kothNextHill : "",
                 kothSecondsToRotate, Config.KOTH_TARGET_SCORE.get(), kothHolder);
     }

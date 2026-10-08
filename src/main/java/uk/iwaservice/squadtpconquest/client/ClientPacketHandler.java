@@ -19,7 +19,7 @@ public final class ClientPacketHandler {
                 msg.attackerTeam(), msg.sectorIndex(), msg.sectorCount(),
                 msg.attackerTickets(), msg.attackerTicketsMax(), msg.tdmKillLimit(),
                 msg.callIns(), msg.availableScore(), msg.joinableSquads(),
-                msg.sdmSquads(), msg.yourSdmSquad(), msg.sdmKillLimit(), msg.sdmWinner(),
+                msg.sdmSquads(), msg.yourSdmSquad(), msg.sdmKillLimit(),
                 msg.kothHill(), msg.kothNextHill(), msg.kothSecondsToRotate(), msg.kothTargetScore(), msg.kothHolder());
         JourneyMapCompat.refresh();
         if (msg.openScreen()) {

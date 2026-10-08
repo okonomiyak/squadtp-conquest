@@ -97,6 +97,12 @@ public enum Team implements StringRepresentable {
         return SDM_SQUAD_COLORS[Math.floorMod(squad - 1, SDM_SQUAD_COLORS.length)];
     }
 
+    /** RGB of {@link #sdmSquadColor}, white if the color has none. */
+    public static int sdmSquadRgb(int squad) {
+        Integer rgb = sdmSquadColor(squad).getColor();
+        return rgb == null ? 0xFFFFFF : rgb;
+    }
+
     /**
      * The team a flag currently "reads as": its owner once captured, the team
      * actively raising it from neutral, else neutral. Shared by the flag
