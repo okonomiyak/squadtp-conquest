@@ -2411,6 +2411,7 @@ public class ConquestManager extends SavedData {
      * {@link ClassLoadoutCompat}. No-op for a player who never set one.
      */
     private void teleportToSpawns(MinecraftServer server) {
+        Set<UUID> placed = mode == GameMode.SQUAD_DM ? placeSdmSquads(server) : Set.of();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             Team team = teamOf(player.getUUID());
             if (!team.isCombatant()) {
@@ -2418,12 +2419,70 @@ public class ConquestManager extends SavedData {
             }
             applyMaxHealth(player, team);
             if (team == Team.SQUAD) {
-                teleportToSdmSpawn(player);
+                if (!placed.contains(player.getUUID())) {
+                    teleportToSdmSpawn(player);
+                }
             } else {
                 teleportToRoleSpawn(player, team);
             }
             ClassLoadoutCompat.equip(player);
         }
+    }
+
+    /**
+     * Round-start Squad Deathmatch placement: one anchor spot per squad, chosen greedily so squads
+     * start far apart (each squad takes the sampled spot whose nearest already-chosen anchor is
+     * farthest), then every member is put at a safe spot next to their squad's anchor. Returns the
+     * players placed; anyone left out falls back to {@link #teleportToSdmSpawn}.
+     */
+    private Set<UUID> placeSdmSquads(MinecraftServer server) {
+        Set<UUID> placed = new HashSet<>();
+        BlockPos min = getBoundaryMin();
+        BlockPos max = getBoundaryMax();
+        ServerLevel level = boundaryDim == null ? null : server.getLevel(boundaryDim);
+        if (min == null || max == null || level == null) {
+            return placed;
+        }
+        Map<Integer, List<ServerPlayer>> squads = new TreeMap<>();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            Integer squad = sdmSquadOf(player.getUUID());
+            if (squad != null && teamOf(player.getUUID()).isCombatant()) {
+                squads.computeIfAbsent(squad, k -> new ArrayList<>()).add(player);
+            }
+        }
+        List<BlockPos> anchors = new ArrayList<>();
+        for (List<ServerPlayer> members : squads.values()) {
+            BlockPos anchor = null;
+            double bestMinDistSq = -1;
+            for (BlockPos spot : sampleSdmSpots(level, min, max)) {
+                double minDistSq = Double.MAX_VALUE;
+                for (BlockPos other : anchors) {
+                    minDistSq = Math.min(minDistSq, other.distSqr(spot));
+                }
+                if (minDistSq > bestMinDistSq) {
+                    anchor = spot;
+                    bestMinDistSq = minDistSq;
+                }
+            }
+            if (anchor == null) {
+                anchor = sdmCenterSpot(level, min, max);
+            }
+            anchors.add(anchor);
+            for (ServerPlayer member : members) {
+                BlockPos spot = anchor;
+                BlockPos nearby = anchor.offset(level.getRandom().nextInt(5) - 2, 0, level.getRandom().nextInt(5) - 2);
+                if (level.hasChunkAt(nearby) && containsPos(min, max, nearby)) {
+                    BlockPos safe = TeleportHelper.findSafeSpot(level, nearby);
+                    if (containsPos(min, max, safe)) {
+                        spot = safe;
+                    }
+                }
+                member.teleportTo(level, spot.getX() + 0.5, spot.getY(), spot.getZ() + 0.5,
+                        Set.of(), member.getYRot(), member.getXRot());
+                placed.add(member.getUUID());
+            }
+        }
+        return placed;
     }
 
     // --- squad deathmatch: squads, spawning, late joiners ---
@@ -2576,10 +2635,10 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Squad Deathmatch spawn: samples {@value #SDM_SPAWN_SAMPLES} random columns of the battlefield
-     * boundary (top of the terrain, clamped into the box's Y range), keeps the ones that are a safe
-     * spot and not next to an enemy, and picks the one farthest from every online enemy. Falls back to
-     * the box center when no sample qualifies. No-op if the boundary is gone.
+     * Squad Deathmatch spawn: samples random already-loaded columns of the battlefield boundary
+     * (see {@link #sampleSdmSpots}), keeps the ones that are a safe spot and not next to an enemy, and
+     * picks the one farthest from every online enemy. Falls back to the box center when no sample
+     * qualifies. No-op if the boundary is gone.
      */
     void teleportToSdmSpawn(ServerPlayer player) {
         BlockPos min = getBoundaryMin();
@@ -2593,13 +2652,8 @@ public class ConquestManager extends SavedData {
         }
         BlockPos best = null;
         double bestDistSq = -1;
-        for (int i = 0; i < SDM_SPAWN_SAMPLES; i++) {
-            int x = min.getX() + level.getRandom().nextInt(max.getX() - min.getX() + 1);
-            int z = min.getZ() + level.getRandom().nextInt(max.getZ() - min.getZ() + 1);
-            int topY = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 0, z)).getY();
-            BlockPos candidate = TeleportHelper.findSafeSpot(level,
-                    new BlockPos(x, Mth.clamp(topY, min.getY(), max.getY()), z));
-            if (!containsPos(min, max, candidate) || !isDestinationSafe(player, boundaryDim, candidate)) {
+        for (BlockPos candidate : sampleSdmSpots(level, min, max)) {
+            if (!isDestinationSafe(player, boundaryDim, candidate)) {
                 continue;
             }
             double distSq = nearestEnemyDistanceSqr(player, level, candidate);
@@ -2609,11 +2663,39 @@ public class ConquestManager extends SavedData {
             }
         }
         if (best == null) {
-            best = TeleportHelper.findSafeSpot(level,
-                    new BlockPos((min.getX() + max.getX()) / 2, max.getY(), (min.getZ() + max.getZ()) / 2));
+            best = sdmCenterSpot(level, min, max);
         }
         player.teleportTo(level, best.getX() + 0.5, best.getY(), best.getZ() + 0.5,
                 Set.of(), player.getYRot(), player.getXRot());
+    }
+
+    /**
+     * Up to {@value #SDM_SPAWN_SAMPLES} safe spots at random columns of the box (top of the terrain,
+     * clamped into its Y range) that lie inside it. Only columns whose chunk is already loaded are
+     * considered, so sampling never loads or generates terrain.
+     */
+    private List<BlockPos> sampleSdmSpots(ServerLevel level, BlockPos min, BlockPos max) {
+        List<BlockPos> spots = new ArrayList<>();
+        for (int i = 0; i < SDM_SPAWN_SAMPLES; i++) {
+            int x = min.getX() + level.getRandom().nextInt(max.getX() - min.getX() + 1);
+            int z = min.getZ() + level.getRandom().nextInt(max.getZ() - min.getZ() + 1);
+            if (!level.hasChunkAt(new BlockPos(x, min.getY(), z))) {
+                continue;
+            }
+            int topY = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 0, z)).getY();
+            BlockPos candidate = TeleportHelper.findSafeSpot(level,
+                    new BlockPos(x, Mth.clamp(topY, min.getY(), max.getY()), z));
+            if (containsPos(min, max, candidate)) {
+                spots.add(candidate);
+            }
+        }
+        return spots;
+    }
+
+    /** The fallback spawn when no loaded sample qualifies: a safe spot at the box center (may load that one chunk). */
+    private static BlockPos sdmCenterSpot(ServerLevel level, BlockPos min, BlockPos max) {
+        return TeleportHelper.findSafeSpot(level,
+                new BlockPos((min.getX() + max.getX()) / 2, max.getY(), (min.getZ() + max.getZ()) / 2));
     }
 
     /** Squared distance from {@code pos} to the nearest living enemy combatant in {@code level}; MAX_VALUE if none. */
