@@ -26,6 +26,9 @@ public final class Config {
     public static final ModConfigSpec.DoubleValue SELF_DAMAGE_MULTIPLIER;
     public static final ModConfigSpec.IntValue START_COUNTDOWN_SECONDS;
     public static final ModConfigSpec.IntValue TDM_KILL_LIMIT;
+    public static final ModConfigSpec.IntValue KOTH_TARGET_SCORE;
+    public static final ModConfigSpec.IntValue KOTH_ROTATION_SECONDS;
+    public static final ModConfigSpec.IntValue KOTH_ANNOUNCE_SECONDS;
     public static final ModConfigSpec.IntValue SDM_KILL_LIMIT;
     public static final ModConfigSpec.IntValue SDM_SQUAD_SIZE;
     public static final ModConfigSpec.IntValue HOME_ZONE_KILL_SECONDS;
@@ -139,6 +142,17 @@ public final class Config {
                 .comment("Kills a team needs to win a Team Deathmatch round. 0 disables the limit,",
                         "so the round is decided by roundTimeLimitSeconds (or endOnTeamEmpty) instead.")
                 .defineInRange("tdmKillLimit", 50, 0, 100000);
+        KOTH_TARGET_SCORE = b
+                .comment("Points a team needs to win a King of the Hill round. A team earns 1 point per second",
+                        "while it holds the active hill alone. The round can also end on roundTimeLimitSeconds",
+                        "(higher score wins; 0 = no time limit).")
+                .defineInRange("kothTargetScore", 250, 1, 100000);
+        KOTH_ROTATION_SECONDS = b
+                .comment("Seconds the King of the Hill target point stays active before it moves to another point.")
+                .defineInRange("kothRotationSeconds", 90, 10, 3600);
+        KOTH_ANNOUNCE_SECONDS = b
+                .comment("Seconds before the hill moves that the next hill is announced. 0 = no advance notice.")
+                .defineInRange("kothAnnounceSeconds", 10, 0, 600);
         SDM_KILL_LIMIT = b
                 .comment("Kills a squad needs to win a Squad Deathmatch round. The round can also end on",
                         "roundTimeLimitSeconds (most kills wins; 0 = no time limit).")

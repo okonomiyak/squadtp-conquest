@@ -1,5 +1,6 @@
 package uk.iwaservice.squadtpconquest.client.gui;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -75,14 +76,25 @@ public class ConquestHudOverlay implements LayeredDraw.Layer {
         int barY = BAR_Y;
 
         graphics.fill(barX - 1, barY - 1, barX + BAR_WIDTH + 1, barY + BAR_HEIGHT + 1, 0xA0000000);
-        int total = Math.max(1, leftTickets + rightTickets);
-        int split = Math.round(BAR_WIDTH * leftTickets / (float) total);
-        graphics.fill(barX, barY, barX + split, barY + BAR_HEIGHT, leftColor);
-        graphics.fill(barX + split, barY, barX + BAR_WIDTH, barY + BAR_HEIGHT, rightColor);
+        boolean koth = ConquestClientData.getMode() == GameMode.KOTH;
+        if (koth) {
+            // Each side fills from its own end toward the middle as it nears the target score.
+            float target = Math.max(1, ConquestClientData.getKothTargetScore());
+            int leftFill = Math.round(BAR_WIDTH / 2f * Math.min(1f, leftTickets / target));
+            int rightFill = Math.round(BAR_WIDTH / 2f * Math.min(1f, rightTickets / target));
+            graphics.fill(barX, barY, barX + leftFill, barY + BAR_HEIGHT, leftColor);
+            graphics.fill(barX + BAR_WIDTH - rightFill, barY, barX + BAR_WIDTH, barY + BAR_HEIGHT, rightColor);
+        } else {
+            int total = Math.max(1, leftTickets + rightTickets);
+            int split = Math.round(BAR_WIDTH * leftTickets / (float) total);
+            graphics.fill(barX, barY, barX + split, barY + BAR_HEIGHT, leftColor);
+            graphics.fill(barX + split, barY, barX + BAR_WIDTH, barY + BAR_HEIGHT, rightColor);
+        }
 
-        int tdmKillLimit = ConquestClientData.getMode() == GameMode.TDM ? ConquestClientData.getTdmKillLimit() : 0;
-        String leftText = tdmKillLimit > 0 ? leftTickets + "/" + tdmKillLimit : String.valueOf(leftTickets);
-        String rightText = tdmKillLimit > 0 ? rightTickets + "/" + tdmKillLimit : String.valueOf(rightTickets);
+        int scoreLimit = koth ? ConquestClientData.getKothTargetScore()
+                : ConquestClientData.getMode() == GameMode.TDM ? ConquestClientData.getTdmKillLimit() : 0;
+        String leftText = scoreLimit > 0 ? leftTickets + "/" + scoreLimit : String.valueOf(leftTickets);
+        String rightText = scoreLimit > 0 ? rightTickets + "/" + scoreLimit : String.valueOf(rightTickets);
         graphics.drawString(font, leftText, barX - font.width(leftText) - 4, barY + 1, 0xFFFFFF);
         graphics.drawString(font, rightText, barX + BAR_WIDTH + 4, barY + 1, 0xFFFFFF);
 
@@ -91,8 +103,31 @@ public class ConquestHudOverlay implements LayeredDraw.Layer {
         int leadColor = leftTickets > rightTickets ? leftColor : leftTickets < rightTickets ? rightColor : 0xFFFFFF;
         graphics.drawCenteredString(font, Component.literal(lead), barX + BAR_WIDTH / 2, barY - 10, leadColor);
 
-        if (!ConquestClientData.getPoints().isEmpty()) {
+        if (koth) {
+            renderKothInfo(graphics, font, width, barY + BAR_HEIGHT + 4);
+        } else if (!ConquestClientData.getPoints().isEmpty()) {
             renderPointIcons(graphics, font, width, barY + BAR_HEIGHT + 4, ConquestClientData.getPoints());
+        }
+    }
+
+    /** King of the Hill: the target point with its countdown and holder, and the announced next hill. */
+    private void renderKothInfo(GuiGraphics graphics, Font font, int width, int y) {
+        String hill = ConquestClientData.getKothHill();
+        if (hill.isEmpty()) {
+            return;
+        }
+        boolean contested = ConquestClientData.getPoints().stream()
+                .anyMatch(p -> p.name().equals(hill) && p.contested());
+        Team holder = ConquestClientData.getKothHolder();
+        Component status = contested ? Component.translatable("conquest.hud.koth_contested").withStyle(ChatFormatting.YELLOW)
+                : holder != Team.NEUTRAL ? holder.display()
+                : Component.translatable("conquest.hud.koth_vacant").withStyle(ChatFormatting.GRAY);
+        graphics.drawCenteredString(font, Component.translatable("conquest.hud.koth_hill", hill,
+                ConquestClientData.getKothSecondsToRotate()).append(" ・ ").append(status), width / 2, y, 0xFFFFFF);
+        String next = ConquestClientData.getKothNextHill();
+        if (!next.isEmpty()) {
+            graphics.drawCenteredString(font, Component.translatable("conquest.hud.koth_next", next)
+                    .withStyle(ChatFormatting.YELLOW), width / 2, y + 11, 0xFFFFFF);
         }
     }
 
@@ -195,7 +230,7 @@ public class ConquestHudOverlay implements LayeredDraw.Layer {
         List<PointIcon> points = new java.util.ArrayList<>();
         for (ConquestSyncPacket.PointStatus p : source) {
             points.add(new PointIcon(p.name(),
-                    Team.resolveActive(p.owner(), p.capturingTeam(), p.flagLevel()),
+                    ConquestClientData.displayTeam(p),
                     p.contested(), (int) p.flagLevel()));
         }
 
