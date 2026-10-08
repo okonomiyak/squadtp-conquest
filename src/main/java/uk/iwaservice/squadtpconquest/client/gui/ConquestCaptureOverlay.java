@@ -7,6 +7,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.network.chat.Component;
 import uk.iwaservice.squadtpconquest.client.ConquestClientData;
+import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 
@@ -38,7 +39,9 @@ public class ConquestCaptureOverlay implements LayeredDraw.Layer {
         int width = graphics.guiWidth();
         int height = graphics.guiHeight();
         Team yourTeam = ConquestClientData.getYourTeam();
-        if (!ConquestClientData.isActive() || !yourTeam.isCombatant()) {
+        // King of the Hill never moves flags; its hold status lives in the main HUD instead.
+        if (!ConquestClientData.isActive() || !yourTeam.isCombatant()
+                || ConquestClientData.getMode() == GameMode.KOTH) {
             return;
         }
 
