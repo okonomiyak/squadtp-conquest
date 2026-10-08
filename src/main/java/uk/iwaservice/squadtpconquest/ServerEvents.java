@@ -45,6 +45,14 @@ public final class ServerEvents {
         }
     }
 
+    /** Squad Deathmatch: a player returning mid-round without a squad number gets one (see {@link ConquestManager#sdmAssignLateJoiner}). */
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            ConquestManager.get(player.server).onLogin(player);
+        }
+    }
+
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {

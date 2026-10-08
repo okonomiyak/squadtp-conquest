@@ -75,6 +75,8 @@ public final class ConquestCommand {
         CONFIG_KEYS.put("selfDamageMultiplier", doubleEntry(Config.SELF_DAMAGE_MULTIPLIER));
         CONFIG_KEYS.put("startCountdownSeconds", intEntry(Config.START_COUNTDOWN_SECONDS));
         CONFIG_KEYS.put("tdmKillLimit", intEntry(Config.TDM_KILL_LIMIT));
+        CONFIG_KEYS.put("sdmKillLimit", intEntry(Config.SDM_KILL_LIMIT));
+        CONFIG_KEYS.put("sdmSquadSize", intEntry(Config.SDM_SQUAD_SIZE));
         CONFIG_KEYS.put("assistWindowSeconds", intEntry(Config.ASSIST_WINDOW_SECONDS));
         CONFIG_KEYS.put("scorePerKill", intEntry(Config.SCORE_PER_KILL));
         CONFIG_KEYS.put("scorePerAssist", intEntry(Config.SCORE_PER_ASSIST));
@@ -328,7 +330,7 @@ public final class ConquestCommand {
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
                                 .then(Commands.argument("mode", StringArgumentType.word())
-                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"conquest", "tdm", "breakthrough"}, b))
+                                        .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"conquest", "tdm", "breakthrough", "sdm"}, b))
                                         .executes(ConquestCommand::setMode))))
                 .then(Commands.literal("sector")
                         .requires(src -> src.hasPermission(2))
@@ -465,7 +467,8 @@ public final class ConquestCommand {
         }
         Team spotterTeam = manager.teamOf(spotter.getUUID());
         Team targetTeam = manager.teamOf(target.getUUID());
-        if (!spotterTeam.isCombatant() || !targetTeam.isCombatant() || spotterTeam == targetTeam || !target.isAlive()) {
+        if (!spotterTeam.isCombatant() || !targetTeam.isCombatant() || manager.sameSide(spotter.getUUID(), target.getUUID())
+                || !target.isAlive()) {
             return 0;
         }
         return manager.spotPlayer(ctx.getSource().getServer(), spotter, target) ? 1 : 0;
@@ -1282,6 +1285,8 @@ public final class ConquestCommand {
             case NO_SECTOR -> fail(ctx, Component.translatable("conquest.msg.no_sector"));
             case TEAM_A_EMPTY -> fail(ctx, Component.translatable("conquest.msg.team_empty", Team.A.display()));
             case TEAM_B_EMPTY -> fail(ctx, Component.translatable("conquest.msg.team_empty", Team.B.display()));
+            case NO_BOUNDARY -> fail(ctx, Component.translatable("conquest.msg.no_boundary"));
+            case NOT_ENOUGH_SQUADS -> fail(ctx, Component.translatable("conquest.msg.not_enough_squads"));
         };
     }
 
@@ -1318,10 +1323,15 @@ public final class ConquestCommand {
         msg.append("\n").append(Component.translatable("conquest.status.mode", manager.getMode().display())
                 .withStyle(ChatFormatting.GRAY));
         String countsKey = manager.getMode() == GameMode.TDM ? "conquest.status.kills" : "conquest.status.tickets";
-        msg.append("\n").append(Component.translatable(countsKey,
-                Component.literal(String.valueOf(manager.tickets(Team.A))).withStyle(ChatFormatting.BLUE),
-                Component.literal(String.valueOf(manager.tickets(Team.B))).withStyle(ChatFormatting.RED),
-                Component.translatable(stateKey)));
+        if (manager.getMode() == GameMode.SQUAD_DM) {
+            msg.append("\n").append(Component.translatable("conquest.status.sdm", manager.sdmSquadCount(),
+                    Component.translatable(stateKey)));
+        } else {
+            msg.append("\n").append(Component.translatable(countsKey,
+                    Component.literal(String.valueOf(manager.tickets(Team.A))).withStyle(ChatFormatting.BLUE),
+                    Component.literal(String.valueOf(manager.tickets(Team.B))).withStyle(ChatFormatting.RED),
+                    Component.translatable(stateKey)));
+        }
 
         if (state == RoundState.STARTING) {
             msg.append("\n").append(Component.translatable("conquest.status.countdown",

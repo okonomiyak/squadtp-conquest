@@ -8,6 +8,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.UseOnContext;
 import uk.iwaservice.squadtpconquest.conquest.ConquestManager;
+import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.RoundState;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 
@@ -32,6 +33,10 @@ public class TeamBeaconItem extends Item {
         ConquestManager manager = ConquestManager.get(level.getServer());
         if (manager.getState() != RoundState.IN_PROGRESS) {
             player.displayClientMessage(Component.translatable("conquest.msg.not_active"), true);
+            return InteractionResult.FAIL;
+        }
+        if (manager.getMode() == GameMode.SQUAD_DM) {
+            player.displayClientMessage(Component.translatable("conquest.msg.beacon_not_in_sdm"), true);
             return InteractionResult.FAIL;
         }
         Team team = manager.teamOf(player.getUUID());

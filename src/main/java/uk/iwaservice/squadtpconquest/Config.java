@@ -26,6 +26,8 @@ public final class Config {
     public static final ForgeConfigSpec.DoubleValue SELF_DAMAGE_MULTIPLIER;
     public static final ForgeConfigSpec.IntValue START_COUNTDOWN_SECONDS;
     public static final ForgeConfigSpec.IntValue TDM_KILL_LIMIT;
+    public static final ForgeConfigSpec.IntValue SDM_KILL_LIMIT;
+    public static final ForgeConfigSpec.IntValue SDM_SQUAD_SIZE;
     public static final ForgeConfigSpec.IntValue HOME_ZONE_KILL_SECONDS;
     public static final ForgeConfigSpec.IntValue BOUNDARY_KILL_SECONDS;
     public static final ForgeConfigSpec.IntValue TEAM_BEACON_LIFETIME_SECONDS;
@@ -137,6 +139,14 @@ public final class Config {
                 .comment("Kills a team needs to win a Team Deathmatch round. 0 disables the limit,",
                         "so the round is decided by roundTimeLimitSeconds (or endOnTeamEmpty) instead.")
                 .defineInRange("tdmKillLimit", 50, 0, 100000);
+        SDM_KILL_LIMIT = b
+                .comment("Kills a squad needs to win a Squad Deathmatch round. The round can also end on",
+                        "roundTimeLimitSeconds (most kills wins; 0 = no time limit).")
+                .defineInRange("sdmKillLimit", 50, 1, 10000);
+        SDM_SQUAD_SIZE = b
+                .comment("Players per squad when a Squad Deathmatch round forms its squads. Invite-only squadtp",
+                        "squads are kept together as one squad of their own size.")
+                .defineInRange("sdmSquadSize", 4, 1, 16);
         HOME_ZONE_KILL_SECONDS = b
                 .comment("Continuous seconds an enemy player may spend inside a team's home zone before being",
                         "executed. Resets to 0 the instant they leave the zone. Applies in every game mode.")

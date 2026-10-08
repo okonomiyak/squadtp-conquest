@@ -18,7 +18,8 @@ public final class ClientPacketHandler {
                 msg.mode(), msg.yourTeam(), msg.canAdmin(),
                 msg.attackerTeam(), msg.sectorIndex(), msg.sectorCount(),
                 msg.attackerTickets(), msg.attackerTicketsMax(), msg.tdmKillLimit(),
-                msg.callIns(), msg.availableScore(), msg.joinableSquads());
+                msg.callIns(), msg.availableScore(), msg.joinableSquads(),
+                msg.sdmSquads(), msg.yourSdmSquad(), msg.sdmKillLimit(), msg.sdmWinner());
         JourneyMapCompat.refresh();
         if (msg.openScreen()) {
             Minecraft mc = Minecraft.getInstance();
