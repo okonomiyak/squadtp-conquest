@@ -21,15 +21,16 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 | `/conquest pin clear` | 自分が立てたピンを手動で消す。通常はピンキーをしゃがみながら押すと自動送信される | - |
 | `/conquest team shuffle` | 管理人/観戦者以外のオンラインプレイヤー(演習場・待機チームも含む)をランダムにA/Bへ均等に振り分け直す。招待制の分隊は解散せず、メンバー全員がまとめて同じチームに移動する(詳細は[チームシャッフルと分隊](#チームシャッフルと分隊)参照) | OP |
 | `/conquest breakthrough attacker <a\|b>` | ブレイクスルーモードで、チームA/Bのどちらが攻撃側かを設定(もう一方が防衛側)。ラウンドが`WAITING`の時のみ変更可(既定は攻撃側=チームA) | OP |
-| `/conquest mode set <conquest\|tdm\|breakthrough>` | ゲームモードを切り替え。ラウンドが`WAITING`の時のみ変更可 | OP |
-| `/conquest sector add <番号> <拠点名> [半径]` | 実行者の足元に拠点を追加し、指定番号のセクターに割り当てる(セクターが無ければ新規作成) | OP |
-| `/conquest sector spawn set <attacker\|defender> <番号>` | 実行者の足元を、指定セクターのその役割のスポーン地点に設定 | OP |
-| `/conquest sector timelimit set <番号> <秒>` | セクター個別の制限時間を上書き(0で`sectorTimeLimitSeconds`既定値に戻す) | OP |
-| `/conquest sector area set <番号> [<x1 y1 z1> <x2 y2 z2>]` | セクターの**戦闘エリア**(そのセクターがアクティブな間だけ有効な戦場境界)を設定。座標省略時はゾーンワンドの選択範囲を使用 | OP |
-| `/conquest sector area corner1 set <番号>` / `/conquest sector area corner2 set <番号>` | 実行者の足元をそのセクターの戦闘エリアの角1/角2に設定(両方設定されて初めて有効になる) | OP |
-| `/conquest sector area remove <番号>` | セクターの戦闘エリアを削除(未設定に戻す。グローバルの`/conquest boundary`があればそちらにフォールバック) | OP |
-| `/conquest sector remove <番号>` | セクターと、それに属する全拠点を削除(旗ブロックも撤去) | OP |
-| `/conquest sector list` | 全セクターの番号・所属拠点一覧を表示 | - |
+| `/conquest mode set <conquest\|tdm\|breakthrough\|sdm\|koth>` | ゲームモードを切り替え。ラウンドが`WAITING`の時のみ変更可 | OP |
+| `/conquest sector <番号> point <拠点名> [半径]` | 実行者の足元に拠点を追加し、指定番号のセクターに割り当てる(セクターが無ければ新規作成) | OP |
+| `/conquest sector <番号> spawn <attacker\|defender>` | 実行者の足元を、指定セクターのその役割のスポーン地点に設定 | OP |
+| `/conquest sector <番号> timelimit <秒>` | セクター個別の制限時間を上書き(0で`sectorTimeLimitSeconds`既定値に戻す) | OP |
+| `/conquest sector <番号> area [<x1 y1 z1> <x2 y2 z2>]` | セクターの**戦闘エリア**(そのセクターがアクティブな間だけ有効な戦場境界)を設定。座標省略時はゾーンワンドの選択範囲を使用 | OP |
+| `/conquest sector <番号> area corner1` / `/conquest sector <番号> area corner2` | 実行者の足元をそのセクターの戦闘エリアの角1/角2に設定(両方設定されて初めて有効になる) | OP |
+| `/conquest sector <番号> area remove` | セクターの戦闘エリアを削除(未設定に戻す。グローバルの`/conquest boundary`があればそちらにフォールバック) | OP |
+| `/conquest sector <番号> role <normal\|attacker_base\|defender_base>` | セクターの役割を設定。拠点セクター(攻撃側/防衛側)は前線にならず、自陣営は場外扱いされず、敵は処刑される(各役割は1つまで、試合中は変更不可) | OP |
+| `/conquest sector <番号> remove` | セクターと、それに属する全拠点を削除(旗ブロックも撤去) | OP |
+| `/conquest sector list` | 全セクターの番号・役割・所属拠点一覧を表示 | - |
 | `/conquest preset save <名前>` | 現在の拠点配置・スポーン地点・自陣ゾーンA/B・戦場境界・破壊禁止ゾーン・破壊禁止ブロック(ゲーム内追加分)・ゲームモードを名前付きで保存(同名は上書き) | OP |
 | `/conquest preset load <名前>` | 保存済みプリセットを読み込み、現在の拠点・スポーン・自陣ゾーンA/B・戦場境界・破壊禁止ゾーン・破壊禁止ブロック(ゲーム内追加分)・モードを置き換える。ラウンドが`WAITING`の時のみ | OP |
 | `/conquest preset remove <名前>` | プリセットを削除 | OP |
@@ -174,10 +175,10 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
     時点で防衛側の勝利
   - 防衛側はチケット無制限。リスポーンのたびに即座にアクティブセクターの防衛側スポーン地点へ移動
     (前線の後退に合わせて自動的に切り替わる)
-  - 各セクターには`sectorTimeLimitSeconds`(`/conquest sector timelimit set`で個別上書き可)の
+  - 各セクターには`sectorTimeLimitSeconds`(`/conquest sector <番号> timelimit`で個別上書き可)の
     制限時間があり、攻撃側が拠点を1つ占領するたびに`sectorTimeExtensionOnCapture`秒延長される。
     時間切れは防衛側の勝利
-  - セクターごとに`/conquest sector area set`で**戦闘エリア**(2点AABB)を設定できる。設定した
+  - セクターごとに`/conquest sector <番号> area`で**戦闘エリア**(2点AABB)を設定できる。設定した
     セクターがアクティブな間、そのエリアの外は[戦場境界](#戦場境界アウトオブバウンズ)と同じ
     「外に出て`boundaryKillSeconds`秒経つと処刑」判定が働く(グローバルな`/conquest boundary`
     より優先)。エリア未設定のセクターはグローバル境界にフォールバック。セクターが突破されて
@@ -281,7 +282,7 @@ BF風のクレーターに差し替える。爆心に近いブロックはair、
 (`MikanItem.use`)。
 
 **地形の自動復元が対象とする範囲は、`/conquest boundary set`(戦場境界)が優先、未設定なら
-ブレイクスルーに限り全セクターの戦闘エリア(`/conquest sector area set`)の合計範囲(バウンディング
+ブレイクスルーに限り全セクターの戦闘エリア(`/conquest sector <番号> area`)の合計範囲(バウンディング
 ボックス)にフォールバックする**(2026-08-14追加。それ以前はグローバル境界が無いと自動復元が一切
 働かなかった——ブレイクスルーはグローバル境界を使わずセクター単位の戦闘エリアだけで運用することが
 多いため、地形破壊自体は起きるのに復元だけ効かない抜け穴になっていた)。フォールバック時、
@@ -691,10 +692,10 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
 
 `breakthrough`セクション:
 - `attackerTickets`(既定30) — 攻撃側が共有するリスポーンチケットの総数
-- `sectorTimeLimitSeconds`(既定300) — セクター1つあたりの制限時間の既定値(`/conquest sector timelimit set`で個別上書き可)
+- `sectorTimeLimitSeconds`(既定300) — セクター1つあたりの制限時間の既定値(`/conquest sector <番号> timelimit`で個別上書き可)
 - `sectorTimeExtensionOnCapture`(既定120) — 拠点を1つ占領するごとに残り時間へ加算される秒数
 - `sectorAreaTransitionGraceSeconds`(既定20) — セクター突破直後、次のセクターの戦闘エリア境界判定が
-  始まるまでの猶予秒数(`/conquest sector area set`で戦闘エリアを設定している場合のみ意味を持つ)
+  始まるまでの猶予秒数(`/conquest sector <番号> area`で戦闘エリアを設定している場合のみ意味を持つ)
 - `ticketsPerSectorCapture`(既定10) — セクター突破のたびに攻撃側の共有チケットへ加算される数。0で無効
 
 `terrainDestruction`セクション:
