@@ -261,5 +261,9 @@
   "conquest.config.header": "=== Conquest Config ===",
   "conquest.config.unknown_key": "Unknown config key: %s (use /conquest config list)",
   "conquest.config.invalid_value": "Invalid value \"%s\" for %s",
-  "conquest.config.set": "%s set to %s"
+  "conquest.config.set": "%s set to %s",
+  "conquest.sdm.squad": "Squad %s",
+  "conquest.hud.sdm_rank": "#%s",
+  "conquest.score.sdm_limit": "Kill limit: %s",
+  "conquest.score.sdm_kills": "%s kills"
 }

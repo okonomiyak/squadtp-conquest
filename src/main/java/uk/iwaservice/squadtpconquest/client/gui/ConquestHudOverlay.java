@@ -56,6 +56,11 @@ public class ConquestHudOverlay implements IGuiOverlay {
             return;
         }
 
+        if (ConquestClientData.getMode() == GameMode.SQUAD_DM) {
+            renderSquadDeathmatch(graphics, font, width);
+            return;
+        }
+
         // Combatants see their own side on the left; a spectating admin always sees Team A on the
         // left instead, since there's no "your side" to anchor on.
         Team leftTeam = spectating ? Team.A : yourTeam;
@@ -88,6 +93,63 @@ public class ConquestHudOverlay implements IGuiOverlay {
         if (!ConquestClientData.getPoints().isEmpty()) {
             renderPointIcons(graphics, font, width, barY + BAR_HEIGHT + 4, ConquestClientData.getPoints());
         }
+    }
+
+    /** "Squad N" / "分隊N" in that squad's color. */
+    public static Component squadLabel(int squad) {
+        return Component.translatable("conquest.sdm.squad", squad).withStyle(Team.sdmSquadColor(squad));
+    }
+
+    /**
+     * Squad Deathmatch: your squad's kills against the kill limit as a bar (squad label on the left,
+     * kills on the right, your rank above), the leading squad below it when it isn't yours. Without a
+     * squad (admin / spectator) the top three squads are listed instead.
+     */
+    private void renderSquadDeathmatch(GuiGraphics graphics, Font font, int width) {
+        List<ConquestSyncPacket.SdmSquadStatus> squads = ConquestClientData.getSdmSquads();
+        int limit = ConquestClientData.getSdmKillLimit();
+        int yours = ConquestClientData.getYourSdmSquad();
+        int rank = 0;
+        for (int i = 0; i < squads.size(); i++) {
+            if (squads.get(i).number() == yours) {
+                rank = i + 1;
+            }
+        }
+        if (rank == 0) {
+            for (int i = 0; i < Math.min(3, squads.size()); i++) {
+                ConquestSyncPacket.SdmSquadStatus s = squads.get(i);
+                graphics.drawCenteredString(font, Component.empty().append(squadLabel(s.number()))
+                        .append("  " + killText(s.kills(), limit)), width / 2, BAR_Y - 10 + i * 11, 0xFFFFFF);
+            }
+            return;
+        }
+
+        ConquestSyncPacket.SdmSquadStatus mine = squads.get(rank - 1);
+        int barX = (width - BAR_WIDTH) / 2;
+        int fill = limit > 0 ? Math.round(BAR_WIDTH * Math.min(1f, mine.kills() / (float) limit)) : 0;
+        graphics.fill(barX - 1, BAR_Y - 1, barX + BAR_WIDTH + 1, BAR_Y + BAR_HEIGHT + 1, 0xA0000000);
+        graphics.fill(barX, BAR_Y, barX + fill, BAR_Y + BAR_HEIGHT, 0xFF000000 | squadRgb(yours));
+        Component label = squadLabel(yours);
+        String text = killText(mine.kills(), limit);
+        graphics.drawString(font, label, barX - font.width(label) - 4, BAR_Y + 1, 0xFFFFFF);
+        graphics.drawString(font, text, barX + BAR_WIDTH + 4, BAR_Y + 1, 0xFFFFFF);
+        graphics.drawCenteredString(font, Component.translatable("conquest.hud.sdm_rank", rank),
+                width / 2, BAR_Y - 10, 0xFFFFFF);
+
+        ConquestSyncPacket.SdmSquadStatus leader = squads.get(0);
+        if (leader.number() != yours) {
+            graphics.drawCenteredString(font, Component.literal("▲ ").append(squadLabel(leader.number()))
+                    .append("  " + killText(leader.kills(), limit)), width / 2, BAR_Y + BAR_HEIGHT + 4, 0xFFFFFF);
+        }
+    }
+
+    private static String killText(int kills, int limit) {
+        return limit > 0 ? kills + "/" + limit : String.valueOf(kills);
+    }
+
+    private static int squadRgb(int squad) {
+        Integer rgb = Team.sdmSquadColor(squad).getColor();
+        return rgb == null ? 0xFFFFFF : rgb;
     }
 
     /**
