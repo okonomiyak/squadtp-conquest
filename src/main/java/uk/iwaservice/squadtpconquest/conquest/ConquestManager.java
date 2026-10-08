@@ -3086,11 +3086,12 @@ public class ConquestManager extends SavedData {
             int lifetimeLosses = lifetime == null ? 0 : lifetime.losses;
             ChatFormatting nameColor = nameColors.get(player.getUUID());
             Integer nameColorRgb = nameColor == null ? null : nameColor.getColor();
+            Integer sdmSquad = sdmSquadOf(player.getUUID());
             entries.add(new ConquestScoreboardPacket.Entry(player.getUUID(), player.getGameProfile().getName(),
                     team, kills, deaths, revives, captures, totalScore(player.getUUID()),
                     lifetimeKills, lifetimeDeaths, lifetimeRevives, lifetimeCaptures, lifetimeWins, lifetimeLosses,
                     totalLifetimeScore(player.getUUID()),
-                    nameColorRgb == null ? 0 : nameColorRgb));
+                    nameColorRgb == null ? 0 : nameColorRgb, sdmSquad == null ? 0 : sdmSquad));
         }
         return new ConquestScoreboardPacket(roundElapsedSeconds, entries);
     }

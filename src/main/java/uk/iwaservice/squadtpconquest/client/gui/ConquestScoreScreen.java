@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import uk.iwaservice.squadtp.client.SquadClientData;
 import uk.iwaservice.squadtpconquest.client.ConquestClientData;
+import uk.iwaservice.squadtpconquest.conquest.GameMode;
 import uk.iwaservice.squadtpconquest.conquest.Team;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
@@ -65,6 +66,11 @@ public class ConquestScoreScreen extends Screen {
     private int panelHeight;
     /** 0 = this round's stats, 1 = cumulative (lifetime) stats. Toggled by the header button. */
     private int page;
+    /** Squad Deathmatch list: index of the first visible row, moved by the mouse wheel. */
+    private int sdmScroll;
+
+    /** One line of the Squad Deathmatch list: a squad header ({@code entry == null}) or one of its members. */
+    private record SdmRow(int squad, int kills, ConquestScoreboardPacket.Entry entry, int rank) {}
 
     public ConquestScoreScreen() {
         super(Component.translatable("conquest.score.title"));
@@ -118,10 +124,16 @@ public class ConquestScoreScreen extends Screen {
         graphics.drawString(this.font, pageText, r - PAD - 26 - this.font.width(pageText), t + 8, COLOR_TEXT_DIM);
 
         int cursor = t + 32;
-        cursor = renderTicketBar(graphics, l, r, cursor);
-        cursor += 4;
-        cursor = renderPointIcons(graphics, l, r, cursor);
-        cursor += 6;
+        boolean sdm = ConquestClientData.getMode() == GameMode.SQUAD_DM;
+        if (sdm) {
+            cursor = renderSdmSummary(graphics, l, cursor);
+            cursor += 6;
+        } else {
+            cursor = renderTicketBar(graphics, l, r, cursor);
+            cursor += 4;
+            cursor = renderPointIcons(graphics, l, r, cursor);
+            cursor += 6;
+        }
 
         List<ConquestScoreboardPacket.Entry> all = ConquestClientData.getScoreboard();
         int colWidth = (panelWidth - 3 * PAD) / 2;
@@ -134,10 +146,15 @@ public class ConquestScoreScreen extends Screen {
             graphics.fill(l + PAD, cursor, r - PAD, cursor + 1, COLOR_SEPARATOR);
             cursor += 8;
 
-            List<ConquestScoreboardPacket.Entry> teamA = sortedTeam(all, Team.A);
-            List<ConquestScoreboardPacket.Entry> teamB = sortedTeam(all, Team.B);
-            renderColumn(graphics, leftColX, cursor, colWidth, Team.A, teamA);
-            renderColumn(graphics, rightColX, cursor, colWidth, Team.B, teamB);
+            if (sdm) {
+                // Stops above the spectator line at the bottom of the panel.
+                renderSdmList(graphics, leftColX, cursor, panelWidth - 2 * PAD, b - PAD - this.font.lineHeight - 8, all);
+            } else {
+                List<ConquestScoreboardPacket.Entry> teamA = sortedTeam(all, Team.A);
+                List<ConquestScoreboardPacket.Entry> teamB = sortedTeam(all, Team.B);
+                renderColumn(graphics, leftColX, cursor, colWidth, Team.A, teamA);
+                renderColumn(graphics, rightColX, cursor, colWidth, Team.B, teamB);
+            }
         } else {
             graphics.drawString(this.font, Component.translatable("conquest.score.lifetime_header")
                     .withStyle(ChatFormatting.GRAY), l + PAD, cursor, COLOR_TEXT);
@@ -162,6 +179,82 @@ public class ConquestScoreScreen extends Screen {
         }
 
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        sdmScroll = Math.max(0, sdmScroll - (int) Math.signum(scrollY));
+        return true;
+    }
+
+    /** Squad Deathmatch header: the kill limit and the top three squads. */
+    private int renderSdmSummary(GuiGraphics graphics, int panelLeft, int y) {
+        int limit = ConquestClientData.getSdmKillLimit();
+        MutableComponent line = Component.translatable("conquest.score.sdm_limit", limit).withStyle(ChatFormatting.GRAY);
+        List<ConquestSyncPacket.SdmSquadStatus> squads = ConquestClientData.getSdmSquads();
+        for (int i = 0; i < Math.min(3, squads.size()); i++) {
+            line.append("   ").append(ConquestHudOverlay.squadLabel(squads.get(i).number()))
+                    .append(Component.literal(" " + squads.get(i).kills()).withStyle(ChatFormatting.WHITE));
+        }
+        graphics.drawCenteredString(this.font, line, panelLeft + panelWidth / 2, y, COLOR_TEXT);
+        return y + this.font.lineHeight;
+    }
+
+    /**
+     * Squad Deathmatch round page: one list grouped by squad in standings order, a colored header row
+     * ("Squad N  K kills") followed by that squad's members by score. Players without a squad are
+     * left out. Rows that don't fit between {@code y} and {@code maxY} are reached with the mouse wheel.
+     */
+    private void renderSdmList(GuiGraphics graphics, int x, int y, int width, int maxY,
+                                List<ConquestScoreboardPacket.Entry> all) {
+        graphics.drawString(this.font, Component.translatable("conquest.score.col_header"), x, y, COLOR_TEXT_FAINT);
+        y += 11;
+
+        List<SdmRow> rows = new ArrayList<>();
+        for (ConquestSyncPacket.SdmSquadStatus squad : ConquestClientData.getSdmSquads()) {
+            rows.add(new SdmRow(squad.number(), squad.kills(), null, 0));
+            List<ConquestScoreboardPacket.Entry> members = new ArrayList<>();
+            for (ConquestScoreboardPacket.Entry e : all) {
+                if (e.team() == Team.SQUAD && e.sdmSquad() == squad.number()) {
+                    members.add(e);
+                }
+            }
+            members.sort(Comparator.comparingInt(ConquestScoreboardPacket.Entry::score).reversed());
+            for (int i = 0; i < members.size(); i++) {
+                rows.add(new SdmRow(squad.number(), squad.kills(), members.get(i), i + 1));
+            }
+        }
+
+        int visible = Math.max(1, (maxY - y) / 10);
+        sdmScroll = Math.min(sdmScroll, Math.max(0, rows.size() - visible));
+        UUID self = selfUuid();
+        java.util.Set<UUID> squadMates = squadMateUuids();
+        for (int i = sdmScroll; i < Math.min(rows.size(), sdmScroll + visible); i++) {
+            SdmRow row = rows.get(i);
+            if (row.entry() == null) {
+                graphics.fill(x - 2, y - 1, x + width, y + 9, 0x60000000 | squadRgb(row.squad()));
+                graphics.drawString(this.font, Component.empty().append(ConquestHudOverlay.squadLabel(row.squad()))
+                        .append("  ").append(Component.translatable("conquest.score.sdm_kills", row.kills())), x, y, COLOR_TEXT);
+            } else {
+                boolean isSelf = row.entry().uuid().equals(self);
+                if (isSelf) {
+                    graphics.fill(x - 2, y - 1, x + width, y + 9, ROW_SELF_BG);
+                } else if (squadMates.contains(row.entry().uuid())) {
+                    graphics.fill(x - 2, y - 1, x + width, y + 9, ROW_SQUAD_BG);
+                }
+                drawRow(graphics, x + 6, y, width - 6, row.rank(), row.entry());
+            }
+            y += 10;
+        }
+        if (rows.size() > visible) {
+            String hint = "▲▼ " + (sdmScroll + 1) + "-" + Math.min(rows.size(), sdmScroll + visible) + "/" + rows.size();
+            graphics.drawString(this.font, hint, x + width - this.font.width(hint), maxY, COLOR_TEXT_FAINT);
+        }
+    }
+
+    private static int squadRgb(int squad) {
+        Integer rgb = Team.sdmSquadColor(squad).getColor();
+        return rgb == null ? 0xFFFFFF : rgb;
     }
 
     private int renderTicketBar(GuiGraphics graphics, int panelLeft, int panelRight, int y) {
@@ -252,9 +345,11 @@ public class ConquestScoreScreen extends Screen {
                     .withStyle(ChatFormatting.GRAY))
                     .append("   ");
         }
-        line.append(Component.translatable("conquest.score.deaths", deathsA, deathsB).withStyle(ChatFormatting.GRAY))
-                .append("   ")
-                .append(Component.translatable("conquest.score.your_kdr",
+        if (ConquestClientData.getMode() != GameMode.SQUAD_DM) {
+            line.append(Component.translatable("conquest.score.deaths", deathsA, deathsB).withStyle(ChatFormatting.GRAY))
+                    .append("   ");
+        }
+        line.append(Component.translatable("conquest.score.your_kdr",
                                 selfKills, selfDeaths, selfRevives, selfCaptures, selfScore)
                         .withStyle(ChatFormatting.YELLOW));
         graphics.drawString(this.font, line, panelLeft + PAD, y, COLOR_TEXT);

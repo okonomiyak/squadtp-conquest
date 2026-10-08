@@ -261,5 +261,9 @@
   "conquest.config.header": "=== コンクエスト設定 ===",
   "conquest.config.unknown_key": "不明な設定キー: %s (/conquest config list で一覧表示)",
   "conquest.config.invalid_value": "\"%s\"は%sに対して不正な値です",
-  "conquest.config.set": "%sを%sに設定した"
+  "conquest.config.set": "%sを%sに設定した",
+  "conquest.sdm.squad": "分隊%s",
+  "conquest.hud.sdm_rank": "%s位",
+  "conquest.score.sdm_limit": "キル上限: %s",
+  "conquest.score.sdm_kills": "%sキル"
 }
