@@ -2454,7 +2454,7 @@ public class ConquestManager extends SavedData {
         for (List<ServerPlayer> unit : lockedUnits) {
             groups.add(new SdmGroup(unit, true));
         }
-        int size = Config.SDM_SQUAD_SIZE.get();
+        int size = sdmSquadCap();
         int freeSquads = (free.size() + size - 1) / size;
         List<List<ServerPlayer>> dealt = new ArrayList<>();
         for (int i = 0; i < freeSquads; i++) {
@@ -2466,6 +2466,11 @@ public class ConquestManager extends SavedData {
         dealt.forEach(members -> groups.add(new SdmGroup(members, false)));
         Collections.shuffle(groups);
         return groups;
+    }
+
+    /** Players per Squad Deathmatch squad: the configured size, capped by squadtp's own squad size limit. */
+    private static int sdmSquadCap() {
+        return Math.min(Config.SDM_SQUAD_SIZE.get(), uk.iwaservice.squadtp.Config.MAX_SQUAD_SIZE.get());
     }
 
     /**
@@ -2505,9 +2510,10 @@ public class ConquestManager extends SavedData {
 
     /**
      * Gives a {@link Team#SQUAD} player who has no squad number yet (joined mid-round, or lost it to
-     * a restart) the squad with the fewest online members, ties to the lowest number, and moves
-     * them into that squad's squadtp squad (creating it around a lone squadmate if need be). No-op
-     * outside a starting/running Squad Deathmatch round or for anyone already numbered.
+     * a restart) the eligible squad with the fewest online members, ties to the lowest number, and
+     * moves them into that squad's squadtp squad (creating it around a lone squadmate if need be).
+     * A squad is eligible while it has room ({@link #sdmSquadCap}) and is not a kept invite-only
+     * squadtp squad; with none eligible the player founds a new squad. No-op outside a starting/running Squad Deathmatch round or for anyone already numbered.
      */
     public void sdmAssignLateJoiner(ServerPlayer player) {
         UUID id = player.getUUID();
@@ -2519,36 +2525,44 @@ public class ConquestManager extends SavedData {
         if (sdmKills.isEmpty()) {
             sdmKills.put(1, 0);
         }
+        SquadManager squadManager = SquadManager.get(server);
+        int cap = sdmSquadCap();
         int best = 0;
         int bestCount = Integer.MAX_VALUE;
+        ServerPlayer bestMate = null;
         for (int squad : sdmKills.keySet()) {
             int count = 0;
+            boolean inviteOnly = false;
+            ServerPlayer mateOfSquad = null;
             for (ServerPlayer other : server.getPlayerList().getPlayers()) {
-                if (Integer.valueOf(squad).equals(sdmSquadOf(other.getUUID()))) {
+                if (other != player && Integer.valueOf(squad).equals(sdmSquadOf(other.getUUID()))) {
                     count++;
+                    mateOfSquad = other;
+                    Squad otherSquad = squadManager.getSquadOf(other.getUUID());
+                    inviteOnly |= otherSquad != null && !otherSquad.isOpenJoin();
                 }
             }
-            if (count < bestCount) {
+            if (!inviteOnly && count < cap && count < bestCount) {
                 best = squad;
                 bestCount = count;
+                bestMate = mateOfSquad;
             }
+        }
+        if (best == 0) {
+            best = sdmKills.isEmpty() ? 1 : Collections.max(sdmKills.keySet()) + 1;
+            sdmKills.put(best, 0);
         }
         sdmSquadOf.put(id, best);
         setDirty();
         syncVanillaTeam(player, Team.SQUAD);
         leaveSquadIfAny(player);
 
-        SquadManager squadManager = SquadManager.get(server);
-        for (ServerPlayer mate : server.getPlayerList().getPlayers()) {
-            if (mate == player || !Integer.valueOf(best).equals(sdmSquadOf(mate.getUUID()))) {
-                continue;
-            }
-            Squad squad = squadManager.getSquadOf(mate.getUUID());
+        if (bestMate != null) {
+            Squad squad = squadManager.getSquadOf(bestMate.getUUID());
             if (squad == null) {
-                squad = squadManager.create(mate);
+                squad = squadManager.create(bestMate);
             }
             squadManager.join(server, squad, player);
-            break;
         }
     }
 
