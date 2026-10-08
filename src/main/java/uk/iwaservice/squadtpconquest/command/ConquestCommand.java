@@ -372,6 +372,11 @@ public final class ConquestCommand {
                         .then(Commands.literal("remove")
                                 .then(Commands.argument("number", IntegerArgumentType.integer(1))
                                         .executes(ConquestCommand::sectorRemove)))
+                        .then(Commands.argument("number", IntegerArgumentType.integer(1))
+                                .then(Commands.literal("role")
+                                        .then(Commands.argument("role", StringArgumentType.word())
+                                                .suggests((ctx, b) -> SharedSuggestionProvider.suggest(new String[]{"normal", "attacker_base", "defender_base"}, b))
+                                                .executes(ConquestCommand::sectorRoleSet))))
                         .then(Commands.literal("list").executes(ConquestCommand::sectorList)))
                 .then(Commands.literal("preset")
                         .requires(src -> src.hasPermission(2))
@@ -659,6 +664,25 @@ public final class ConquestCommand {
         return 1;
     }
 
+    private static int sectorRoleSet(CommandContext<CommandSourceStack> ctx) {
+        int number = IntegerArgumentType.getInteger(ctx, "number");
+        Sector.Role role = Sector.Role.fromKey(StringArgumentType.getString(ctx, "role"));
+        if (role == null) {
+            return fail(ctx, Component.translatable("conquest.msg.sector_unknown_role"));
+        }
+        int cleared = ConquestManager.get(ctx.getSource().getServer()).setSectorRole(number, role);
+        if (cleared < 0) {
+            return fail(ctx, Component.translatable("conquest.msg.sector_not_found", number));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.sector_role_set", number,
+                Component.translatable("conquest.sector.role." + role.key())), true);
+        if (cleared > 0) {
+            ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.sector_role_cleared", cleared,
+                    Component.translatable("conquest.sector.role." + role.key())), true);
+        }
+        return 1;
+    }
+
     private static int sectorTimeLimitSet(CommandContext<CommandSourceStack> ctx) {
         int number = IntegerArgumentType.getInteger(ctx, "number");
         int seconds = IntegerArgumentType.getInteger(ctx, "seconds");
@@ -737,7 +761,8 @@ public final class ConquestCommand {
             String timeLimit = sector.getTimeLimitSecondsOverride() > 0
                     ? sector.getTimeLimitSecondsOverride() + "s" : "default";
             msg.append("\n").append(Component.translatable("conquest.status.sector",
-                    sector.getNumber(), String.join(", ", sector.getPointNames()), timeLimit));
+                    sector.getNumber(), String.join(", ", sector.getPointNames()), timeLimit,
+                    Component.translatable("conquest.sector.role." + sector.getRole().key())));
         }
         MutableComponent result = msg;
         ctx.getSource().sendSuccess(() -> result, false);

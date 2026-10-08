@@ -23,7 +23,37 @@ import java.util.List;
  * holding a LOCKED/ACTIVE/CLEARED flag itself.
  */
 public final class Sector {
+    /**
+     * What a sector is for. NORMAL sectors form the attack sequence; a base sector is never
+     * the front — its combat area is the attacker's / defender's safe rear for the whole round
+     * (own side may stand there, the enemy is executed), and its spawns are the fallback spawns.
+     */
+    public enum Role {
+        NORMAL("normal"), ATTACKER_BASE("attacker_base"), DEFENDER_BASE("defender_base");
+
+        private final String key;
+
+        Role(String key) {
+            this.key = key;
+        }
+
+        public String key() {
+            return key;
+        }
+
+        @Nullable
+        public static Role fromKey(String key) {
+            for (Role role : values()) {
+                if (role.key.equalsIgnoreCase(key)) {
+                    return role;
+                }
+            }
+            return null;
+        }
+    }
+
     private final int number;
+    private Role role = Role.NORMAL;
     private final List<String> pointNames = new ArrayList<>();
 
     @Nullable
@@ -61,6 +91,14 @@ public final class Sector {
 
     public List<String> getPointNames() {
         return pointNames;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
     }
 
     @Nullable
@@ -189,6 +227,7 @@ public final class Sector {
             tag.put("CombatAreaPos2", NbtUtils.writeBlockPos(combatAreaPos2));
         }
         tag.putInt("TimeLimitOverride", timeLimitSecondsOverride);
+        tag.putString("Role", role.key());
         return tag;
     }
 
@@ -212,6 +251,8 @@ public final class Sector {
             sector.combatAreaPos2 = NbtUtils.readBlockPos(tag, "CombatAreaPos2").orElse(null);
         }
         sector.timeLimitSecondsOverride = tag.getInt("TimeLimitOverride");
+        Role loaded = tag.contains("Role") ? Role.fromKey(tag.getString("Role")) : null;
+        sector.role = loaded != null ? loaded : Role.NORMAL;
         return sector;
     }
 }
