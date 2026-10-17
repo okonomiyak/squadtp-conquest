@@ -666,7 +666,7 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
   trueの場合はこちらの設定は無視される(常時OP限定の方が優先)
 - `teamJoinRequiresOp`(既定false) — trueにすると、ラウンド状態に関係なく常にOP以外
   `/conquest team join`が使えなくなる(全チームの割り当てを管理者だけが行う運用向け)
-- `maxHealth`(既定20.0、バニラと同じ) — チームA/Bに所属中の最大HP。`/conquest team join`時・
+- `maxHealth`(既定20.0、バニラと同じ) — チームA/Bと射撃場(range)チームに所属中の最大HP。`/conquest team join`時・
   ラウンド開始時・リスポーン時に反映(その都度フルヒールもされる)。管理人チームに移るとバニラの20に戻る。
   銃Mod(TACZ・SuperbWarfare等)のダメージ量に合わせたTTK調整用
 - `startCountdownSeconds`(既定5) — `/conquest start`後のカウントダウン秒数。0で即開始

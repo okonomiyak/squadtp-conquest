@@ -122,7 +122,7 @@ public final class Config {
                         "0 = K/D only.")
                 .defineInRange("shuffleWinRateWeight", 1.0, 0.0, 10.0);
         MAX_HEALTH = b
-                .comment("Max health for players on a combatant team (A/B), applied on /conquest team join and",
+                .comment("Max health for players on a combatant team (A/B) and the training range, applied on /conquest team join and",
                         "at round start. Vanilla default is 20.0 (10 hearts); raise this to rebalance time-to-kill",
                         "against weapon mods (TACZ, SuperbWarfare) that assume a different HP scale.")
                 .defineInRange("maxHealth", 20.0, 1.0, 1024.0);

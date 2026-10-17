@@ -1005,7 +1005,8 @@ public class ConquestManager extends SavedData {
     }
 
     /**
-     * Sets max health to {@code maxHealth} (config) for combatants, or back to vanilla default
+     * Sets max health to {@code maxHealth} (config) for combatants and the training range (so its
+     * practice fights match the real time-to-kill), or back to vanilla default
      * otherwise, and heals to the new max. Called on team join (only when the team actually
      * changes, so repeatedly rejoining the same team can't be used to spam-heal), again for
      * every combatant at round start (so it always reflects the current config, even for players
@@ -1017,7 +1018,7 @@ public class ConquestManager extends SavedData {
         if (attribute == null) {
             return;
         }
-        double target = team.isCombatant() ? Config.MAX_HEALTH.get() : Attributes.MAX_HEALTH.value().getDefaultValue();
+        double target = team.isCombatant() || team == Team.RANGE ? Config.MAX_HEALTH.get() : Attributes.MAX_HEALTH.value().getDefaultValue();
         attribute.setBaseValue(target);
         player.setHealth((float) target);
     }
@@ -3633,6 +3634,7 @@ public class ConquestManager extends SavedData {
      */
     public void onRespawn(ServerPlayer player) {
         if (teamOf(player.getUUID()) == Team.RANGE) {
+            applyMaxHealth(player, Team.RANGE);
             teleportIntoRange(player);
             return;
         }
