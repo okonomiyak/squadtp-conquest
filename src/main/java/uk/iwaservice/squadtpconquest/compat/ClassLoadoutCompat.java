@@ -14,6 +14,8 @@ public final class ClassLoadoutCompat {
 
     private static Boolean loaded;
     private static boolean broken;
+    /** Team kits arrived in classloadout 0.9.0; an older one only loses this, not the rest of the integration. */
+    private static boolean teamKitsBroken;
 
     private static boolean isLoaded() {
         if (loaded == null) {
@@ -36,6 +38,22 @@ public final class ClassLoadoutCompat {
         } catch (Throwable t) {
             broken = true;
             SquadTpConquest.LOGGER.error("classloadout integration failed, disabling it for this session", t);
+        }
+    }
+
+    /**
+     * Runs classloadout's team kit sync now for the player's current vanilla team (reverting or
+     * applying a {@code /class teamkit} kit, which may equip). No-op if classloadout isn't installed.
+     */
+    public static void syncTeamKit(ServerPlayer player) {
+        if (!isLoaded() || teamKitsBroken) {
+            return;
+        }
+        try {
+            uk.iwaservice.squadtpconquest.compat.classloadout.ConquestLoadoutHandler.syncTeamKit(player);
+        } catch (Throwable t) {
+            teamKitsBroken = true;
+            SquadTpConquest.LOGGER.error("classloadout team kit sync failed (needs classloadout 0.9.0+), disabling it for this session", t);
         }
     }
 

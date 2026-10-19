@@ -19,6 +19,7 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue AUTO_RESET_AFTER_RESULT;
     public static final ModConfigSpec.IntValue TICKET_COST_PER_RESPAWN;
     public static final ModConfigSpec.BooleanValue LOCK_TEAM_CHANGE_DURING_ROUND;
+    public static final ModConfigSpec.BooleanValue AUTO_ASSIGN_ON_LOGIN;
     public static final ModConfigSpec.BooleanValue TEAM_JOIN_REQUIRES_OP;
     public static final ModConfigSpec.DoubleValue MAX_HEALTH;
     public static final ModConfigSpec.DoubleValue SHUFFLE_WIN_RATE_WEIGHT;
@@ -111,6 +112,11 @@ public final class Config {
                         "IN_PROGRESS (OPs, i.e. permission level 2+, are always exempt). Default false: anyone can",
                         "switch teams at any time. Ignored (superseded) if teamJoinRequiresOp is true.")
                 .define("lockTeamChangeDuringRound", false);
+        AUTO_ASSIGN_ON_LOGIN = b
+                .comment("If true, a player who logs in on no team (neutral) or the waiting team is put on team A or B",
+                        "right away, balanced like /conquest team shuffle (fewer online players first, then the lower",
+                        "average rating). In a running Squad Deathmatch round they join a squad instead.")
+                .define("autoAssignOnLogin", true);
         TEAM_JOIN_REQUIRES_OP = b
                 .comment("If true, only OPs (permission level 2+) can use /conquest team join at all, regardless",
                         "of round state — for servers that want an admin to assign every team manually. Default",

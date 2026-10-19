@@ -3,6 +3,7 @@ package uk.iwaservice.squadtpconquest.compat.classloadout;
 import net.minecraft.server.level.ServerPlayer;
 import uk.iwaservice.classloadout.ServerEvents;
 import uk.iwaservice.classloadout.loadout.LoadoutManager;
+import uk.iwaservice.classloadout.loadout.TeamKits;
 
 /**
  * References classloadout classes directly; only ever classloaded behind
@@ -12,6 +13,10 @@ public final class ConquestLoadoutHandler {
 
     public static void equip(ServerPlayer player) {
         ServerEvents.equipLoadout(player);
+    }
+
+    public static void syncTeamKit(ServerPlayer player) {
+        TeamKits.sync(player.server, player, null);
     }
 
     public static void awardPoints(ServerPlayer player, int amount) {

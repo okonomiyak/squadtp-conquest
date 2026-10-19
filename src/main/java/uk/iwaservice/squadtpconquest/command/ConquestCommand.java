@@ -190,6 +190,11 @@ public final class ConquestCommand {
                                         .then(Commands.argument("player", EntityArgument.players())
                                                 .requires(src -> src.hasPermission(2))
                                                 .executes(ConquestCommand::joinTeamOther))))
+                        .then(Commands.literal("leave")
+                                .executes(ConquestCommand::leaveTeam)
+                                .then(Commands.argument("player", EntityArgument.players())
+                                        .requires(src -> src.hasPermission(2))
+                                        .executes(ConquestCommand::leaveTeamOther)))
                         .then(Commands.literal("shuffle")
                                 .requires(src -> src.hasPermission(2))
                                 .executes(ConquestCommand::shuffleTeams)))
@@ -436,6 +441,41 @@ public final class ConquestCommand {
         ctx.getSource().sendSuccess(() ->
                 Component.translatable("conquest.msg.team_joined", team.display()), false);
         return 1;
+    }
+
+    /** Back to no team (neutral); same permission gates as {@link #joinTeam}. */
+    private static int leaveTeam(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        if (!ctx.getSource().hasPermission(2)) {
+            if (Config.TEAM_JOIN_REQUIRES_OP.get()) {
+                return fail(ctx, Component.translatable("conquest.msg.team_join_requires_op"));
+            }
+            if (Config.LOCK_TEAM_CHANGE_DURING_ROUND.get() && manager.getState() == RoundState.IN_PROGRESS) {
+                return fail(ctx, Component.translatable("conquest.msg.team_change_locked"));
+            }
+        }
+        if (!manager.leaveTeam(player)) {
+            return fail(ctx, Component.translatable("conquest.msg.not_in_team"));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.team_left"), false);
+        return 1;
+    }
+
+    /** OP-only: {@link #leaveTeam} for other players. */
+    private static int leaveTeamOther(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        Collection<ServerPlayer> targets = EntityArgument.getPlayers(ctx, "player");
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        int count = 0;
+        for (ServerPlayer target : targets) {
+            if (manager.leaveTeam(target)) {
+                target.displayClientMessage(Component.translatable("conquest.msg.team_left"), true);
+                count++;
+            }
+        }
+        int left = count;
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.team_left_other", left), true);
+        return left;
     }
 
     /**
