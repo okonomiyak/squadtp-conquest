@@ -26,6 +26,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
@@ -977,6 +978,9 @@ public class ConquestManager extends SavedData {
                 player.setGameMode(GameType.SURVIVAL);
             }
             if (team == Team.WAITING) {
+                // Settle classloadout's team kit first: left to its own once-a-second check, leaving a
+                // kit team re-equips the personal loadout after this clear.
+                ClassLoadoutCompat.syncTeamKit(player);
                 player.getInventory().clearContent();
             }
             if (team.isCombatant() && state == RoundState.IN_PROGRESS) {
@@ -985,6 +989,32 @@ public class ConquestManager extends SavedData {
             }
         }
         sdmAssignLateJoiner(player);
+    }
+
+    /**
+     * Back to no team ({@link Team#NEUTRAL}): drops the conquest vanilla team, the Squad Deathmatch
+     * number and the squadtp squad, and undoes the team's max health and spectator mode. Inventory
+     * and position are left alone. False if they weren't on a team.
+     */
+    public boolean leaveTeam(ServerPlayer player) {
+        Team previous = playerTeams.remove(player.getUUID());
+        if (previous == null) {
+            return false;
+        }
+        sdmSquadOf.remove(player.getUUID());
+        setDirty();
+        Scoreboard scoreboard = player.server.getScoreboard();
+        String playerName = player.getGameProfile().getName();
+        PlayerTeam current = scoreboard.getPlayersTeam(playerName);
+        if (current != null && isConquestTeam(current)) {
+            scoreboard.removePlayerFromTeam(playerName, current);
+        }
+        applyMaxHealth(player, Team.NEUTRAL);
+        leaveSquadIfAny(player);
+        if (previous == Team.SPECTATOR) {
+            player.setGameMode(GameType.SURVIVAL);
+        }
+        return true;
     }
 
     /**
@@ -1220,7 +1250,11 @@ public class ConquestManager extends SavedData {
         if (target == null) {
             target = scoreboard.addPlayerTeam(targetName);
             target.setColor(squad != null ? Team.sdmSquadColor(squad) : team.color());
-            target.setAllowFriendlyFire(false);
+        }
+        // Every time, not just on creation: the team persists in scoreboard.dat, so a leftover
+        // `/team modify ... friendlyFire true` would otherwise keep friendly fire on for good.
+        if (target.isAllowFriendlyFire()) {
+            target.setAllowFriendlyFire(false); // each set broadcasts a team update packet
         }
         scoreboard.addPlayerToTeam(playerName, target);
     }
@@ -2470,7 +2504,7 @@ public class ConquestManager extends SavedData {
                 BlockPos nearby = anchor.offset(level.getRandom().nextInt(5) - 2, 0, level.getRandom().nextInt(5) - 2);
                 if (containsPos(min, max, nearby)) {
                     BlockPos safe = TeleportHelper.findSafeSpot(level, nearby);
-                    if (containsPos(min, max, safe)) {
+                    if (containsPos(min, max, safe) && isSdmGround(level, safe)) {
                         spot = safe;
                     }
                 }
@@ -2490,9 +2524,13 @@ public class ConquestManager extends SavedData {
     /**
      * Splits every eligible player (see {@link #eligiblePlayers}) into squads without changing
      * anything yet: each invite-only squadtp squad stays together as one squad of its own size
-     * (as in {@link #shuffleTeams}); everyone else is shuffled and dealt round-robin into
-     * ceil(n / {@code sdmSquadSize}) evenly sized squads (9 players, size 4: 3/3/3), but at least
-     * enough to make two squads overall when there are players for it (2 players: 1/1). The result is shuffled, so squad numbers carry no meaning.
+     * (as in {@link #shuffleTeams}); everyone else is dealt into ceil(n / {@code sdmSquadSize})
+     * evenly sized squads (9 players, size 4: 3/3/3), but at least enough to make two squads
+     * overall when there are players for it (2 players: 1/1). Dealing is skill-balanced like
+     * {@link #shuffleTeams}: strongest {@link #personalRating} first, each to the smallest squad,
+     * ties to the one with the lowest rating sum (shuffled beforehand so equal ratings still land
+     * randomly). Kept invite-only squads are left as they are. The result is shuffled, so squad
+     * numbers carry no meaning.
      */
     private List<SdmGroup> planSdmSquads(MinecraftServer server) {
         List<ServerPlayer> players = eligiblePlayers(server);
@@ -2506,6 +2544,8 @@ public class ConquestManager extends SavedData {
             }
         }
         Collections.shuffle(free);
+        // Stable sort: among equal ratings, the shuffle above still decides the order.
+        free.sort(Comparator.comparingDouble((ServerPlayer p) -> personalRating(p.getUUID())).reversed());
 
         List<SdmGroup> groups = new ArrayList<>();
         for (List<ServerPlayer> unit : lockedUnits) {
@@ -2516,11 +2556,20 @@ public class ConquestManager extends SavedData {
         // Small lobbies (e.g. 2-3 players) would otherwise collapse into one squad and never start.
         freeSquads = Math.max(freeSquads, Math.min(free.size(), 2 - lockedUnits.size()));
         List<List<ServerPlayer>> dealt = new ArrayList<>();
+        double[] ratingSums = new double[freeSquads];
         for (int i = 0; i < freeSquads; i++) {
             dealt.add(new ArrayList<>());
         }
-        for (int i = 0; i < free.size(); i++) {
-            dealt.get(i % freeSquads).add(free.get(i));
+        for (ServerPlayer player : free) {
+            int best = 0;
+            for (int i = 1; i < freeSquads; i++) {
+                int sizeDiff = dealt.get(i).size() - dealt.get(best).size();
+                if (sizeDiff < 0 || (sizeDiff == 0 && ratingSums[i] < ratingSums[best])) {
+                    best = i;
+                }
+            }
+            dealt.get(best).add(player);
+            ratingSums[best] += personalRating(player.getUUID());
         }
         dealt.forEach(members -> groups.add(new SdmGroup(members, false)));
         Collections.shuffle(groups);
@@ -2625,13 +2674,46 @@ public class ConquestManager extends SavedData {
         }
     }
 
-    /** On login: numbers a returning Squad Deathmatch player if needed, and strips a stale {@link Team#SQUAD} outside that mode. */
+    /**
+     * On login: strips a stale {@link Team#SQUAD} outside that mode, auto-assigns a neutral/waiting
+     * player to a team ({@link Config#AUTO_ASSIGN_ON_LOGIN}), and numbers a returning Squad
+     * Deathmatch player if needed.
+     */
     public void onLogin(ServerPlayer player) {
         if (teamOf(player.getUUID()) == Team.SQUAD && mode != GameMode.SQUAD_DM) {
             joinTeam(player, Team.WAITING);
+        }
+        Team current = teamOf(player.getUUID());
+        if (Config.AUTO_ASSIGN_ON_LOGIN.get() && (current == Team.NEUTRAL || current == Team.WAITING)) {
+            // joinTeam turns A/B into SQUAD during a Squad Deathmatch round and numbers the player itself.
+            joinTeam(player, balancedTeamFor(player));
+            player.sendSystemMessage(Component.translatable("conquest.msg.team_joined", teamOf(player.getUUID()).display()));
             return;
         }
         sdmAssignLateJoiner(player);
+    }
+
+    /** Team A or B for one more player, by {@link #pickBalancedTeam} over everyone else online. */
+    private Team balancedTeamFor(ServerPlayer player) {
+        int countA = 0;
+        int countB = 0;
+        double ratingSumA = 0;
+        double ratingSumB = 0;
+        for (ServerPlayer other : player.server.getPlayerList().getPlayers()) {
+            Team team = teamOf(other.getUUID());
+            if (other == player || (team != Team.A && team != Team.B)) {
+                continue;
+            }
+            double rating = personalRating(other.getUUID());
+            if (team == Team.A) {
+                countA++;
+                ratingSumA += rating;
+            } else {
+                countB++;
+                ratingSumB += rating;
+            }
+        }
+        return pickBalancedTeam(countA, countB, ratingSumA, ratingSumB);
     }
 
     /** Puts a combatant at their spawn: the squad-deathmatch spread spawn for {@link Team#SQUAD}, else their role spawn. */
@@ -2695,11 +2777,29 @@ public class ConquestManager extends SavedData {
             int topY = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, new BlockPos(x, 0, z)).getY();
             BlockPos candidate = TeleportHelper.findSafeSpot(level,
                     new BlockPos(x, Mth.clamp(topY, min.getY(), max.getY()), z));
-            if (containsPos(min, max, candidate)) {
+            if (containsPos(min, max, candidate) && isSdmGround(level, candidate)) {
                 spots.add(candidate);
             }
         }
         return spots;
+    }
+
+    /** False if the spot is in a fluid or stands on water or bedrock (the first collidable block or fluid within 3 below). */
+    private static boolean isSdmGround(ServerLevel level, BlockPos feet) {
+        if (!level.getFluidState(feet).isEmpty()) {
+            return false;
+        }
+        for (int dy = 1; dy <= 3; dy++) {
+            BlockPos below = feet.below(dy);
+            if (!level.getFluidState(below).isEmpty()) {
+                return false;
+            }
+            BlockState state = level.getBlockState(below);
+            if (!state.getCollisionShape(level, below).isEmpty()) {
+                return !state.is(Blocks.BEDROCK);
+            }
+        }
+        return false;
     }
 
     /** The fallback spawn when no loaded sample qualifies: a safe spot at the box center (may load that one chunk). */
@@ -2868,13 +2968,15 @@ public class ConquestManager extends SavedData {
         var it = teamBeacons.entrySet().iterator();
         while (it.hasNext()) {
             var entry = it.next();
+            // Read the key first: an EnumMap entry throws IllegalStateException once it.remove() has run.
+            Team team = entry.getKey();
             int remaining = --entry.getValue().secondsRemaining;
             if (remaining <= 0) {
                 it.remove();
-                notifyTeam(server, entry.getKey(), Component.translatable("conquest.msg.team_beacon_expired")
+                notifyTeam(server, team, Component.translatable("conquest.msg.team_beacon_expired")
                         .withStyle(ChatFormatting.GOLD));
             } else if (warn > 0 && remaining == warn) {
-                notifyTeam(server, entry.getKey(), Component.translatable("conquest.msg.team_beacon_expiring", warn)
+                notifyTeam(server, team, Component.translatable("conquest.msg.team_beacon_expiring", warn)
                         .withStyle(ChatFormatting.YELLOW));
             }
         }

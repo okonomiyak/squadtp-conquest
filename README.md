@@ -19,6 +19,7 @@ squadtp本体に追加した(詳細は[チームリスポーンビーコン](#�
 | `/conquest spot <プレイヤー>` | 対象を[索敵マーキング](#索敵マーキングスポット)する。通常は専用キーで自動送信されるため手動実行の必要はない | - |
 | `/conquest pin <x> <y> <z>` | [ピン](#ピン)を立てる。通常は専用キーで自動送信されるため手動実行の必要はない | - |
 | `/conquest pin clear` | 自分が立てたピンを手動で消す。通常はピンキーをしゃがみながら押すと自動送信される | - |
+| `/conquest team leave [player]` | 所属チームから抜けて中立(未所属)に戻る。バニラチーム・分隊デスマッチの分隊番号・squadtpの分隊からも外れ、最大体力は既定値、観戦者だった場合はサバイバルに戻る(インベントリと位置はそのまま)。`autoAssignOnLogin`が有効なら次のログイン時に自動で振り分けられる。チーム変更の制限(`lockTeamChangeDuringRound`/`teamJoinRequiresOp`)は`team join`と同じ。`player`指定はOP限定 | 通常は誰でも可(`player`指定はOP限定) |
 | `/conquest team shuffle` | 管理人/観戦者以外のオンラインプレイヤー(演習場・待機チームも含む)をランダムにA/Bへ均等に振り分け直す。招待制の分隊は解散せず、メンバー全員がまとめて同じチームに移動する(詳細は[チームシャッフルと分隊](#チームシャッフルと分隊)参照) | OP |
 | `/conquest breakthrough attacker <a\|b>` | ブレイクスルーモードで、チームA/Bのどちらが攻撃側かを設定(もう一方が防衛側)。ラウンドが`WAITING`の時のみ変更可(既定は攻撃側=チームA) | OP |
 | `/conquest mode set <conquest\|tdm\|breakthrough\|sdm\|koth>` | ゲームモードを切り替え。ラウンドが`WAITING`の時のみ変更可 | OP |
@@ -666,6 +667,9 @@ OPが`/conquest callin add <名前> <必要スコア> <アイテムID> [個数]`
   trueの場合はこちらの設定は無視される(常時OP限定の方が優先)
 - `teamJoinRequiresOp`(既定false) — trueにすると、ラウンド状態に関係なく常にOP以外
   `/conquest team join`が使えなくなる(全チームの割り当てを管理者だけが行う運用向け)
+- `autoAssignOnLogin`(既定true) — ログイン時に中立(未所属)か待機チームのプレイヤーを、チームA/Bへ
+  自動で振り分ける。`/conquest team shuffle`と同じ基準(オンライン人数の少ない方、同数なら平均レーティングの
+  低い方)。分隊デスマッチのラウンド中なら分隊に入る。ラウンド進行中なら振り分けと同時にスポーンへテレポート
 - `maxHealth`(既定20.0、バニラと同じ) — チームA/Bと射撃場(range)チームに所属中の最大HP。`/conquest team join`時・
   ラウンド開始時・リスポーン時に反映(その都度フルヒールもされる)。管理人チームに移るとバニラの20に戻る。
   銃Mod(TACZ・SuperbWarfare等)のダメージ量に合わせたTTK調整用
