@@ -2,7 +2,6 @@ package uk.iwaservice.squadtpconquest.client.gui;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -29,13 +28,13 @@ public class ConquestScoreScreen extends Screen {
     private static final int PAD = 12;
     // Gray/translucent so the game world stays visible behind it while open,
     // matching vanilla's Tab player-list look.
-    private static final int COLOR_PANEL_BG = 0x80808080;
-    private static final int COLOR_HEADER_BG = 0xA0505050;
+    private static final int COLOR_PANEL_BG = 0x90303030;
+    private static final int COLOR_HEADER_BG = 0xA0202020;
     private static final int COLOR_ACCENT = 0xFFB0B0B0;
     private static final int COLOR_OUTLINE = 0xFF909090;
     private static final int COLOR_TEXT = 0xFFFFFF;
-    private static final int COLOR_TEXT_DIM = 0xA0A8C0;
-    private static final int COLOR_TEXT_FAINT = 0x6A7188;
+    private static final int COLOR_TEXT_DIM = 0xD0D4E0;
+    private static final int COLOR_TEXT_FAINT = 0xA0A6B4;
     private static final int COLOR_SEPARATOR = 0x28FFFFFF;
 
     private static final int ROW_SELF_BG = 0x6060A0FF;
@@ -66,17 +65,16 @@ public class ConquestScoreScreen extends Screen {
 
     @Override
     protected void init() {
-        panelWidth = Math.min(480, this.width - 16);
-        panelHeight = Math.min(320, this.height - 16);
+        panelWidth = Math.min(640, this.width - 16);
+        panelHeight = Math.min(420, this.height - 16);
         panelLeft = (this.width - panelWidth) / 2;
         panelTop = (this.height - panelHeight) / 2;
 
-        addRenderableWidget(Button.builder(Component.literal("»"), b -> page = (page + 1) % PAGE_COUNT)
-                .bounds(panelLeft + panelWidth - PAD - 20, panelTop + 4, 20, 16).build());
+        addRenderableWidget(new FlatButton(Component.literal("»"), b -> page = (page + 1) % PAGE_COUNT,
+                panelLeft + panelWidth - PAD - 20, panelTop + 4, 20, 16));
 
-        addRenderableWidget(Button.builder(Component.translatable("conquest.score.suicide_button"),
-                        b -> command("conquest suicide"))
-                .bounds(panelLeft + panelWidth - PAD - 20 - 24 - 50, panelTop + 4, 50, 16).build());
+        addRenderableWidget(new FlatButton(Component.translatable("conquest.score.suicide_button"),
+                b -> command("conquest suicide"), panelLeft + (panelWidth - 50) / 2, panelTop + 4, 50, 16));
     }
 
     private void command(String cmd) {
