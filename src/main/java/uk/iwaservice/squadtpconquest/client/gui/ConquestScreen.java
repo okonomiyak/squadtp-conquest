@@ -74,14 +74,10 @@ public class ConquestScreen extends Screen {
     private static final int HEADER_H = 24;
     private static final int PAD = 12;
 
-    private static final int COLOR_PANEL_BG = 0xF4141420;
-    private static final int COLOR_HEADER_BG = 0xFF1F2333;
-    private static final int COLOR_ACCENT = 0xFF4A5A8A;
-    private static final int COLOR_OUTLINE = 0xFF454A66;
-    private static final int COLOR_TEXT = 0xFFFFFF;
-    private static final int COLOR_TEXT_DIM = 0xA0A8C0;
-    private static final int COLOR_TEXT_FAINT = 0x6A7188;
-    private static final int COLOR_SEPARATOR = 0x28FFFFFF;
+    private static final int COLOR_TEXT = FlatButton.COLOR_TEXT;
+    private static final int COLOR_TEXT_DIM = FlatButton.COLOR_TEXT_DIM;
+    private static final int COLOR_TEXT_FAINT = 0xFF6C727A;
+    private static final int COLOR_SEPARATOR = FlatButton.COLOR_CARD_LINE;
 
     private int panelWidth = 280;
     private int panelLeft;
@@ -169,12 +165,10 @@ public class ConquestScreen extends Screen {
             int tabWidth = (panelWidth - 2 * PAD - gap * (tabs.size() - 1)) / tabs.size();
             for (int i = 0; i < tabs.size(); i++) {
                 Tab tab = tabs.get(i);
-                Button tabButton = Button.builder(Component.translatable(tab.labelKey), b -> {
+                Button tabButton = FlatButton.tab(Component.translatable(tab.labelKey), b -> {
                             activeTab = tab;
                             rebuild();
-                        })
-                        .bounds(panelLeft + PAD + i * (tabWidth + gap), 0, tabWidth, 16).build();
-                tabButton.active = tab != activeTab;
+                        }, panelLeft + PAD + i * (tabWidth + gap), 0, tabWidth, 16, () -> tab == activeTab);
                 placeAt(tabButton, cursor);
                 addRenderableWidget(tabButton);
             }
@@ -226,9 +220,8 @@ public class ConquestScreen extends Screen {
         if (!inSquad) {
             for (int row = 0; row < squadRows; row++) {
                 ConquestSyncPacket.SquadStatus squad = joinableSquads.get(squadScrollOffset + row);
-                Button join = Button.builder(Component.translatable("conquest.gui.squad_join"),
-                        b -> command("squad join " + squad.leaderName()))
-                        .bounds(panelLeft + panelWidth - PAD - 44, 0, 44, 12).build();
+                Button join = new FlatButton(Component.translatable("conquest.gui.squad_join"),
+                        b -> command("squad join " + squad.leaderName()), panelLeft + panelWidth - PAD - 44, 0, 44, 12);
                 placeAt(join, squadY + 12 + row * 12);
                 addRenderableWidget(join);
             }
@@ -244,9 +237,8 @@ public class ConquestScreen extends Screen {
             int availableScore = ConquestClientData.getAvailableScore();
             for (int row = 0; row < callInRows; row++) {
                 ConquestSyncPacket.CallInStatus callIn = callIns.get(callInScrollOffset + row);
-                Button use = Button.builder(Component.translatable("conquest.gui.callin_use"),
-                        b -> command("conquest callin use " + callIn.name()))
-                        .bounds(panelLeft + panelWidth - PAD - 40, 0, 40, 12).build();
+                Button use = new FlatButton(Component.translatable("conquest.gui.callin_use"),
+                        b -> command("conquest callin use " + callIn.name()), panelLeft + panelWidth - PAD - 40, 0, 40, 12);
                 use.active = availableScore >= callIn.scoreCost();
                 placeAt(use, cursor + row * 13);
                 addRenderableWidget(use);
@@ -274,22 +266,19 @@ public class ConquestScreen extends Screen {
         placeAt(radiusBox, cursor - 4);
         addRenderableWidget(radiusBox);
 
-        Button placePoint = Button.builder(Component.translatable("conquest.gui.place_point"),
-                b -> command("conquest point add " + DEFAULT_POINT + " " + radiusBox.getValue()))
-                .bounds(panelLeft + panelWidth - PAD - 90, 0, 90, 16).build();
+        Button placePoint = new FlatButton(Component.translatable("conquest.gui.place_point"),
+                b -> command("conquest point add " + DEFAULT_POINT + " " + radiusBox.getValue()), panelLeft + panelWidth - PAD - 90, 0, 90, 16);
         placeAt(placePoint, cursor - 4);
         addRenderableWidget(placePoint);
         cursor += 20;
 
         int half = (panelWidth - 2 * PAD - 4) / 2;
-        Button spawnA = Button.builder(Component.translatable("conquest.gui.place_spawn_a"),
-                b -> command("conquest spawn a"))
-                .bounds(panelLeft + PAD, 0, half, 18).build();
+        Button spawnA = new FlatButton(Component.translatable("conquest.gui.place_spawn_a"),
+                b -> command("conquest spawn a"), panelLeft + PAD, 0, half, 18);
         placeAt(spawnA, cursor);
         addRenderableWidget(spawnA);
-        Button spawnB = Button.builder(Component.translatable("conquest.gui.place_spawn_b"),
-                b -> command("conquest spawn b"))
-                .bounds(panelLeft + PAD + half + 4, 0, half, 18).build();
+        Button spawnB = new FlatButton(Component.translatable("conquest.gui.place_spawn_b"),
+                b -> command("conquest spawn b"), panelLeft + PAD + half + 4, 0, half, 18);
         placeAt(spawnB, cursor);
         addRenderableWidget(spawnB);
         cursor += 22;
@@ -299,38 +288,32 @@ public class ConquestScreen extends Screen {
         // each team gets a "stand here" button per corner rather than a single "place" button;
         // set/remove rely on server-side validation for feedback (chat message), same as every
         // other admin button in this tab.
-        Button zoneACorner1 = Button.builder(Component.translatable("conquest.gui.zone_a_corner1"),
-                b -> command("conquest zone a corner1"))
-                .bounds(panelLeft + PAD, 0, half, 16).build();
+        Button zoneACorner1 = new FlatButton(Component.translatable("conquest.gui.zone_a_corner1"),
+                b -> command("conquest zone a corner1"), panelLeft + PAD, 0, half, 16);
         placeAt(zoneACorner1, cursor);
         addRenderableWidget(zoneACorner1);
-        Button zoneACorner2 = Button.builder(Component.translatable("conquest.gui.zone_a_corner2"),
-                b -> command("conquest zone a corner2"))
-                .bounds(panelLeft + PAD + half + 4, 0, half, 16).build();
+        Button zoneACorner2 = new FlatButton(Component.translatable("conquest.gui.zone_a_corner2"),
+                b -> command("conquest zone a corner2"), panelLeft + PAD + half + 4, 0, half, 16);
         placeAt(zoneACorner2, cursor);
         addRenderableWidget(zoneACorner2);
         cursor += 18;
 
-        Button zoneBCorner1 = Button.builder(Component.translatable("conquest.gui.zone_b_corner1"),
-                b -> command("conquest zone b corner1"))
-                .bounds(panelLeft + PAD, 0, half, 16).build();
+        Button zoneBCorner1 = new FlatButton(Component.translatable("conquest.gui.zone_b_corner1"),
+                b -> command("conquest zone b corner1"), panelLeft + PAD, 0, half, 16);
         placeAt(zoneBCorner1, cursor);
         addRenderableWidget(zoneBCorner1);
-        Button zoneBCorner2 = Button.builder(Component.translatable("conquest.gui.zone_b_corner2"),
-                b -> command("conquest zone b corner2"))
-                .bounds(panelLeft + PAD + half + 4, 0, half, 16).build();
+        Button zoneBCorner2 = new FlatButton(Component.translatable("conquest.gui.zone_b_corner2"),
+                b -> command("conquest zone b corner2"), panelLeft + PAD + half + 4, 0, half, 16);
         placeAt(zoneBCorner2, cursor);
         addRenderableWidget(zoneBCorner2);
         cursor += 18;
 
-        Button removeZoneA = Button.builder(Component.translatable("conquest.gui.remove_zone_a"),
-                b -> command("conquest zone a remove"))
-                .bounds(panelLeft + PAD, 0, half, 14).build();
+        Button removeZoneA = new FlatButton(Component.translatable("conquest.gui.remove_zone_a"),
+                b -> command("conquest zone a remove"), panelLeft + PAD, 0, half, 14);
         placeAt(removeZoneA, cursor);
         addRenderableWidget(removeZoneA);
-        Button removeZoneB = Button.builder(Component.translatable("conquest.gui.remove_zone_b"),
-                b -> command("conquest zone b remove"))
-                .bounds(panelLeft + PAD + half + 4, 0, half, 14).build();
+        Button removeZoneB = new FlatButton(Component.translatable("conquest.gui.remove_zone_b"),
+                b -> command("conquest zone b remove"), panelLeft + PAD + half + 4, 0, half, 14);
         placeAt(removeZoneB, cursor);
         addRenderableWidget(removeZoneB);
         cursor += 20;
@@ -338,9 +321,8 @@ public class ConquestScreen extends Screen {
         GameMode currentMode = ConquestClientData.getMode();
         GameMode[] modes = GameMode.values();
         GameMode nextMode = modes[(currentMode.ordinal() + 1) % modes.length];
-        Button modeToggle = Button.builder(Component.translatable("conquest.gui.mode_toggle", currentMode.display()),
-                b -> command("conquest mode set " + nextMode.key()))
-                .bounds(panelLeft + PAD, 0, panelWidth - 2 * PAD, 18).build();
+        Button modeToggle = new FlatButton(Component.translatable("conquest.gui.mode_toggle", currentMode.display()),
+                b -> command("conquest mode set " + nextMode.key()), panelLeft + PAD, 0, panelWidth - 2 * PAD, 18);
         placeAt(modeToggle, cursor);
         addRenderableWidget(modeToggle);
         cursor += 22;
@@ -357,8 +339,7 @@ public class ConquestScreen extends Screen {
             case STARTING, IN_PROGRESS -> "conquest stop";
             case ENDED -> "conquest reset";
         };
-        Button toggle = Button.builder(Component.translatable(toggleKey), b -> command(toggleCommand))
-                .bounds(panelLeft + PAD, 0, panelWidth - 2 * PAD, 20).build();
+        Button toggle = new FlatButton(Component.translatable(toggleKey), b -> command(toggleCommand), panelLeft + PAD, 0, panelWidth - 2 * PAD, 20);
         placeAt(toggle, cursor);
         addRenderableWidget(toggle);
         cursor += 26;
@@ -402,9 +383,8 @@ public class ConquestScreen extends Screen {
         sectorRows = Math.min(MAX_SECTOR_ROWS, sectorNumbersOrdered.size());
         for (int row = 0; row < sectorRows; row++) {
             int number = sectorNumbersOrdered.get(sectorScrollOffset + row);
-            Button remove = Button.builder(Component.literal("x"),
-                    b -> command("conquest sector " + number + " remove"))
-                    .bounds(panelLeft + panelWidth - PAD - 16, 0, 16, 12).build();
+            Button remove = new FlatButton(Component.literal("x"),
+                    b -> command("conquest sector " + number + " remove"), panelLeft + panelWidth - PAD - 16, 0, 16, 12);
             placeAt(remove, cursor + row * 12);
             addRenderableWidget(remove);
         }
@@ -442,23 +422,20 @@ public class ConquestScreen extends Screen {
         addRenderableWidget(sectorRadiusBox);
         cursor += 20;
 
-        Button addSectorPoint = Button.builder(Component.translatable("conquest.gui.sector_add_point"),
+        Button addSectorPoint = new FlatButton(Component.translatable("conquest.gui.sector_add_point"),
                 b -> command("conquest sector " + sectorNumberBox.getValue() + " point "
-                        + pointNameBox.getValue() + " " + sectorRadiusBox.getValue()))
-                .bounds(panelLeft + PAD, 0, panelWidth - 2 * PAD, 18).build();
+                        + pointNameBox.getValue() + " " + sectorRadiusBox.getValue()), panelLeft + PAD, 0, panelWidth - 2 * PAD, 18);
         placeAt(addSectorPoint, cursor);
         addRenderableWidget(addSectorPoint);
         cursor += 22;
 
         int sectorHalf = (panelWidth - 2 * PAD - 4) / 2;
-        Button attackerSpawn = Button.builder(Component.translatable("conquest.gui.sector_spawn_attacker"),
-                b -> command("conquest sector " + sectorNumberBox.getValue() + " spawn attacker"))
-                .bounds(panelLeft + PAD, 0, sectorHalf, 18).build();
+        Button attackerSpawn = new FlatButton(Component.translatable("conquest.gui.sector_spawn_attacker"),
+                b -> command("conquest sector " + sectorNumberBox.getValue() + " spawn attacker"), panelLeft + PAD, 0, sectorHalf, 18);
         placeAt(attackerSpawn, cursor);
         addRenderableWidget(attackerSpawn);
-        Button defenderSpawn = Button.builder(Component.translatable("conquest.gui.sector_spawn_defender"),
-                b -> command("conquest sector " + sectorNumberBox.getValue() + " spawn defender"))
-                .bounds(panelLeft + PAD + sectorHalf + 4, 0, sectorHalf, 18).build();
+        Button defenderSpawn = new FlatButton(Component.translatable("conquest.gui.sector_spawn_defender"),
+                b -> command("conquest sector " + sectorNumberBox.getValue() + " spawn defender"), panelLeft + PAD + sectorHalf + 4, 0, sectorHalf, 18);
         placeAt(defenderSpawn, cursor);
         addRenderableWidget(defenderSpawn);
         cursor += 22;
@@ -469,9 +446,8 @@ public class ConquestScreen extends Screen {
         timeLimitBox.setMaxLength(6);
         placeAt(timeLimitBox, cursor);
         addRenderableWidget(timeLimitBox);
-        Button setTimeLimit = Button.builder(Component.translatable("conquest.gui.sector_timelimit_button"),
-                b -> command("conquest sector " + sectorNumberBox.getValue() + " timelimit " + timeLimitBox.getValue()))
-                .bounds(panelLeft + PAD + 54, 0, panelWidth - 2 * PAD - 54, 18).build();
+        Button setTimeLimit = new FlatButton(Component.translatable("conquest.gui.sector_timelimit_button"),
+                b -> command("conquest sector " + sectorNumberBox.getValue() + " timelimit " + timeLimitBox.getValue()), panelLeft + PAD + 54, 0, panelWidth - 2 * PAD - 54, 18);
         placeAt(setTimeLimit, cursor);
         addRenderableWidget(setTimeLimit);
         cursor += 24;
@@ -559,19 +535,18 @@ public class ConquestScreen extends Screen {
     // --- rendering (reads live data each frame; only widget positions are cached) ---
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderTransparentBackground(graphics);
+    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    }
 
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         int l = panelLeft;
         int t = panelTop;
         int r = l + panelWidth;
         int b = t + panelHeight;
-        graphics.fill(l - 1, t - 1, r + 1, b + 1, 0x90000000);
-        graphics.fill(l, t, r, b, COLOR_PANEL_BG);
-        graphics.fill(l, t, r, t + HEADER_H, COLOR_HEADER_BG);
-        graphics.fill(l, t + HEADER_H, r, t + HEADER_H + 1, COLOR_ACCENT);
-        graphics.renderOutline(l - 1, t - 1, panelWidth + 2, panelHeight + 2, COLOR_OUTLINE);
-        graphics.drawString(this.font, this.title, l + PAD, t + 8, COLOR_TEXT);
+        FlatButton.drawPanel(graphics, l, t, panelWidth, panelHeight);
+        graphics.fill(l, t + HEADER_H, r, t + HEADER_H + 1, FlatButton.COLOR_CARD_LINE);
+        graphics.drawString(this.font, this.title, l + PAD, t + 8, COLOR_TEXT_DIM);
 
         if (activeTab == Tab.STATUS) {
             renderStatusTab(graphics, l, t, r);
