@@ -307,6 +307,18 @@ public final class ConquestCommand {
                         .then(Commands.literal("remove").executes(ConquestCommand::removeBoundary))
                         .then(Commands.literal("list").executes(ConquestCommand::boundaryList))
                         .then(Commands.literal("restore").executes(ConquestCommand::boundaryRestore)))
+                .then(Commands.literal("terrain")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("set")
+                                .executes(ConquestCommand::setTerrainFromWand)
+                                .then(Commands.argument("pos1", BlockPosArgument.blockPos())
+                                        .then(Commands.argument("pos2", BlockPosArgument.blockPos())
+                                                .executes(ConquestCommand::setTerrain))))
+                        .then(Commands.literal("corner1").executes(ctx -> setTerrainCorner(ctx, true)))
+                        .then(Commands.literal("corner2").executes(ctx -> setTerrainCorner(ctx, false)))
+                        .then(Commands.literal("remove").executes(ConquestCommand::removeTerrain))
+                        .then(Commands.literal("list").executes(ConquestCommand::terrainList))
+                        .then(Commands.literal("restore").executes(ConquestCommand::boundaryRestore)))
                 .then(Commands.literal("range")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.literal("set")
@@ -1050,6 +1062,63 @@ public final class ConquestCommand {
         }
         ctx.getSource().sendSuccess(() ->
                 Component.translatable("conquest.status.boundary", min.toShortString(), max.toShortString()), false);
+        return 1;
+    }
+
+    private static int setTerrain(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        BlockPos pos1 = BlockPosArgument.getBlockPos(ctx, "pos1");
+        BlockPos pos2 = BlockPosArgument.getBlockPos(ctx, "pos2");
+        ConquestManager.get(ctx.getSource().getServer())
+                .setTerrain(ctx.getSource().getLevel(), pos1, pos2);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.terrain_set",
+                        pos1.toShortString(), pos2.toShortString()), true);
+        return 1;
+    }
+
+    /** {@code /conquest terrain set} with no coordinates: uses the sender's zone wand selection instead. */
+    private static int setTerrainFromWand(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        BlockPos[] selection = ZoneSelection.get(player);
+        if (selection == null) {
+            return fail(ctx, Component.translatable("conquest.msg.wand_no_selection"));
+        }
+        ConquestManager.get(ctx.getSource().getServer())
+                .setTerrain(player.serverLevel(), selection[0], selection[1]);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.terrain_set",
+                        selection[0].toShortString(), selection[1].toShortString()), true);
+        return 1;
+    }
+
+    private static int setTerrainCorner(CommandContext<CommandSourceStack> ctx, boolean corner1) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        ConquestManager.get(ctx.getSource().getServer())
+                .setTerrainCorner(player.serverLevel(), corner1, player.blockPosition());
+        ctx.getSource().sendSuccess(() -> Component.translatable(
+                corner1 ? "conquest.msg.terrain_corner1_set" : "conquest.msg.terrain_corner2_set"), true);
+        return 1;
+    }
+
+    private static int removeTerrain(CommandContext<CommandSourceStack> ctx) {
+        if (!ConquestManager.get(ctx.getSource().getServer()).removeTerrain(ctx.getSource().getServer())) {
+            return fail(ctx, Component.translatable("conquest.msg.no_terrain_area"));
+        }
+        ctx.getSource().sendSuccess(() -> Component.translatable("conquest.msg.terrain_removed"), true);
+        return 1;
+    }
+
+    private static int terrainList(CommandContext<CommandSourceStack> ctx) {
+        ConquestManager manager = ConquestManager.get(ctx.getSource().getServer());
+        BlockPos min = manager.getTerrainMin();
+        BlockPos max = manager.getTerrainMax();
+        if (min == null || max == null) {
+            return fail(ctx, Component.translatable("conquest.msg.no_terrain_area"));
+        }
+        String dim = manager.getTerrainDim().location().toString();
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.status.terrain", dim,
+                        min.toShortString(), max.toShortString()), false);
         return 1;
     }
 
