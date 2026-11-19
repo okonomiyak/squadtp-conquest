@@ -82,6 +82,8 @@ public final class MapPreset {
     private final ZoneBox zoneB;
     @Nullable
     private final ZoneBox boundary;
+    @Nullable
+    private final ZoneBox terrain;
     private final List<ProtectZone> protectZones;
     private final List<SpawnZone> spawnZones;
     private final List<String> protectedBlocks;
@@ -91,7 +93,7 @@ public final class MapPreset {
                       @Nullable ResourceKey<Level> spawnBDim, @Nullable BlockPos spawnBPos,
                       @Nullable ResourceKey<Level> spawnA2Dim, @Nullable BlockPos spawnA2Pos,
                       @Nullable ResourceKey<Level> spawnB2Dim, @Nullable BlockPos spawnB2Pos,
-                      @Nullable ZoneBox zoneA, @Nullable ZoneBox zoneB, @Nullable ZoneBox boundary,
+                      @Nullable ZoneBox zoneA, @Nullable ZoneBox zoneB, @Nullable ZoneBox boundary, @Nullable ZoneBox terrain,
                       List<ProtectZone> protectZones, List<SpawnZone> spawnZones, List<String> protectedBlocks) {
         this.name = name;
         this.mode = mode;
@@ -107,6 +109,7 @@ public final class MapPreset {
         this.zoneA = zoneA;
         this.zoneB = zoneB;
         this.boundary = boundary;
+        this.terrain = terrain;
         this.protectZones = protectZones;
         this.spawnZones = spawnZones;
         this.protectedBlocks = protectedBlocks;
@@ -179,6 +182,11 @@ public final class MapPreset {
         return boundary;
     }
 
+    @Nullable
+    public ZoneBox getTerrain() {
+        return terrain;
+    }
+
     public List<ProtectZone> getProtectZones() {
         return protectZones;
     }
@@ -226,6 +234,9 @@ public final class MapPreset {
         }
         if (boundary != null) {
             tag.put("Boundary", boundary.save());
+        }
+        if (terrain != null) {
+            tag.put("Terrain", terrain.save());
         }
         ListTag protectZoneList = new ListTag();
         for (ProtectZone zone : protectZones) {
@@ -280,6 +291,7 @@ public final class MapPreset {
         ZoneBox zoneA = tag.contains("ZoneA") ? ZoneBox.load(tag.getCompound("ZoneA")) : null;
         ZoneBox zoneB = tag.contains("ZoneB") ? ZoneBox.load(tag.getCompound("ZoneB")) : null;
         ZoneBox boundary = tag.contains("Boundary") ? ZoneBox.load(tag.getCompound("Boundary")) : null;
+        ZoneBox terrain = tag.contains("Terrain") ? ZoneBox.load(tag.getCompound("Terrain")) : null;
         List<ProtectZone> protectZones = new ArrayList<>();
         ListTag protectZoneList = tag.getList("ProtectZones", Tag.TAG_COMPOUND);
         for (int i = 0; i < protectZoneList.size(); i++) {
@@ -297,6 +309,6 @@ public final class MapPreset {
         }
         return new MapPreset(name, mode, points, spawnADim, spawnAPos, spawnBDim, spawnBPos,
                 spawnA2Dim, spawnA2Pos, spawnB2Dim, spawnB2Pos,
-                zoneA, zoneB, boundary, protectZones, spawnZones, protectedBlocks);
+                zoneA, zoneB, boundary, terrain, protectZones, spawnZones, protectedBlocks);
     }
 }

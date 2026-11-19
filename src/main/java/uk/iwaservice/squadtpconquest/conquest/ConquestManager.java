@@ -129,6 +129,8 @@ public class ConquestManager extends SavedData {
 
     private static final int BEACON_VISUAL_RADIUS = 2;
     private static final int SPAWN_ZONE_RGB = 0xFAD933;
+    /** Purple: terrain preservation area outline (team/range/spawn colors are blue/red/green/cyan/yellow/gray). */
+    private static final int TERRAIN_ZONE_RGB = 0xB05FE0;
 
     /** What the scoreboard screen shows apart from the (client-extrapolated) round timer. */
     private record ScoreboardKey(RoundState state, List<ConquestScoreboardPacket.Entry> entries) {}
@@ -210,6 +212,17 @@ public class ConquestManager extends SavedData {
     private BlockPos boundaryPos1;
     @Nullable
     private BlockPos boundaryPos2;
+    /**
+     * The terrain preservation area (地形保存区域): an optional box that, when both corners are
+     * set, overrides the boundary/sector areas as the region the terrain snapshot covers. Has no
+     * effect on combat (out-of-bounds, spawns).
+     */
+    @Nullable
+    private ResourceKey<Level> terrainDim;
+    @Nullable
+    private BlockPos terrainPos1;
+    @Nullable
+    private BlockPos terrainPos2;
     /** Transient: continuous seconds each player has spent outside the boundary. */
     private final Map<UUID, Integer> boundaryOutsideSeconds = new HashMap<>();
     /** Transient: tick count each player's spot key is next usable at (see {@link #spotPlayer}). */
@@ -306,7 +319,7 @@ public class ConquestManager extends SavedData {
     /** Fresh world only (see {@link #get}): seeds a built-in blank "Normal" preset to reset to. */
     public ConquestManager() {
         presets.put("Normal", new MapPreset("Normal", GameMode.CONQUEST, List.of(),
-                null, null, null, null, null, null, null, null, null, null, null, List.of(), List.of(), List.of()));
+                null, null, null, null, null, null, null, null, null, null, null, null, List.of(), List.of(), List.of()));
     }
 
     // --- accessors ---
@@ -1568,7 +1581,9 @@ public class ConquestManager extends SavedData {
         boundaryPos1 = pos1.immutable();
         boundaryPos2 = pos2.immutable();
         setDirty();
-        captureTerrainSnapshot(level.getServer());
+        if (!hasTerrainArea()) {
+            captureTerrainSnapshot(level.getServer());
+        }
     }
 
     /**
@@ -1589,7 +1604,7 @@ public class ConquestManager extends SavedData {
             boundaryPos2 = pos.immutable();
         }
         setDirty();
-        if (boundaryPos1 != null && boundaryPos2 != null) {
+        if (boundaryPos1 != null && boundaryPos2 != null && !hasTerrainArea()) {
             captureTerrainSnapshot(level.getServer());
         }
     }
@@ -1632,6 +1647,82 @@ public class ConquestManager extends SavedData {
         }
         BlockPos min = new BlockPos(Math.min(boundaryPos1.getX(), boundaryPos2.getX()), Math.min(boundaryPos1.getY(), boundaryPos2.getY()), Math.min(boundaryPos1.getZ(), boundaryPos2.getZ()));
         BlockPos max = new BlockPos(Math.max(boundaryPos1.getX(), boundaryPos2.getX()), Math.max(boundaryPos1.getY(), boundaryPos2.getY()), Math.max(boundaryPos1.getZ(), boundaryPos2.getZ()));
+        return new BlockPos[]{min, max};
+    }
+
+    // --- terrain preservation area (optional box overriding the snapshot region) ---
+
+    /** Defines the terrain area as the box between two corners and re-captures the snapshot. */
+    public void setTerrain(ServerLevel level, BlockPos pos1, BlockPos pos2) {
+        terrainDim = level.dimension();
+        terrainPos1 = pos1.immutable();
+        terrainPos2 = pos2.immutable();
+        setDirty();
+        captureTerrainSnapshot(level.getServer());
+    }
+
+    /** One corner of the terrain area; active (and snapshotted) once both are set. Dimension switch resets both. */
+    public void setTerrainCorner(ServerLevel level, boolean corner1, BlockPos pos) {
+        ResourceKey<Level> dim = level.dimension();
+        if (terrainDim != null && !terrainDim.equals(dim)) {
+            terrainPos1 = null;
+            terrainPos2 = null;
+        }
+        terrainDim = dim;
+        if (corner1) {
+            terrainPos1 = pos.immutable();
+        } else {
+            terrainPos2 = pos.immutable();
+        }
+        setDirty();
+        if (terrainPos1 != null && terrainPos2 != null) {
+            captureTerrainSnapshot(level.getServer());
+        }
+    }
+
+    /** Clears the terrain area (snapshot falls back to boundary/sectors, so it is re-captured). False if neither corner was set. */
+    public boolean removeTerrain(MinecraftServer server) {
+        if (terrainPos1 == null && terrainPos2 == null) {
+            return false;
+        }
+        terrainDim = null;
+        terrainPos1 = null;
+        terrainPos2 = null;
+        setDirty();
+        captureTerrainSnapshot(server);
+        return true;
+    }
+
+    @Nullable
+    public ResourceKey<Level> getTerrainDim() {
+        return terrainDim;
+    }
+
+    /** Lower corner of the terrain area's box; null unless both corners are set. */
+    @Nullable
+    public BlockPos getTerrainMin() {
+        BlockPos[] bounds = terrainBounds();
+        return bounds == null ? null : bounds[0];
+    }
+
+    /** Upper corner of the terrain area's box; null unless both corners are set. */
+    @Nullable
+    public BlockPos getTerrainMax() {
+        BlockPos[] bounds = terrainBounds();
+        return bounds == null ? null : bounds[1];
+    }
+
+    private boolean hasTerrainArea() {
+        return terrainDim != null && terrainPos1 != null && terrainPos2 != null;
+    }
+
+    @Nullable
+    private BlockPos[] terrainBounds() {
+        if (terrainPos1 == null || terrainPos2 == null) {
+            return null;
+        }
+        BlockPos min = new BlockPos(Math.min(terrainPos1.getX(), terrainPos2.getX()), Math.min(terrainPos1.getY(), terrainPos2.getY()), Math.min(terrainPos1.getZ(), terrainPos2.getZ()));
+        BlockPos max = new BlockPos(Math.max(terrainPos1.getX(), terrainPos2.getX()), Math.max(terrainPos1.getY(), terrainPos2.getY()), Math.max(terrainPos1.getZ(), terrainPos2.getZ()));
         return new BlockPos[]{min, max};
     }
 
@@ -2047,14 +2138,17 @@ public class ConquestManager extends SavedData {
     private record SnapshotRegion(ResourceKey<Level> dim, BlockPos min, BlockPos max) {}
 
     /**
-     * The global battlefield boundary if set; otherwise (breakthrough only) the union of every
+     * The terrain area if fully set; else the global battlefield boundary if set; otherwise (breakthrough only) the union of every
      * sector's combat area, so a breakthrough map that skips the global boundary in favor of
      * per-sector areas still gets its terrain snapshotted/restored. Sectors whose combat area is
      * in a different dimension than the first one found are ignored (a snapshot can't span
-     * dimensions). Null if neither is available.
+     * dimensions). Null if none is available.
      */
     @Nullable
     private SnapshotRegion resolveSnapshotRegion() {
+        if (hasTerrainArea()) {
+            return new SnapshotRegion(terrainDim, getTerrainMin(), getTerrainMax());
+        }
         if (boundaryDim != null) {
             BlockPos min = getBoundaryMin();
             BlockPos max = getBoundaryMax();
@@ -2092,7 +2186,7 @@ public class ConquestManager extends SavedData {
      * Takes a whole-region snapshot of {@link #resolveSnapshotRegion} for later restoration by
      * {@link #restoreTerrainSnapshot}. No-op (leaves {@link #terrainSnapshot} null) if terrain
      * destruction is disabled or no region is available — automatic terrain reset is opt-in via
-     * {@code /conquest boundary set} (or, in breakthrough, {@code /conquest sector <n> area}).
+     * {@code /conquest terrain set} / {@code boundary set} (or, in breakthrough, {@code /conquest sector <n> area}).
      */
     private void captureTerrainSnapshot(MinecraftServer server) {
         terrainSnapshot = null;
@@ -2127,7 +2221,7 @@ public class ConquestManager extends SavedData {
      * giving players time to clear the area. Repeatable any number of times (the snapshot isn't
      * consumed — break it, restore it, break it again, as many times as needed for testing); it's
      * only replaced by a fresh one when the boundary (or a sector combat area) is redefined via
-     * {@link #setBoundary}/{@link #setBoundaryCorner}, not merely by starting another round — so
+     * {@link #setTerrain}/{@link #setBoundary} (and corner variants), not merely by starting another round — so
      * repeated rounds always revert to the same original baseline instead of drifting round to
      * round. Returns false if no snapshot is held (never captured, or no boundary/sector combat
      * area was set to capture from).
@@ -2191,9 +2285,11 @@ public class ConquestManager extends SavedData {
                 ? new MapPreset.ZoneBox(zoneBDim, zoneBPos1, zoneBPos2) : null;
         MapPreset.ZoneBox boundaryBox = boundaryDim != null && boundaryPos1 != null && boundaryPos2 != null
                 ? new MapPreset.ZoneBox(boundaryDim, boundaryPos1, boundaryPos2) : null;
+        MapPreset.ZoneBox terrainBox = hasTerrainArea()
+                ? new MapPreset.ZoneBox(terrainDim, terrainPos1, terrainPos2) : null;
         presets.put(name, new MapPreset(name, mode, layout, spawnADim, spawnAPos, spawnBDim, spawnBPos,
                 spawnA2Dim, spawnA2Pos, spawnB2Dim, spawnB2Pos,
-                zoneABox, zoneBBox, boundaryBox, new ArrayList<>(protectZones.values()),
+                zoneABox, zoneBBox, boundaryBox, terrainBox, new ArrayList<>(protectZones.values()),
                 new ArrayList<>(spawnZones.values()), new ArrayList<>(protectedBlocks)));
         setDirty();
     }
@@ -2252,6 +2348,10 @@ public class ConquestManager extends SavedData {
         boundaryDim = boundaryBox != null ? boundaryBox.dimension() : null;
         boundaryPos1 = boundaryBox != null ? boundaryBox.pos1() : null;
         boundaryPos2 = boundaryBox != null ? boundaryBox.pos2() : null;
+        MapPreset.ZoneBox terrainBox = preset.getTerrain();
+        terrainDim = terrainBox != null ? terrainBox.dimension() : null;
+        terrainPos1 = terrainBox != null ? terrainBox.pos1() : null;
+        terrainPos2 = terrainBox != null ? terrainBox.pos2() : null;
         protectZones.clear();
         for (ProtectZone zone : preset.getProtectZones()) {
             protectZones.put(zone.getName(), zone);
@@ -3487,6 +3587,7 @@ public class ConquestManager extends SavedData {
         } else {
             addBox(boxes, getBoundaryDim(), getBoundaryMin(), getBoundaryMax(), Team.NEUTRAL.zoneRgb());
         }
+        addBox(boxes, getTerrainDim(), getTerrainMin(), getTerrainMax(), TERRAIN_ZONE_RGB);
         for (Team team : new Team[]{Team.A, Team.B}) {
             ResourceKey<Level> dim = getTeamBeaconDim(team);
             BlockPos pos = getTeamBeaconPos(team);
@@ -4038,6 +4139,15 @@ public class ConquestManager extends SavedData {
                 manager.boundaryPos2 = NbtUtils.readBlockPos(tag, "BoundaryPos2").orElse(null);
             }
         }
+        if (tag.contains("TerrainDim")) {
+            manager.terrainDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("TerrainDim")));
+            if (tag.contains("TerrainPos1")) {
+                manager.terrainPos1 = NbtUtils.readBlockPos(tag, "TerrainPos1").orElse(null);
+            }
+            if (tag.contains("TerrainPos2")) {
+                manager.terrainPos2 = NbtUtils.readBlockPos(tag, "TerrainPos2").orElse(null);
+            }
+        }
         if (tag.contains("RangeDim")) {
             manager.rangeDim = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(tag.getString("RangeDim")));
             if (tag.contains("RangePos1")) {
@@ -4217,6 +4327,15 @@ public class ConquestManager extends SavedData {
             }
             if (boundaryPos2 != null) {
                 tag.put("BoundaryPos2", NbtUtils.writeBlockPos(boundaryPos2));
+            }
+        }
+        if (terrainDim != null) {
+            tag.putString("TerrainDim", terrainDim.location().toString());
+            if (terrainPos1 != null) {
+                tag.put("TerrainPos1", NbtUtils.writeBlockPos(terrainPos1));
+            }
+            if (terrainPos2 != null) {
+                tag.put("TerrainPos2", NbtUtils.writeBlockPos(terrainPos2));
             }
         }
         if (rangeDim != null) {

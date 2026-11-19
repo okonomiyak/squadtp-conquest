@@ -39,7 +39,7 @@ import java.util.Set;
  *
  * <p>Restoration is handled separately and unconditionally by
  * {@link ConquestManager#restoreTerrainSnapshot}, which pastes back a whole-region snapshot taken
- * at round start of the battlefield boundary, or — in breakthrough, if no global boundary is set —
+ * at round start of the terrain area ({@code /conquest terrain}) if set, else the battlefield boundary, or — in breakthrough, if no global boundary is set —
  * the union of every sector's combat area (see {@link ConquestManager#resolveSnapshotRegion}). So
  * damage from any source (not just what this class craters) resets as long as one of those is set,
  * regardless of what happens here.
