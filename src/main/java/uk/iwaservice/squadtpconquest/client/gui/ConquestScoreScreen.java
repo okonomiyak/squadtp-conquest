@@ -88,7 +88,7 @@ public class ConquestScoreScreen extends Screen {
 
         if (ConquestClientData.getLastResult() != null) {
             addRenderableWidget(new FlatButton(Component.translatable("conquest.result.reopen"),
-                    b -> this.minecraft.setScreen(new ConquestResultScreen()), panelLeft + panelWidth - PAD - 20 - 4 - 50, panelTop + 4, 50, 16));
+                    b -> this.minecraft.setScreen(new ConquestResultScreen()), panelLeft + panelWidth - PAD - 26 - this.font.width("9/9") - 6 - 50, panelTop + 4, 50, 16)); // left of the page counter
         }
 
         addRenderableWidget(new FlatButton(Component.translatable("conquest.score.suicide_button"),

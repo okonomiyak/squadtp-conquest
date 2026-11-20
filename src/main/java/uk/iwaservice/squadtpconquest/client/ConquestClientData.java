@@ -70,6 +70,8 @@ public final class ConquestClientData {
     private static RoundResultPacket lastResult;
     /** Set when a result arrives; cleared once the result screen has been opened (or the result is). */
     private static boolean resultPending;
+    /** When the pending result screen may open: a short delay so the round-end title is seen first. */
+    private static long resultOpenAtMillis;
     /** Incremented on every update; lets the GUI detect changes cheaply. */
     private static int revision;
 
@@ -126,10 +128,12 @@ public final class ConquestClientData {
     public static synchronized void setLastResult(RoundResultPacket result) {
         lastResult = result;
         resultPending = true;
+        resultOpenAtMillis = net.minecraft.Util.getMillis() + 2000L;
     }
 
+    /** True once a result is waiting and its 2 s title delay has passed. */
     public static synchronized boolean isResultPending() {
-        return resultPending;
+        return resultPending && net.minecraft.Util.getMillis() >= resultOpenAtMillis;
     }
 
     public static synchronized void clearResultPending() {
