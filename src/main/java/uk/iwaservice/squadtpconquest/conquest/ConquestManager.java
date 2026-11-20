@@ -227,6 +227,32 @@ public class ConquestManager extends SavedData {
     private final Map<UUID, Integer> boundaryOutsideSeconds = new HashMap<>();
     /** Transient: tick count each player's spot key is next usable at (see {@link #spotPlayer}). */
     private final Map<UUID, Integer> spotCooldownUntilTick = new HashMap<>();
+    /** Transient: running UAV call-ins (see {@link #useCallIn}); cleared when a round (re)starts or ends. */
+    private final List<ActiveUav> activeUavs = new ArrayList<>();
+    // ponytail: fixed 2s sweep interval, make it configurable if anyone asks
+    private static final int UAV_PULSE_TICKS = 40;
+
+    private static final class ActiveUav {
+        final UUID owner;
+        final String ownerName;
+        final ResourceKey<Level> dimension;
+        final BlockPos center;
+        final int radius;
+        final int endTick;
+        int nextPulseTick;
+
+        ActiveUav(UUID owner, String ownerName, ResourceKey<Level> dimension, BlockPos center, int radius,
+                  int endTick, int nextPulseTick) {
+            this.owner = owner;
+            this.ownerName = ownerName;
+            this.dimension = dimension;
+            this.center = center;
+            this.radius = radius;
+            this.endTick = endTick;
+            this.nextPulseTick = nextPulseTick;
+        }
+    }
+
     /** Transient: tick count each player's pin key is next usable at (see {@link #placePin}). */
     private final Map<UUID, Integer> pinCooldownUntilTick = new HashMap<>();
 
@@ -897,6 +923,12 @@ public class ConquestManager extends SavedData {
         setDirty();
     }
 
+    /** Adds/replaces a named UAV call-in (spyglass icon, radius 0 = whole dimension). */
+    public void addUavCallIn(String name, int scoreCost, int seconds, int radius) {
+        callIns.put(name, new CallIn(name, scoreCost, ResourceLocation.parse("minecraft:spyglass"), 1, seconds, radius));
+        setDirty();
+    }
+
     /** Removes a call-in. False if no call-in has that name. */
     public boolean removeCallIn(String name) {
         if (callIns.remove(name) == null) {
@@ -925,6 +957,12 @@ public class ConquestManager extends SavedData {
         if (availableScore(player.getUUID()) < callIn.getScoreCost()) {
             return UseCallInResult.INSUFFICIENT_SCORE;
         }
+        if (callIn.isUav()) {
+            scoreOf(player.getUUID()).spent += callIn.getScoreCost();
+            setDirty();
+            startUav(player, callIn);
+            return UseCallInResult.OK;
+        }
         Item item = BuiltInRegistries.ITEM.get(callIn.getItemId());
         if (item == null) {
             return UseCallInResult.UNKNOWN_ITEM;
@@ -937,6 +975,63 @@ public class ConquestManager extends SavedData {
             player.drop(stack, false);
         }
         return UseCallInResult.OK;
+    }
+
+    private void startUav(ServerPlayer player, CallIn callIn) {
+        MinecraftServer server = player.server;
+        int now = server.getTickCount();
+        ActiveUav uav = new ActiveUav(player.getUUID(), player.getGameProfile().getName(), player.level().dimension(),
+                player.blockPosition(), callIn.getUavRadius(), now + callIn.getUavSeconds() * 20, now);
+        activeUavs.add(uav);
+        Component started = Component.translatable("conquest.msg.uav_started", uav.ownerName, callIn.getUavSeconds());
+        Component enemy = Component.translatable("conquest.msg.uav_enemy").withStyle(ChatFormatting.RED);
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            if (sameSide(p.getUUID(), uav.owner)) {
+                p.sendSystemMessage(started);
+            } else if (teamOf(p.getUUID()).isCombatant()) {
+                p.sendSystemMessage(enemy);
+            }
+        }
+        pulseUav(server, uav);
+        uav.nextPulseTick = now + UAV_PULSE_TICKS;
+    }
+
+    /** Called every server tick: sweeps each running UAV every {@link #UAV_PULSE_TICKS} and drops expired ones. */
+    public void tickUav(MinecraftServer server) {
+        if (activeUavs.isEmpty()) {
+            return;
+        }
+        if (state != RoundState.IN_PROGRESS) {
+            activeUavs.clear();
+            return;
+        }
+        int now = server.getTickCount();
+        activeUavs.removeIf(u -> now >= u.endTick);
+        for (ActiveUav uav : activeUavs) {
+            if (now >= uav.nextPulseTick) {
+                pulseUav(server, uav);
+                uav.nextPulseTick = now + UAV_PULSE_TICKS;
+            }
+        }
+    }
+
+    /** Spots every valid enemy (same targets as {@code /conquest spot}) inside the UAV's reach for the owner's side. */
+    private void pulseUav(MinecraftServer server, ActiveUav uav) {
+        long r2 = (long) uav.radius * uav.radius;
+        for (ServerPlayer target : server.getPlayerList().getPlayers()) {
+            if (!target.isAlive() || !teamOf(target.getUUID()).isCombatant() || sameSide(uav.owner, target.getUUID())
+                    || !target.level().dimension().equals(uav.dimension)
+                    || (uav.radius > 0 && target.blockPosition().distSqr(uav.center) > r2)) {
+                continue;
+            }
+            SpotPacket packet = new SpotPacket(target.getUUID(), target.getGameProfile().getName(),
+                    uav.dimension.location(), target.blockPosition(), 50);
+            for (ServerPlayer viewer : server.getPlayerList().getPlayers()) {
+                if (sameSide(viewer.getUUID(), uav.owner)) {
+                    NetworkHandler.send(viewer, packet);
+                }
+            }
+        }
     }
 
     // --- setup operations (commands) ---
@@ -2462,6 +2557,7 @@ public class ConquestManager extends SavedData {
         zoneIntrusionSeconds.clear();
         boundaryOutsideSeconds.clear();
         spotCooldownUntilTick.clear();
+        activeUavs.clear();
         pinCooldownUntilTick.clear();
         sectorAreaGraceSecondsRemaining = 0;
         teamBeacons.clear();
@@ -3918,7 +4014,7 @@ public class ConquestManager extends SavedData {
         List<ConquestSyncPacket.CallInStatus> callInStatuses = new ArrayList<>();
         for (CallIn callIn : callIns.values()) {
             callInStatuses.add(new ConquestSyncPacket.CallInStatus(
-                    callIn.getName(), callIn.getScoreCost(), callIn.getItemId(), callIn.getCount()));
+                    callIn.getName(), callIn.getScoreCost(), callIn.getItemId(), callIn.getCount(), callIn.getUavSeconds()));
         }
         Integer viewerSquad = sdmSquadOf(viewer.getUUID());
         // KOTH: the hill's lone holder (neutral when contested or empty), from this tick's occupancy.

@@ -147,7 +147,9 @@ public class CallInRadialScreen extends Screen {
             graphics.drawCenteredString(this.font, c.name(), x, y + 4, text);
             graphics.drawCenteredString(this.font, Component.translatable("conquest.gui.callin_cost", c.scoreCost()),
                     x, y + 14, affordable ? 0xFFFFD060 : 0xFF777777);
-            if (c.count() > 1) {
+            if (c.uavSeconds() > 0) {
+                graphics.drawString(this.font, Component.translatable("conquest.callin.uav_label", c.uavSeconds()), x + 9, y - 6, text);
+            } else if (c.count() > 1) {
                 graphics.drawString(this.font, "x" + c.count(), x + 9, y - 6, text);
             }
         }
