@@ -306,5 +306,21 @@
   "conquest.score.sdm_kills": "%sキル",
   "key.squadtpconquest.callin_menu": "コールインメニュー",
   "conquest.gui.callin_none": "使えるコールインがありません",
-  "conquest.gui.callin_cost": "%s pt"
+  "conquest.gui.callin_cost": "%s pt",
+  "conquest.result.victory": "勝利",
+  "conquest.result.defeat": "敗北",
+  "conquest.result.draw": "引き分け",
+  "conquest.result.wins": "%sの勝利",
+  "conquest.result.mvp": "MVP",
+  "conquest.result.most_kills": "最多キル",
+  "conquest.result.most_revives": "最多蘇生",
+  "conquest.result.most_captures": "最多占領",
+  "conquest.result.kills": "キル",
+  "conquest.result.deaths": "デス",
+  "conquest.result.revives": "蘇生",
+  "conquest.result.captures": "占領",
+  "conquest.result.score": "スコア",
+  "conquest.result.scoreboard": "スコアボード",
+  "conquest.result.close": "閉じる",
+  "conquest.result.reopen": "リザルト"
 }

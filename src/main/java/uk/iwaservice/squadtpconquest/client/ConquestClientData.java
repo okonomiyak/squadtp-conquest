@@ -8,6 +8,7 @@ import uk.iwaservice.squadtpconquest.conquest.Team;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestZonesPacket;
+import uk.iwaservice.squadtpconquest.network.RoundResultPacket;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
@@ -64,6 +65,9 @@ public final class ConquestClientData {
     private static int kothSecondsToRotate;
     private static int kothTargetScore;
     private static Team kothHolder = Team.NEUTRAL;
+    /** The last round's result for the result screen; cleared once the round is no longer ENDED. */
+    @Nullable
+    private static RoundResultPacket lastResult;
     /** Incremented on every update; lets the GUI detect changes cheaply. */
     private static int revision;
 
@@ -83,6 +87,9 @@ public final class ConquestClientData {
         ticketsB = newTicketsB;
         active = newActive;
         state = newState;
+        if (newState != RoundState.ENDED) {
+            lastResult = null;
+        }
         mode = newMode;
         yourTeam = newYourTeam;
         canAdmin = newCanAdmin;
@@ -111,6 +118,15 @@ public final class ConquestClientData {
         roundElapsedReceivedAt = gameTime();
         scoreboard = List.copyOf(newEntries);
         revision++;
+    }
+
+    public static synchronized void setLastResult(RoundResultPacket result) {
+        lastResult = result;
+    }
+
+    @Nullable
+    public static synchronized RoundResultPacket getLastResult() {
+        return lastResult;
     }
 
     public static synchronized int getRevision() {

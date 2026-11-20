@@ -1,6 +1,8 @@
 package uk.iwaservice.squadtpconquest.client;
 
 import net.minecraft.client.Minecraft;
+import uk.iwaservice.squadtpconquest.client.gui.ConquestResultScreen;
+import uk.iwaservice.squadtpconquest.client.gui.ConquestScoreScreen;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestScreen;
 import uk.iwaservice.squadtpconquest.compat.MapCompat;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
@@ -8,6 +10,7 @@ import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestZonesPacket;
 import uk.iwaservice.squadtpconquest.network.KillFeedPacket;
 import uk.iwaservice.squadtpconquest.network.PinPacket;
+import uk.iwaservice.squadtpconquest.network.RoundResultPacket;
 import uk.iwaservice.squadtpconquest.network.SpotPacket;
 
 /** Client-only entry point for the S2C packets. Never classloaded on a dedicated server. */
@@ -60,6 +63,14 @@ public final class ClientPacketHandler {
         Minecraft mc = Minecraft.getInstance();
         long now = mc.level != null ? mc.level.getGameTime() : 0;
         ConquestClientData.addKillFeedEntry(msg.attackerName(), msg.victimName(), msg.distanceMeters(), now + msg.durationTicks());
+    }
+
+    public static void handleRoundResult(RoundResultPacket msg) {
+        ConquestClientData.setLastResult(msg);
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && (mc.screen == null || mc.screen instanceof ConquestScoreScreen)) {
+            mc.setScreen(new ConquestResultScreen());
+        }
     }
 
     private ClientPacketHandler() {}

@@ -56,6 +56,11 @@ public final class NetworkHandler {
                 .decoder(ConquestZonesPacket::decode)
                 .consumerMainThread(ConquestZonesPacket::handle)
                 .add();
+        CHANNEL.messageBuilder(RoundResultPacket.class, 6, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(RoundResultPacket::encode)
+                .decoder(RoundResultPacket::decode)
+                .consumerMainThread(RoundResultPacket::handle)
+                .add();
     }
 
     public static void send(ServerPlayer player, ConquestSyncPacket packet) {
@@ -71,6 +76,10 @@ public final class NetworkHandler {
     }
 
     public static void send(ServerPlayer player, SpotPacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    public static void send(ServerPlayer player, RoundResultPacket packet) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
 
