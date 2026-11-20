@@ -31,6 +31,8 @@ public final class NetworkHandler {
                 (msg, ctx) -> ClientPacketHandler.handlePin(msg));
         registrar.playToClient(KillFeedPacket.TYPE, KillFeedPacket.STREAM_CODEC,
                 (msg, ctx) -> ClientPacketHandler.handleKillFeed(msg));
+        registrar.playToClient(RoundResultPacket.TYPE, RoundResultPacket.STREAM_CODEC,
+                (msg, ctx) -> ClientPacketHandler.handleRoundResult(msg));
     }
 
     public static void send(ServerPlayer player, ConquestSyncPacket packet) {
@@ -46,6 +48,10 @@ public final class NetworkHandler {
     }
 
     public static void send(ServerPlayer player, SpotPacket packet) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    public static void send(ServerPlayer player, RoundResultPacket packet) {
         PacketDistributor.sendToPlayer(player, packet);
     }
 

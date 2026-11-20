@@ -306,5 +306,21 @@
   "conquest.score.sdm_kills": "%s kills",
   "key.squadtpconquest.callin_menu": "Call-in menu",
   "conquest.gui.callin_none": "No call-ins available",
-  "conquest.gui.callin_cost": "%s pt"
+  "conquest.gui.callin_cost": "%s pt",
+  "conquest.result.victory": "Victory",
+  "conquest.result.defeat": "Defeat",
+  "conquest.result.draw": "Draw",
+  "conquest.result.wins": "%s wins",
+  "conquest.result.mvp": "MVP",
+  "conquest.result.most_kills": "Most kills",
+  "conquest.result.most_revives": "Most revives",
+  "conquest.result.most_captures": "Most captures",
+  "conquest.result.kills": "Kills",
+  "conquest.result.deaths": "Deaths",
+  "conquest.result.revives": "Revives",
+  "conquest.result.captures": "Captures",
+  "conquest.result.score": "Score",
+  "conquest.result.scoreboard": "Scoreboard",
+  "conquest.result.close": "Close",
+  "conquest.result.reopen": "Results"
 }

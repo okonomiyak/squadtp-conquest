@@ -46,6 +46,7 @@ import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestZonesPacket;
 import uk.iwaservice.squadtpconquest.network.NetworkHandler;
 import uk.iwaservice.squadtpconquest.network.PinPacket;
+import uk.iwaservice.squadtpconquest.network.RoundResultPacket;
 import uk.iwaservice.squadtpconquest.network.SpotPacket;
 
 import javax.annotation.Nullable;
@@ -3638,12 +3639,34 @@ public class ConquestManager extends SavedData {
             if (!sync.equals(lastSync.put(id, sync))) {
                 NetworkHandler.send(player, sync);
             }
-            if (!scoreboardKey.equals(lastScoreboard.put(id, scoreboardKey))) {
-                NetworkHandler.send(player, scoreboard);
-            }
+            sendScoreboardIfChanged(player, scoreboard, scoreboardKey);
             if (!zones.equals(lastZones.put(id, zones))) {
                 NetworkHandler.send(player, zones);
             }
+        }
+    }
+
+    private void sendScoreboardIfChanged(ServerPlayer player, ConquestScoreboardPacket scoreboard, ScoreboardKey key) {
+        if (!key.equals(lastScoreboard.put(player.getUUID(), key))) {
+            NetworkHandler.send(player, scoreboard);
+        }
+    }
+
+    /** Pushes the current scoreboard to everyone now (round end), so the result screen sees the final kill. */
+    private void pushScoreboard(MinecraftServer server) {
+        ConquestScoreboardPacket scoreboard = buildScoreboardPacket(server);
+        ScoreboardKey key = new ScoreboardKey(state, scoreboard.entries());
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            sendScoreboardIfChanged(player, scoreboard, key);
+        }
+    }
+
+    /** Opens the result screen on every client (not sent for a forced /conquest stop). */
+    private void sendRoundResult(MinecraftServer server, Team winner, int sdmWinner, Component subtitle) {
+        pushScoreboard(server);
+        RoundResultPacket packet = new RoundResultPacket(winner, sdmWinner, subtitle);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            NetworkHandler.send(player, packet);
         }
     }
 
@@ -3781,6 +3804,7 @@ public class ConquestManager extends SavedData {
                     .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
         }
         broadcastTitle(server, title, subtitle);
+        sendRoundResult(server, winner == null ? Team.NEUTRAL : winner, 0, subtitle);
         finishRound(server, uuid -> winner != null && teamOf(uuid) == winner);
     }
 
@@ -3809,18 +3833,21 @@ public class ConquestManager extends SavedData {
         }
         setDirty();
 
+        Component sdmSubtitle = Component.empty();
         if (winnerSquad == null) {
             broadcastTitle(server, Component.translatable("conquest.title.draw").withStyle(ChatFormatting.YELLOW),
                     Component.empty());
             broadcast(server, Component.translatable("conquest.msg.draw").withStyle(ChatFormatting.YELLOW));
         } else {
             Component number = Component.literal(String.valueOf(winnerSquad)).withStyle(Team.sdmSquadColor(winnerSquad));
+            sdmSubtitle = Component.translatable("conquest.title.sdm_victory_sub", sdmKills(winnerSquad));
             broadcastTitle(server,
                     Component.translatable("conquest.title.sdm_victory", number).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
-                    Component.translatable("conquest.title.sdm_victory_sub", sdmKills(winnerSquad)));
+                    sdmSubtitle);
             broadcast(server, Component.translatable("conquest.msg.sdm_victory", number)
                     .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
         }
+        sendRoundResult(server, Team.NEUTRAL, winnerSquad == null ? 0 : winnerSquad, sdmSubtitle);
         finishRound(server, uuid -> winnerSquad != null && winnerSquad.equals(sdmSquadOf(uuid)));
     }
 
