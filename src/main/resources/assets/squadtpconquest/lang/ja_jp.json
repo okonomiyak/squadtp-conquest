@@ -109,6 +109,8 @@
   "conquest.msg.callin_used": "コールイン%sを使用した! -%sスコア",
   "conquest.msg.callin_insufficient_score": "コールイン%sに必要な利用可能スコアが足りません",
   "conquest.msg.callin_unknown_item": "コールイン%sが参照しているアイテムが存在しません",
+  "conquest.device.own": "自分の設置物",
+  "conquest.device.ally": "味方: %s",
   "conquest.msg.uav_not_combatant": "UAVは戦闘チームのプレイヤーしか使えません",
   "conquest.msg.callin_uav_added": "UAVコールイン%sを追加した: %sスコア、%s秒、半径%s (0=全域)",
   "conquest.msg.uav_started": "%sがUAVを起動しました（%s秒）",
