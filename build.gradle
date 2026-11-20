@@ -92,10 +92,13 @@ repositories {
     maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
     maven { name = 'FTB'; url = 'https://maven.ftb.dev/releases'; content { includeGroup 'dev.ftb.mods' } }
     maven { name = 'Architectury'; url = 'https://maven.architectury.dev'; content { includeGroup 'dev.architectury' } }
+    maven { name = 'KotlinForForge'; url = 'https://thedarkcolour.github.io/KotlinForForge/'; content { includeGroup 'thedarkcolour' } }
 }
 
 // Dev runClient loads only one map mod (two minimaps on screen is a mess): -PdevMap=jm|xaero|ftb
 def devMap = findProperty('devMap') ?: 'jm'
+// -PdevSw adds SuperbWarfare (+ its runtime deps) to runClient/runServer to test the allied device labels.
+def devSw = project.hasProperty('devSw')
 
 dependencies {
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
@@ -128,6 +131,13 @@ dependencies {
         modRuntimeOnly('dev.ftb.mods:ftb-library-forge:2001.2.13') { transitive = false }
         modRuntimeOnly('dev.ftb.mods:ftb-teams-forge:2001.3.2') { transitive = false }
         modRuntimeOnly('dev.architectury:architectury-forge:9.2.14') { transitive = false }
+    }
+
+    if (devSw) {
+        modRuntimeOnly 'curse.maven:superb-warfare-1218165:8104849'
+        modRuntimeOnly 'thedarkcolour:kotlinforforge:4.12.0'
+        modRuntimeOnly 'curse.maven:geckolib-388172:8285794'
+        modRuntimeOnly 'curse.maven:curios-309927:6418456'
     }
 
     // classloadout: compile-time only soft dependency, never shipped or required (see
