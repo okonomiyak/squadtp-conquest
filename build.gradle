@@ -87,7 +87,28 @@ repositories {
         url = 'https://cursemaven.com'
         content { includeGroup 'curse.maven' }
     }
+    // Xaero's Minimap / World Map (compat/xaero)
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+    // FTB Chunks / FTB Library (compat/ftbchunks) and Architectury
+    maven {
+        name = 'FTB'
+        url = 'https://maven.ftb.dev/releases'
+        content { includeGroup 'dev.ftb.mods' }
+    }
+    maven {
+        name = 'Architectury'
+        url = 'https://maven.architectury.dev'
+        content { includeGroup 'dev.architectury' }
+    }
 }
+
+// Which map mod to run in runClient (only one minimap at a time): -PdevMap=jm|xaero|ftb (default jm).
+// compileOnly deps below stay unconditional; only the runtimeOnly ones depend on this.
+def devMap = (findProperty('devMap') ?: 'jm').toString()
 
 // JourneyMap API 2.0.x is still pre-1.0/actively iterating; re-check for updates every build
 // instead of Gradle's default 24h cache, per the API's own setup instructions.
@@ -105,10 +126,30 @@ dependencies {
 
     // JourneyMap 1.21.1-6.0.2+neoforge, for the dev runtime only.
     // Production jars must NOT go into run/mods: this is a runtime-only test copy.
-    runtimeOnly 'curse.maven:journeymap-32274:8523102'
-    // Required at runtime when JourneyMap is added as a dependency jar rather than
-    // dropped into run/mods directly (see the API's setup docs).
-    runtimeOnly 'curse.maven:common-network-806044:7087488'
+    if (devMap == 'jm') {
+        runtimeOnly 'curse.maven:journeymap-32274:8523102'
+        // Required at runtime when JourneyMap is added as a dependency jar rather than
+        // dropped into run/mods directly (see the API's setup docs).
+        runtimeOnly 'curse.maven:common-network-806044:7087488'
+    }
+
+    // Xaero's Minimap + World Map (xaerolib is jar-in-jar inside them).
+    compileOnly 'maven.modrinth:xaeros-minimap:neoforge-1.21.1-26.6.0'
+    if (devMap == 'xaero') {
+        runtimeOnly 'maven.modrinth:xaeros-minimap:neoforge-1.21.1-26.6.0'
+        runtimeOnly 'maven.modrinth:xaeros-world-map:neoforge-1.21.1-1.47.0'
+    }
+
+    // FTB Chunks: compile against chunks API + ftb-library (MapIcon signatures) + architectury (Event).
+    compileOnly('dev.ftb.mods:ftb-chunks-neoforge:2101.1.24') { transitive = false }
+    compileOnly('dev.ftb.mods:ftb-library-neoforge:2101.1.40') { transitive = false }
+    compileOnly('dev.architectury:architectury-neoforge:13.0.12') { transitive = false }
+    if (devMap == 'ftb') {
+        runtimeOnly('dev.ftb.mods:ftb-chunks-neoforge:2101.1.24') { transitive = false }
+        runtimeOnly('dev.ftb.mods:ftb-library-neoforge:2101.1.40') { transitive = false }
+        runtimeOnly('dev.ftb.mods:ftb-teams-neoforge:2101.1.12') { transitive = false }
+        runtimeOnly('dev.architectury:architectury-neoforge:13.0.12') { transitive = false }
+    }
 
     // classloadout: compile-time only soft dependency, never shipped or required (see
     // compat/ClassLoadoutCompat). Plain compileOnly/runtimeOnly (not modCompileOnly/

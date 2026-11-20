@@ -1,0 +1,15 @@
+{
+  "required": false,
+  "package": "uk.iwaservice.squadtpconquest.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "uk.iwaservice.squadtpconquest.compat.FtbChunksMixinPlugin",
+  "mixins": [
+  ],
+  "client": [
+    "compat.ftbchunks.FtbVisibleClientPlayersMixin",
+    "compat.ftbchunks.FtbChunksClientMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

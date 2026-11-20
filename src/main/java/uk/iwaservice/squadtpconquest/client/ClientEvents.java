@@ -21,7 +21,7 @@ import uk.iwaservice.squadtpconquest.Config;
 import uk.iwaservice.squadtpconquest.SquadTpConquest;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestScoreScreen;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestScreen;
-import uk.iwaservice.squadtpconquest.compat.JourneyMapCompat;
+import uk.iwaservice.squadtpconquest.compat.MapCompat;
 
 @EventBusSubscriber(modid = SquadTpConquest.MODID, value = Dist.CLIENT)
 public final class ClientEvents {
@@ -40,7 +40,7 @@ public final class ClientEvents {
         ConquestClientData.clearPins();
         ConquestClientData.clearKillFeed();
         ConquestClientData.clearZones();
-        JourneyMapCompat.clear();
+        MapCompat.clear();
     }
 
     @SubscribeEvent
@@ -77,7 +77,10 @@ public final class ClientEvents {
         boolean expired = mc.level != null && ConquestClientData.pruneExpiredSpots(mc.level.getGameTime());
         expired |= mc.level != null && ConquestClientData.pruneExpiredPins(mc.level.getGameTime());
         if (expired) {
-            JourneyMapCompat.refresh();
+            MapCompat.refresh();
+        }
+        if (mc.level != null && mc.level.getGameTime() % 20 == 0) {
+            MapCompat.refresh();
         }
         if (mc.level != null) {
             ConquestClientData.pruneExpiredKillFeed(mc.level.getGameTime());

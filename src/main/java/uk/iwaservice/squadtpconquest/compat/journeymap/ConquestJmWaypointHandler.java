@@ -9,12 +9,8 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import uk.iwaservice.squadtpconquest.SquadTpConquest;
-import uk.iwaservice.squadtpconquest.client.ConquestClientData;
-import uk.iwaservice.squadtpconquest.conquest.GameMode;
-import uk.iwaservice.squadtpconquest.conquest.RoundState;
-import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
+import uk.iwaservice.squadtpconquest.compat.MapMarkers;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -25,10 +21,8 @@ import java.util.List;
  */
 public final class ConquestJmWaypointHandler {
 
-    private record Wp(String name, ResourceLocation dimension, BlockPos pos, int color) {}
-
     /** What JourneyMap currently shows, so an unchanged sync doesn't rebuild every waypoint. */
-    private static List<Wp> shown = List.of();
+    private static List<MapMarkers.Marker> shown = List.of();
 
     /** Removes every waypoint this mod has shown, without re-adding any. */
     public static void clear() {
@@ -44,35 +38,13 @@ public final class ConquestJmWaypointHandler {
         if (api == null) {
             return;
         }
-        List<Wp> desired = new ArrayList<>();
-        if (ConquestClientData.getState() == RoundState.IN_PROGRESS) {
-            boolean koth = ConquestClientData.getMode() == GameMode.KOTH;
-            for (ConquestSyncPacket.PointStatus point : ConquestClientData.getPoints()) {
-                if (koth && !point.active()) {
-                    continue; // King of the Hill: only the hill and the announced next hill
-                }
-                int color = (koth ? ConquestClientData.displayTeam(point) : point.owner()).hudColor() & 0xFFFFFF;
-                desired.add(new Wp(point.name(), point.dimension(), point.pos(), color));
-            }
-
-            // Spots are only ever sent for enemies, so the target's team is always our opponent's.
-            int spotColor = ConquestClientData.getYourTeam().opponent().hudColor() & 0xFFFFFF;
-            for (ConquestClientData.SpotEntry spot : ConquestClientData.getSpots().values()) {
-                desired.add(new Wp(spot.name(), spot.dimension(), spot.pos(), spotColor));
-            }
-
-            // Pins are only ever sent by/to teammates, so the placer's team is always our own.
-            int pinColor = ConquestClientData.getYourTeam().hudColor() & 0xFFFFFF;
-            for (ConquestClientData.PinEntry pin : ConquestClientData.getPins().values()) {
-                desired.add(new Wp(pin.placerName(), pin.dimension(), pin.pos(), pinColor));
-            }
-        }
+        List<MapMarkers.Marker> desired = MapMarkers.collect();
         if (desired.equals(shown)) {
             return;
         }
         api.removeAllWaypoints(SquadTpConquest.MODID);
-        for (Wp w : desired) {
-            show(api, waypoint(w.name(), w.dimension(), w.pos(), w.color()));
+        for (MapMarkers.Marker w : desired) {
+            show(api, waypoint(w.name(), w.dimension(), w.pos(), w.rgb()));
         }
         shown = desired;
     }
