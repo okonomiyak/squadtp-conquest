@@ -51,6 +51,7 @@ legacyForge {
 mixin {
     add sourceSets.main, 'squadtpconquest.refmap.json'
     config 'mixins.squadtpconquest.json'
+    config 'mixins.squadtpconquest.ftbchunks.json'
 }
 
 repositories {
@@ -88,7 +89,13 @@ repositories {
         url = 'https://cursemaven.com'
         content { includeGroup 'curse.maven' }
     }
+    maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
+    maven { name = 'FTB'; url = 'https://maven.ftb.dev/releases'; content { includeGroup 'dev.ftb.mods' } }
+    maven { name = 'Architectury'; url = 'https://maven.architectury.dev'; content { includeGroup 'dev.architectury' } }
 }
+
+// Dev runClient loads only one map mod (two minimaps on screen is a mess): -PdevMap=jm|xaero|ftb
+def devMap = findProperty('devMap') ?: 'jm'
 
 dependencies {
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
@@ -101,7 +108,27 @@ dependencies {
     compileOnly "info.journeymap:journeymap-api:${journeymap_api_version}"
     // JourneyMap 1.20.1-5.10.3-forge, remapped SRG->named for the dev runtime only.
     // Production jars must NOT go into run/mods: their mixins fail against named MC classes.
-    modRuntimeOnly 'curse.maven:journeymap-32274:5789363'
+    if (devMap == 'jm') {
+        modRuntimeOnly 'curse.maven:journeymap-32274:5789363'
+    }
+
+    // Xaero's Minimap / World Map (SRG jars -> mod* configurations). Compile-only is unconditional.
+    modCompileOnly 'maven.modrinth:xaeros-minimap:forge-1.20.1-26.6.0'
+    if (devMap == 'xaero') {
+        modRuntimeOnly 'maven.modrinth:xaeros-minimap:forge-1.20.1-26.6.0'
+        modRuntimeOnly 'maven.modrinth:xaeros-world-map:forge-1.20.1-1.47.0'
+    }
+
+    // FTB Chunks: MapIconEvent API needs chunks + ftb-library (signatures) + architectury (Event).
+    modCompileOnly('dev.ftb.mods:ftb-chunks-forge:2001.3.8') { transitive = false }
+    modCompileOnly('dev.ftb.mods:ftb-library-forge:2001.2.13') { transitive = false }
+    modCompileOnly('dev.architectury:architectury-forge:9.2.14') { transitive = false }
+    if (devMap == 'ftb') {
+        modRuntimeOnly('dev.ftb.mods:ftb-chunks-forge:2001.3.8') { transitive = false }
+        modRuntimeOnly('dev.ftb.mods:ftb-library-forge:2001.2.13') { transitive = false }
+        modRuntimeOnly('dev.ftb.mods:ftb-teams-forge:2001.3.2') { transitive = false }
+        modRuntimeOnly('dev.architectury:architectury-forge:9.2.14') { transitive = false }
+    }
 
     // classloadout: compile-time only soft dependency, never shipped or required (see
     // compat/classloadout). No separate thin "API" jar exists (unlike JourneyMap), so this is
@@ -118,7 +145,7 @@ tasks.named('jar') {
     manifest {
         attributes([
                 'Implementation-Version': project.version,
-                'MixinConfigs': 'mixins.squadtpconquest.json'
+                'MixinConfigs': 'mixins.squadtpconquest.json,mixins.squadtpconquest.ftbchunks.json'
         ])
     }
 }

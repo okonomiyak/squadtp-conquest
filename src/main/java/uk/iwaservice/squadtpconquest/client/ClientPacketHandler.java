@@ -2,7 +2,7 @@ package uk.iwaservice.squadtpconquest.client;
 
 import net.minecraft.client.Minecraft;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestScreen;
-import uk.iwaservice.squadtpconquest.compat.JourneyMapCompat;
+import uk.iwaservice.squadtpconquest.compat.MapCompat;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestSyncPacket;
 import uk.iwaservice.squadtpconquest.network.ConquestZonesPacket;
@@ -21,7 +21,7 @@ public final class ClientPacketHandler {
                 msg.callIns(), msg.availableScore(), msg.joinableSquads(),
                 msg.sdmSquads(), msg.yourSdmSquad(), msg.sdmKillLimit(),
                 msg.kothHill(), msg.kothNextHill(), msg.kothSecondsToRotate(), msg.kothTargetScore(), msg.kothHolder());
-        JourneyMapCompat.refresh();
+        MapCompat.refresh();
         if (msg.openScreen()) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null && mc.screen == null) {
@@ -42,7 +42,7 @@ public final class ClientPacketHandler {
         Minecraft mc = Minecraft.getInstance();
         long now = mc.level != null ? mc.level.getGameTime() : 0;
         ConquestClientData.addSpot(msg.target(), msg.targetName(), msg.dimension(), msg.pos(), now + msg.durationTicks());
-        JourneyMapCompat.refresh();
+        MapCompat.refresh();
     }
 
     public static void handlePin(PinPacket msg) {
@@ -53,7 +53,7 @@ public final class ClientPacketHandler {
             long now = mc.level != null ? mc.level.getGameTime() : 0;
             ConquestClientData.addPin(msg.placer(), msg.placerName(), msg.dimension(), msg.pos(), now + msg.durationTicks());
         }
-        JourneyMapCompat.refresh();
+        MapCompat.refresh();
     }
 
     public static void handleKillFeed(KillFeedPacket msg) {

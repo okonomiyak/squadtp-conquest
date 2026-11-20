@@ -374,6 +374,13 @@ WorldEditの選択ワンドやCreateの「Schematic and Quill」と同じ操作�
 
 ## 拠点のウェイポイント表示(JourneyMap連携)
 
+対応マップMod: JourneyMap / Xaero's Minimap(+World Map、動作確認は26.6.0) / FTB Chunks。
+拠点・スポット・ピンはどれでも表示されるが、差異がある。
+- Xaero: 色はチーム色に最も近いパレット21色の1つ(RGB完全一致ではない)。World Mapは Minimap 併用時のみ。
+- FTB Chunks: 名前はマップ上のツールチップ表示(ワールド内ラベルなし)。
+- 敵チームのレーダー非表示は JourneyMap のみ。ラウンド中(戦闘チーム所属時)は Xaero では Minimap のレーダーを無効化(フェアプレイモード扱いとなり、洞窟モード・スライムチャンクもラウンド中は無効)、FTB Chunks ではプレイヤーアイコンを非表示にする(味方含む全員)。
+- 開発時の runClient で読み込むマップModは `-PdevMap=jm|xaero|ftb`(既定 `jm`)で選択。
+
 JourneyMapを導入している場合、ラウンド進行中(`IN_PROGRESS`)は全ての拠点がその時点の保有チーム色
 (A=青・B=赤・未占領=灰)のウェイポイントとして自動表示される。squadtpの`compat/journeymap`と
 同じソフト依存パターン(JourneyMap未導入でもクラッシュしない、`compileOnly`+ランタイム検出)を

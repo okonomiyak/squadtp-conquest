@@ -197,8 +197,8 @@ public final class Config {
                         "(walls stop it short of this).")
                 .defineInRange("spotRangeBlocks", 100, 10, 300);
         SPOT_DURATION_SECONDS = b
-                .comment("Seconds a spotted enemy's position stays visible to the spotter's team (JourneyMap",
-                        "waypoint). The mark is a one-time snapshot of where they were, not a live tracker.")
+                .comment("Seconds a spotted enemy's position stays visible to the spotter's team (map waypoint:",
+                        "JourneyMap / Xaero's Minimap / FTB Chunks). The mark is a one-time snapshot of where they were, not a live tracker.")
                 .defineInRange("spotDurationSeconds", 8, 1, 60);
         SPOT_COOLDOWN_SECONDS = b
                 .comment("Seconds a player must wait between uses of the spot key.")
@@ -208,7 +208,7 @@ public final class Config {
                         "(walls stop it short of this).")
                 .defineInRange("pinRangeBlocks", 100, 10, 300);
         PIN_DURATION_SECONDS = b
-                .comment("Seconds a pinned location stays visible to the placer's team (JourneyMap waypoint)",
+                .comment("Seconds a pinned location stays visible to the placer's team (map waypoint: JourneyMap / Xaero's Minimap / FTB Chunks)",
                         "before it expires on its own. The placer can also remove it early (see the pin key's",
                         "sneak-to-clear behavior).")
                 .defineInRange("pinDurationSeconds", 60, 5, 600);

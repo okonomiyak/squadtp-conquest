@@ -8,7 +8,7 @@ import uk.iwaservice.squadtpconquest.SquadTpConquest;
  * Sole gateway into the classloadout integration. Classes under {@code compat.classloadout}
  * reference classloadout API types and are only classloaded behind the {@code isLoaded} check
  * below, so the mod works unchanged when classloadout is not installed. Mirrors this mod's own
- * {@code compat.JourneyMapCompat} (classloadout is not modified by this).
+ * {@code compat.MapCompat} (classloadout is not modified by this).
  */
 public final class ClassLoadoutCompat {
 
