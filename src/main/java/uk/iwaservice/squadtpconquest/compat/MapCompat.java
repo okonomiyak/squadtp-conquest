@@ -48,6 +48,20 @@ public final class MapCompat {
     private static final Integration XAERO = new Integration("Xaero's Minimap", "xaerominimap", "xaerobetterpvp");
     private static final Integration FTB = new Integration("FTB Chunks", "ftbchunks");
 
+    private static boolean dirty;
+
+    /** Requests a {@link #refresh} on the next client tick, so a burst of packets costs one rebuild. */
+    public static void markDirty() {
+        dirty = true;
+    }
+
+    public static void refreshIfDirty() {
+        if (dirty) {
+            dirty = false;
+            refresh();
+        }
+    }
+
     /** Re-renders all markers from the current client data. Safe to call anywhere on the client. */
     public static void refresh() {
         JM.run(() -> uk.iwaservice.squadtpconquest.compat.journeymap.ConquestJmWaypointHandler.refresh());
@@ -58,6 +72,7 @@ public final class MapCompat {
 
     /** Removes every marker this mod has shown, e.g. on logout, without needing fresh client data. */
     public static void clear() {
+        dirty = false;
         JM.run(() -> uk.iwaservice.squadtpconquest.compat.journeymap.ConquestJmWaypointHandler.clear());
         XAERO.run(() -> uk.iwaservice.squadtpconquest.compat.xaero.ConquestXaeroWaypointHandler.clear());
         XAERO.run(() -> uk.iwaservice.squadtpconquest.compat.xaero.ConquestXaeroRadar.clear());

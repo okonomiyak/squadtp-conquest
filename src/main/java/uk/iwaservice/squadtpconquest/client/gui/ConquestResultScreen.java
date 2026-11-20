@@ -40,6 +40,8 @@ public class ConquestResultScreen extends Screen {
     private int panelLeft;
     private int panelTop;
     private int panelHeight;
+    /** Client data revision this screen was built from; a newer one (e.g. late assists) triggers a rebuild. */
+    private int builtRevision;
 
     private Component outcome = Component.empty();
     private int outcomeColor;
@@ -53,6 +55,7 @@ public class ConquestResultScreen extends Screen {
 
     @Override
     protected void init() {
+        builtRevision = ConquestClientData.getRevision();
         lines.clear();
         rows.clear();
         RoundResultPacket result = ConquestClientData.getLastResult();
@@ -205,6 +208,8 @@ public class ConquestResultScreen extends Screen {
     public void tick() {
         if (ConquestClientData.getLastResult() == null) {
             onClose();
+        } else if (ConquestClientData.getRevision() != builtRevision) {
+            rebuildWidgets();
         }
     }
 

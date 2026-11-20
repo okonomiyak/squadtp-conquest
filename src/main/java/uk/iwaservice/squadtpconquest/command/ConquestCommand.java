@@ -1278,6 +1278,7 @@ public final class ConquestCommand {
             case NOT_ACTIVE -> fail(ctx, Component.translatable("conquest.msg.not_active"));
             case INSUFFICIENT_SCORE -> fail(ctx, Component.translatable("conquest.msg.callin_insufficient_score", name));
             case UNKNOWN_ITEM -> fail(ctx, Component.translatable("conquest.msg.callin_unknown_item", name));
+            case NOT_COMBATANT -> fail(ctx, Component.translatable("conquest.msg.uav_not_combatant"));
         };
     }
 

@@ -240,10 +240,16 @@ public class ConquestManager extends SavedData {
         final BlockPos center;
         final int radius;
         final int endTick;
+        /** The owner's side at activation (squad number in Squad Deathmatch), so a later team change doesn't affect the UAV. */
+        final Team ownerTeam;
+        @Nullable
+        final Integer ownerSquad;
         int nextPulseTick;
 
         ActiveUav(UUID owner, String ownerName, ResourceKey<Level> dimension, BlockPos center, int radius,
-                  int endTick, int nextPulseTick) {
+                  int endTick, int nextPulseTick, Team ownerTeam, @Nullable Integer ownerSquad) {
+            this.ownerTeam = ownerTeam;
+            this.ownerSquad = ownerSquad;
             this.owner = owner;
             this.ownerName = ownerName;
             this.dimension = dimension;
@@ -940,7 +946,7 @@ public class ConquestManager extends SavedData {
     }
 
     /** Outcome of a /conquest callin use attempt. */
-    public enum UseCallInResult { OK, NOT_FOUND, NOT_ACTIVE, INSUFFICIENT_SCORE, UNKNOWN_ITEM }
+    public enum UseCallInResult { OK, NOT_FOUND, NOT_ACTIVE, INSUFFICIENT_SCORE, UNKNOWN_ITEM, NOT_COMBATANT }
 
     /**
      * Spends {@link CallIn#getScoreCost()} from the player's {@link #availableScore} and gives
@@ -959,6 +965,10 @@ public class ConquestManager extends SavedData {
             return UseCallInResult.INSUFFICIENT_SCORE;
         }
         if (callIn.isUav()) {
+            UUID id = player.getUUID();
+            if (!teamOf(id).isCombatant() || (mode == GameMode.SQUAD_DM && sdmSquadOf(id) == null)) {
+                return UseCallInResult.NOT_COMBATANT;
+            }
             scoreOf(player.getUUID()).spent += callIn.getScoreCost();
             setDirty();
             startUav(player, callIn);
@@ -982,12 +992,13 @@ public class ConquestManager extends SavedData {
         MinecraftServer server = player.server;
         int now = server.getTickCount();
         ActiveUav uav = new ActiveUav(player.getUUID(), player.getGameProfile().getName(), player.level().dimension(),
-                player.blockPosition(), callIn.getUavRadius(), now + callIn.getUavSeconds() * 20, now);
+                player.blockPosition(), callIn.getUavRadius(), now + callIn.getUavSeconds() * 20, now,
+                teamOf(player.getUUID()), sdmSquadOf(player.getUUID()));
         activeUavs.add(uav);
         Component started = Component.translatable("conquest.msg.uav_started", uav.ownerName, callIn.getUavSeconds());
         Component enemy = Component.translatable("conquest.msg.uav_enemy").withStyle(ChatFormatting.RED);
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-            if (sameSide(p.getUUID(), uav.owner)) {
+            if (onUavSide(uav, p.getUUID())) {
                 p.sendSystemMessage(started);
             } else if (teamOf(p.getUUID()).isCombatant()) {
                 p.sendSystemMessage(enemy);
@@ -1016,11 +1027,19 @@ public class ConquestManager extends SavedData {
         }
     }
 
+    /** {@link #sameSide} against the side the UAV's owner had at activation instead of their live one. */
+    private boolean onUavSide(ActiveUav uav, UUID player) {
+        if (mode == GameMode.SQUAD_DM) {
+            return uav.ownerSquad != null && uav.ownerSquad.equals(sdmSquadOf(player));
+        }
+        return teamOf(player) == uav.ownerTeam;
+    }
+
     /** Spots every valid enemy (same targets as {@code /conquest spot}) inside the UAV's reach for the owner's side. */
     private void pulseUav(MinecraftServer server, ActiveUav uav) {
         long r2 = (long) uav.radius * uav.radius;
         for (ServerPlayer target : server.getPlayerList().getPlayers()) {
-            if (!target.isAlive() || !teamOf(target.getUUID()).isCombatant() || sameSide(uav.owner, target.getUUID())
+            if (!target.isAlive() || !teamOf(target.getUUID()).isCombatant() || onUavSide(uav, target.getUUID())
                     || !target.level().dimension().equals(uav.dimension)
                     || (uav.radius > 0 && target.blockPosition().distSqr(uav.center) > r2)) {
                 continue;
@@ -1028,7 +1047,7 @@ public class ConquestManager extends SavedData {
             SpotPacket packet = new SpotPacket(target.getUUID(), target.getGameProfile().getName(),
                     uav.dimension.location(), target.blockPosition(), 50);
             for (ServerPlayer viewer : server.getPlayerList().getPlayers()) {
-                if (sameSide(viewer.getUUID(), uav.owner)) {
+                if (onUavSide(uav, viewer.getUUID())) {
                     NetworkHandler.send(viewer, packet);
                 }
             }
