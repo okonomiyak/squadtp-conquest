@@ -79,6 +79,7 @@ public final class ClientEvents {
                 && mc.player != null && mc.player.isAlive()
                 && (mc.screen == null || mc.screen instanceof ConquestScoreScreen)) {
             ConquestClientData.clearResultPending();
+            mc.gui.clear(); // the screen repeats the round-end title; stop it showing through the panel
             mc.setScreen(new uk.iwaservice.squadtpconquest.client.gui.ConquestResultScreen());
         }
         MapCompat.refreshIfDirty();
