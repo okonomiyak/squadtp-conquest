@@ -344,6 +344,14 @@ public final class ConquestCommand {
                                                         .executes(ctx -> callInAdd(ctx, 1))
                                                         .then(Commands.argument("count", IntegerArgumentType.integer(1, 64))
                                                                 .executes(ctx -> callInAdd(ctx, IntegerArgumentType.getInteger(ctx, "count"))))))))
+                        .then(Commands.literal("uav")
+                                .requires(src -> src.hasPermission(2))
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .then(Commands.argument("cost", IntegerArgumentType.integer(0))
+                                                .then(Commands.argument("seconds", IntegerArgumentType.integer(1))
+                                                        .executes(ctx -> callInUav(ctx, 0))
+                                                        .then(Commands.argument("radius", IntegerArgumentType.integer(0))
+                                                                .executes(ctx -> callInUav(ctx, IntegerArgumentType.getInteger(ctx, "radius"))))))))
                         .then(Commands.literal("remove")
                                 .requires(src -> src.hasPermission(2))
                                 .then(Commands.argument("name", StringArgumentType.word())
@@ -1216,6 +1224,16 @@ public final class ConquestCommand {
         return 1;
     }
 
+    private static int callInUav(CommandContext<CommandSourceStack> ctx, int radius) {
+        String name = StringArgumentType.getString(ctx, "name");
+        int cost = IntegerArgumentType.getInteger(ctx, "cost");
+        int seconds = IntegerArgumentType.getInteger(ctx, "seconds");
+        ConquestManager.get(ctx.getSource().getServer()).addUavCallIn(name, cost, seconds, radius);
+        ctx.getSource().sendSuccess(() ->
+                Component.translatable("conquest.msg.callin_uav_added", name, cost, seconds, radius), true);
+        return 1;
+    }
+
     private static int callInRemove(CommandContext<CommandSourceStack> ctx) {
         String name = StringArgumentType.getString(ctx, "name");
         if (!ConquestManager.get(ctx.getSource().getServer()).removeCallIn(name)) {
@@ -1232,8 +1250,12 @@ public final class ConquestCommand {
         }
         MutableComponent msg = Component.translatable("conquest.msg.callin_list_header").withStyle(ChatFormatting.GOLD);
         for (CallIn callIn : manager.getCallIns()) {
-            msg.append("\n").append(Component.translatable("conquest.status.callin",
-                    callIn.getName(), callIn.getScoreCost(), callIn.getCount(), callIn.getItemId().toString()));
+            msg.append("\n").append(callIn.isUav()
+                    ? Component.translatable("conquest.status.callin_uav", callIn.getName(), callIn.getScoreCost(),
+                            callIn.getUavSeconds(), callIn.getUavRadius() == 0
+                                    ? Component.translatable("conquest.status.uav_all") : Component.literal("" + callIn.getUavRadius()))
+                    : Component.translatable("conquest.status.callin",
+                            callIn.getName(), callIn.getScoreCost(), callIn.getCount(), callIn.getItemId().toString()));
         }
         MutableComponent result = msg;
         ctx.getSource().sendSuccess(() -> result, false);

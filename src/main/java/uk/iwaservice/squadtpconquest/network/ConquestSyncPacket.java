@@ -43,7 +43,7 @@ public record ConquestSyncPacket(List<PointStatus> points,
                                ResourceLocation dimension, BlockPos pos) {}
 
     /** One registered /conquest callin, for the player-facing GUI list (see availableScore). */
-    public record CallInStatus(String name, int scoreCost, ResourceLocation itemId, int count) {}
+    public record CallInStatus(String name, int scoreCost, ResourceLocation itemId, int count, int uavSeconds) {}
 
     /**
      * One other squad on the viewer's own team that they could request to join (squadtp exposes
@@ -106,6 +106,7 @@ public record ConquestSyncPacket(List<PointStatus> points,
             buf.writeVarInt(c.scoreCost());
             buf.writeResourceLocation(c.itemId());
             buf.writeVarInt(c.count());
+            buf.writeVarInt(c.uavSeconds());
         }
         buf.writeVarInt(msg.availableScore);
         buf.writeVarInt(msg.joinableSquads.size());
@@ -159,7 +160,7 @@ public record ConquestSyncPacket(List<PointStatus> points,
         int callInCount = buf.readVarInt();
         List<CallInStatus> callIns = new ArrayList<>(callInCount);
         for (int i = 0; i < callInCount; i++) {
-            callIns.add(new CallInStatus(buf.readUtf(), buf.readVarInt(), buf.readResourceLocation(), buf.readVarInt()));
+            callIns.add(new CallInStatus(buf.readUtf(), buf.readVarInt(), buf.readResourceLocation(), buf.readVarInt(), buf.readVarInt()));
         }
         int availableScore = buf.readVarInt();
         int squadCount = buf.readVarInt();

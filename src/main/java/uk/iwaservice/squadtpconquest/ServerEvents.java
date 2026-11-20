@@ -63,6 +63,7 @@ public final class ServerEvents {
             return;
         }
         ConquestManager manager = ConquestManager.get(server);
+        manager.tickUav(server);
         if (++tickCounter % 20 == 0) {
             manager.tickSecond(server);
         }

@@ -651,7 +651,9 @@ public class ConquestScreen extends Screen {
                 ConquestSyncPacket.CallInStatus callIn = callIns.get(offset + row);
                 MutableComponent line = Component.literal(callIn.name() + "  ").withStyle(ChatFormatting.WHITE)
                         .append(Component.literal(callIn.scoreCost() + " ").withStyle(ChatFormatting.GRAY))
-                        .append(Component.literal(callIn.count() + "x " + callIn.itemId().getPath())
+                        .append((callIn.uavSeconds() > 0
+                                ? Component.translatable("conquest.callin.uav_label", callIn.uavSeconds())
+                                : Component.literal(callIn.count() + "x " + callIn.itemId().getPath()))
                                 .withStyle(ChatFormatting.GRAY));
                 graphics.drawString(this.font, line, l + PAD, t + callInY + 14 + row * 13, COLOR_TEXT);
             }
