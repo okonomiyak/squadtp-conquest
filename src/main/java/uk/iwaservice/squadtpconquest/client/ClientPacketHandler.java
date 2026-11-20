@@ -1,8 +1,6 @@
 package uk.iwaservice.squadtpconquest.client;
 
 import net.minecraft.client.Minecraft;
-import uk.iwaservice.squadtpconquest.client.gui.ConquestResultScreen;
-import uk.iwaservice.squadtpconquest.client.gui.ConquestScoreScreen;
 import uk.iwaservice.squadtpconquest.client.gui.ConquestScreen;
 import uk.iwaservice.squadtpconquest.compat.MapCompat;
 import uk.iwaservice.squadtpconquest.network.ConquestScoreboardPacket;
@@ -24,7 +22,7 @@ public final class ClientPacketHandler {
                 msg.callIns(), msg.availableScore(), msg.joinableSquads(),
                 msg.sdmSquads(), msg.yourSdmSquad(), msg.sdmKillLimit(),
                 msg.kothHill(), msg.kothNextHill(), msg.kothSecondsToRotate(), msg.kothTargetScore(), msg.kothHolder());
-        MapCompat.refresh();
+        MapCompat.markDirty();
         if (msg.openScreen()) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null && mc.screen == null) {
@@ -45,7 +43,7 @@ public final class ClientPacketHandler {
         Minecraft mc = Minecraft.getInstance();
         long now = mc.level != null ? mc.level.getGameTime() : 0;
         ConquestClientData.addSpot(msg.target(), msg.targetName(), msg.dimension(), msg.pos(), now + msg.durationTicks());
-        MapCompat.refresh();
+        MapCompat.markDirty();
     }
 
     public static void handlePin(PinPacket msg) {
@@ -56,7 +54,7 @@ public final class ClientPacketHandler {
             long now = mc.level != null ? mc.level.getGameTime() : 0;
             ConquestClientData.addPin(msg.placer(), msg.placerName(), msg.dimension(), msg.pos(), now + msg.durationTicks());
         }
-        MapCompat.refresh();
+        MapCompat.markDirty();
     }
 
     public static void handleKillFeed(KillFeedPacket msg) {
@@ -66,11 +64,8 @@ public final class ClientPacketHandler {
     }
 
     public static void handleRoundResult(RoundResultPacket msg) {
+        // Opened from ClientEvents' tick once the player is alive and no other screen is up.
         ConquestClientData.setLastResult(msg);
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null && (mc.screen == null || mc.screen instanceof ConquestScoreScreen)) {
-            mc.setScreen(new ConquestResultScreen());
-        }
     }
 
     private ClientPacketHandler() {}

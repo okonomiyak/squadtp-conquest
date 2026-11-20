@@ -109,6 +109,7 @@
   "conquest.msg.callin_used": "Call-in %s used! -%s score",
   "conquest.msg.callin_insufficient_score": "Not enough available score for call-in %s",
   "conquest.msg.callin_unknown_item": "Call-in %s references an item that no longer exists",
+  "conquest.msg.uav_not_combatant": "Only combat team players can use a UAV",
   "conquest.msg.callin_uav_added": "UAV call-in %s added: %s score, %ss, radius %s (0 = all)",
   "conquest.msg.uav_started": "%s launched a UAV (%ss)",
   "conquest.msg.uav_enemy": "Enemy UAV active!",

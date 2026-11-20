@@ -40,6 +40,7 @@ public final class ClientEvents {
         ConquestClientData.clearPins();
         ConquestClientData.clearKillFeed();
         ConquestClientData.clearZones();
+        ConquestClientData.reset();
         MapCompat.clear();
     }
 
@@ -77,6 +78,13 @@ public final class ClientEvents {
         while (ClientModEvents.PIN.consumeClick()) {
             tryPin(mc);
         }
+        if (ConquestClientData.isResultPending() && ConquestClientData.getLastResult() != null
+                && mc.player != null && mc.player.isAlive()
+                && (mc.screen == null || mc.screen instanceof ConquestScoreScreen)) {
+            ConquestClientData.clearResultPending();
+            mc.setScreen(new uk.iwaservice.squadtpconquest.client.gui.ConquestResultScreen());
+        }
+        MapCompat.refreshIfDirty();
         boolean expired = mc.level != null && ConquestClientData.pruneExpiredSpots(mc.level.getGameTime());
         expired |= mc.level != null && ConquestClientData.pruneExpiredPins(mc.level.getGameTime());
         if (expired) {

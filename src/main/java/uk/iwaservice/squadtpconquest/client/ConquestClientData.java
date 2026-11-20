@@ -68,6 +68,8 @@ public final class ConquestClientData {
     /** The last round's result for the result screen; cleared once the round is no longer ENDED. */
     @Nullable
     private static RoundResultPacket lastResult;
+    /** Set when a result arrives; cleared once the result screen has been opened (or the result is). */
+    private static boolean resultPending;
     /** Incremented on every update; lets the GUI detect changes cheaply. */
     private static int revision;
 
@@ -89,6 +91,7 @@ public final class ConquestClientData {
         state = newState;
         if (newState != RoundState.ENDED) {
             lastResult = null;
+            resultPending = false;
         }
         mode = newMode;
         yourTeam = newYourTeam;
@@ -122,6 +125,50 @@ public final class ConquestClientData {
 
     public static synchronized void setLastResult(RoundResultPacket result) {
         lastResult = result;
+        resultPending = true;
+    }
+
+    public static synchronized boolean isResultPending() {
+        return resultPending;
+    }
+
+    public static synchronized void clearResultPending() {
+        resultPending = false;
+    }
+
+    /** Called on logout: puts every round/sync field back to its initial value so the next world starts clean. */
+    public static synchronized void reset() {
+        points = List.of();
+        ticketsA = 0;
+        ticketsB = 0;
+        active = false;
+        state = RoundState.WAITING;
+        mode = GameMode.CONQUEST;
+        yourTeam = Team.NEUTRAL;
+        canAdmin = false;
+        roundElapsedSeconds = 0;
+        roundElapsedReceivedAt = 0;
+        scoreboard = List.of();
+        attackerTeam = Team.A;
+        sectorIndex = 0;
+        sectorCount = 0;
+        attackerTickets = 0;
+        attackerTicketsMax = 0;
+        tdmKillLimit = 0;
+        callIns = List.of();
+        availableScore = 0;
+        joinableSquads = List.of();
+        sdmSquads = List.of();
+        yourSdmSquad = 0;
+        sdmKillLimit = 0;
+        kothHill = "";
+        kothNextHill = "";
+        kothSecondsToRotate = 0;
+        kothTargetScore = 0;
+        kothHolder = Team.NEUTRAL;
+        lastResult = null;
+        resultPending = false;
+        revision++;
     }
 
     @Nullable
